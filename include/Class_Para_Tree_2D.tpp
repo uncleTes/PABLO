@@ -99,6 +99,11 @@ public:
 		log.writeLog(" Max allowed level	:	" + to_string(MAX_LEVEL_2D));
 		log.writeLog("---------------------------------------------");
 		log.writeLog(" ");
+		if(rank==0){
+			if (fileExists("PABLO.log")) {
+                                int sysError = system("rm PABLO.log");
+                        }
+		}
 		MPI_Barrier(MPI_COMM_WORLD);
 
 	};
@@ -145,6 +150,12 @@ public:
 		log.writeLog(" Domain Size		:	" + to_string(L));
 		log.writeLog("---------------------------------------------");
 		log.writeLog(" ");
+		
+		if(rank==0){
+			if (fileExists("PABLO.log")) {
+                                int sysError = system("rm PABLO.log");
+                        }
+		}
 		MPI_Barrier(MPI_COMM_WORLD);
 
 	};
@@ -224,6 +235,12 @@ public:
 		log.writeLog(" Number of octants	:	" + to_string(global_num_octants));
 		log.writeLog("---------------------------------------------");
 		log.writeLog(" ");
+		
+		if(rank==0){
+			if (fileExists("PABLO.log")) {
+                                int sysError = system("rm PABLO.log");
+                        }
+		}
 		MPI_Barrier(MPI_COMM_WORLD);
 
 	};
