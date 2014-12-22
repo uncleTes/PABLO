@@ -1,0 +1,7 @@
+### DEPENDENCIES
+
+* mpi4py
+* numpy
+* cython
+* pycuda
+* petsc4py
