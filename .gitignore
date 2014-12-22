@@ -4,3 +4,7 @@ build/*
 .cproject
 doxy/html/*
 *.orig
+python_wrapper/*.so
+python_wrapper/*cpp
+python_wrapper/*.h
+python_wrapper/build/*
