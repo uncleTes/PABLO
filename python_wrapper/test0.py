@@ -1,4 +1,4 @@
-from mpi4py import MPI
+#from mpi4py import MPI
 import class_para_tree
 import utils
 
