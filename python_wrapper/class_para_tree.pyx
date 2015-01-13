@@ -2,7 +2,8 @@ from libcpp.vector cimport vector
 from libcpp.map cimport map
 from libcpp.string cimport string
 from libcpp cimport bool
-from libc.stdint cimport uint8_t, uint32_t, uint64_t
+from libc.stdint cimport uint8_t, uint32_t, uint64_t, int8_t, uintptr_t
+import class_octant
 
 cdef extern from *:
 	ctypedef void* D2 "2"
@@ -147,6 +148,21 @@ cdef extern from "Class_Para_Tree.hpp":
 		# return ---> volume of octant
 		double getVolume(Class_Octant[T]* oct)
 
+		# Get the coordinates of the center of an octant:
+		# param[in] oct ---> Pointer to target octant
+		# param[out] center ---> coordinates of the center of octant
+		void getCenter(Class_Octant[T]* oct, vector[double]& center)
+
+		# Get the coordinates of the center of an octant.
+		# param[in] idx ---> local index of target octant
+		# return ---> center coordinates of the center of octant
+		vector[double] getCenter(uint32_t idx)
+
+		# Get the coordinates of the center of an octant
+		# param[in] oct ---> target octant
+		# return ---> center coordinates of the center of octant
+		vector[double] getCenter(Class_Octant[T]* oct)
+	
 		# Compute the connectivity of octants and store the coordinates
 		# of nodes
 		void computeConnectivity()
@@ -165,6 +181,36 @@ cdef extern from "Class_Para_Tree.hpp":
 		
 		void write(string)
 		void writeLogical(string)
+
+		# Set the balancing condition of an octant:
+		# param[in] idx ---> local index of target octant.
+		# param[in] balance ---> has octant to be 2:1 balanced in 
+		#                        adapting procedure?
+		void setBalance(uint32_t idx, bool balance)
+
+		void setBalance(Class_Octant[T]* oct, bool balance)
+
+		# Get an octant as pointer to the target octant:
+		# param[in] idx ---> local index of target octant.
+		# return ---> pointer to target octant.
+		Class_Octant[T]* getOctant(uint32_t idx)
+
+		# Set the balancing condition of an octant:
+		# param[in] oct ---> pointer to target octant.
+		# param[in] balance ---> has octant to be 2:1 balanced in 
+		#                        adapting procedure?
+		void setMarker(Class_Octant[T]* oct, int8_t marker)
+
+		uint8_t getMarker(Class_Octant[T]* oct)
+
+		# Adapt the octree mesh with user setup for markers and 2:1 
+		# balancing conditions
+		bool adapt()
+
+		bool getBalance(Class_Octant[T]* oct)
+		bool getBalance(uint32_t idx)
+
+		void balance21(bool first)
 
 # Wrapper Python for class Class_Para_Tree<2>
 cdef class  Py_Class_Para_Tree_D2:
@@ -221,10 +267,6 @@ cdef class  Py_Class_Para_Tree_D2:
 		del self.thisptr
 
 	# -------------------------------Properties-----------------------------
-	#property trans:
-	#	def __get__(self):
-	#		return <Class_Map_D2>self.thisptr.trans
-
 	property rank:
 		def __get__(self):
 			return self.thisptr.rank
@@ -266,7 +308,61 @@ cdef class  Py_Class_Para_Tree_D2:
 		self.thisptr.computeConnectivity()
 
 	def adapt_global_refine(self):
-		self.thisptr.adaptGlobalRefine()
+		result = self.thisptr.adaptGlobalRefine()
+		return result
 	
 	def update_connectivity(self):
 		self.thisptr.updateConnectivity()
+
+	def get_center(self, uintptr_t idx, from_octant = False):
+		cdef vector[double] center
+		py_center = []
+
+		if (from_octant):
+			center = self.thisptr.getCenter(<Class_Octant[D2]*><void*>idx)
+		else:
+			center = self.thisptr.getCenter(<uint32_t>idx)
+
+		for i in xrange(0, 3):
+			py_center.append(center[i])
+	
+		return py_center
+
+	def set_balance(self, idx, bool balance):
+		cdef Class_Octant[D2]* octant
+		
+		if (type(idx) is not int):
+			oct = <Class_Octant[D2]*><void*>idx
+			self.thisptr.setBalance(<Class_Octant[D2]*>octant, balance)
+		else:
+			self.thisptr.setBalance(<uint32_t>idx, balance)
+
+	def set_marker(self, uintptr_t octant, int8_t marker):
+		self.thisptr.setMarker(<Class_Octant[D2]*><void*>octant, <int8_t>marker)
+
+
+	def get_marker(self, octant):
+		cdef Class_Octant[D2]* oct
+		oct =  <Class_Octant[D2]*><void*>octant
+		return self.thisptr.getMarker(oct)
+		
+	def get_balance(self, idx):
+		cdef Class_Octant[D2]* oct
+		
+		if (type(idx) is not int):
+			oct = <Class_Octant[D2]*><void*>idx
+			return self.thisptr.getBalance(<Class_Octant[D2]*>oct)
+		else:
+			return self.thisptr.getBalance(<uint32_t>idx)
+
+	def get_octant(self, uint32_t idx):
+		cdef Class_Octant[D2]* octant
+
+		octant = self.thisptr.getOctant(idx)
+
+		py_oct = <uintptr_t>octant
+		return py_oct
+
+	def adapt(self):
+		result = self.thisptr.adapt()
+		return result
