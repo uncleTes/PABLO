@@ -99,11 +99,13 @@ class build_ext(_build_ext):
 	# Define "Extension" being cythonized
 	def def_ext_modules(self):
 		os.environ["CXX"] = "mpic++"
+	
+		#sourcefiles = ["../include/Class_Para_Tree_2D.tpp"]
 
 		ext_modules = [Extension(os.path.splitext(self.extensions_source)[0],
 					[self.extensions_source],
 					extra_compile_args=["-std=c++11", 
-							    "-O3", 
+							    "-O3", #-O0 for debug
 							    "-fPIC", 
 							    "-I" + self.mpi_include_path,
 							    "-I" + self.pablo_include_path],
@@ -112,7 +114,7 @@ class build_ext(_build_ext):
 					language="c++",
 					extra_objects=["libPABLO.a"],
 					include_dirs=[".", 
-						      self.pablo_include_path], 
+						      self.pablo_include_path], #gdb_debug = True 
 					)]
 		
 		return cythonize(ext_modules)
