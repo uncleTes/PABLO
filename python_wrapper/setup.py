@@ -5,6 +5,7 @@ from Cython.Distutils import Extension
 import os
 import sys
 import re
+from numpy import get_include
 
 class build_ext(_build_ext):
 	description = ("Custom build_ext \"pablo-include-path\"" +
@@ -114,7 +115,8 @@ class build_ext(_build_ext):
 					language="c++",
 					extra_objects=["libPABLO.a"],
 					include_dirs=[".", 
-						      self.pablo_include_path], #gdb_debug = True 
+						      self.pablo_include_path,
+						      get_include()], #gdb_debug = True 
 					)]
 		
 		return cythonize(ext_modules)
