@@ -8,3 +8,6 @@ python_wrapper/*.so
 python_wrapper/*cpp
 python_wrapper/*.h
 python_wrapper/build/*
+python_wrapper/*.pvtu
+python_wrapper/*.vtu
+python_wrapper/*.log
