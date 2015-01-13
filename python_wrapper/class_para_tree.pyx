@@ -201,6 +201,14 @@ cdef extern from "Class_Para_Tree.hpp":
 		#                        adapting procedure?
 		void setMarker(Class_Octant[T]* oct, int8_t marker)
 
+		# Set the refinement marker of an octant.
+		# param[in] idx ---> local index of target octant.
+		# param[in] marker ---> refinement marker of octant 
+		#                       (n=n refinement in adapt, 
+		#                        -n=n coarsening in adapt, 
+		#                        default=0).
+		void setMarker(uint32_t idx, int8_t marker)
+
 		uint8_t getMarker(Class_Octant[T]* oct)
 
 		# Adapt the octree mesh with user setup for markers and 2:1 
@@ -211,6 +219,11 @@ cdef extern from "Class_Para_Tree.hpp":
 		bool getBalance(uint32_t idx)
 
 		void balance21(bool first)
+
+		# Get the coordinates of the nodes of an octant:
+		# param[in] idx ---> local index of target octant.
+		# return ---> nodes coordinates of the nodes of octant.
+		dvector2D getNodes(uint32_t idx)
 
 # Wrapper Python for class Class_Para_Tree<2>
 cdef class  Py_Class_Para_Tree_D2:
@@ -337,8 +350,12 @@ cdef class  Py_Class_Para_Tree_D2:
 		else:
 			self.thisptr.setBalance(<uint32_t>idx, balance)
 
-	def set_marker(self, uintptr_t octant, int8_t marker):
-		self.thisptr.setMarker(<Class_Octant[D2]*><void*>octant, <int8_t>marker)
+	def set_marker(self, uintptr_t octant, int8_t marker, from_index = False):
+		if (not from_index):
+			self.thisptr.setMarker(<Class_Octant[D2]*><void*>octant, <int8_t>marker)
+
+		else:
+			self.thisptr.setMarker(<uint32_t>octant, <int8_t>marker)
 
 
 	def get_marker(self, octant):
@@ -366,3 +383,9 @@ cdef class  Py_Class_Para_Tree_D2:
 	def adapt(self):
 		result = self.thisptr.adapt()
 		return result
+
+	def get_nodes(self, uint32_t idx):
+		nodes = self.thisptr.getNodes(idx)
+
+		return nodes
+		
