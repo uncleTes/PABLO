@@ -394,8 +394,14 @@ cdef class  Py_Class_Para_Tree_D2:
 			self.thisptr.setBalance(<Class_Octant[D2]*>octant, balance)
 		else:
 			self.thisptr.setBalance(<uint32_t>idx, balance)
+	
+	def set_marker_from_index(self, uint32_t idx, int8_t marker):
+		cdef uint32_t c_idx = idx
+		cdef int8_t c_marker = marker
 
-	def set_marker(self, uintptr_t octant, int8_t marker, from_index = False):
+		self.thisptr.setMarker(c_idx, c_marker)
+
+	def set_marker(self, uintptr_t octant, int8_t marker, bool from_index = False):
 		if (not from_index):
 			self.thisptr.setMarker(<Class_Octant[D2]*><void*>octant, <int8_t>marker)
 
