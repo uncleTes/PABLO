@@ -181,6 +181,14 @@ cdef extern from "Class_Para_Tree.hpp":
 		
 		void write(string)
 		void writeLogical(string)
+	
+	
+		# Write the physical octree mesh in .vtu format with data for 
+		# test in a user-defined file; if the connectivity is not stored, 
+		# the method temporary computes it.
+		# The method doesn't write the ghosts on file:
+		# param[in] filename ---> Seriously?....
+		void writeTest(string filename, vector[double] data)
 
 		# Set the balancing condition of an octant:
 		# param[in] idx ---> local index of target octant.
@@ -215,6 +223,21 @@ cdef extern from "Class_Para_Tree.hpp":
 		# balancing conditions
 		bool adapt()
 
+		
+		# Adapt the octree mesh with user setup for markers and 2:1 
+		# balancing conditions.
+		# Track the changes in structure octant by a mapper:
+		# param[out] mapidx ---> mapper from new octants to old octants
+		# mapidx[i] = j ---> the i-th octant after adapt was in the 
+		#                    j-th position before adapt;
+		#                    if the i-th octant is new after refinement 
+		#                    the j-th old octant was the father of the 
+		#                    new octant;
+		#                    if the i-th octant is new after coarsening 
+		#                    the j-th old octant was the first child of 
+		#                    the new octant.
+		bool adapt(u32vector& mapidx)
+
 		bool getBalance(Class_Octant[T]* oct)
 		bool getBalance(uint32_t idx)
 
@@ -225,6 +248,23 @@ cdef extern from "Class_Para_Tree.hpp":
 		# return ---> nodes coordinates of the nodes of octant.
 		dvector2D getNodes(uint32_t idx)
 
+		
+		# Distribute Load-Balancing the octants of the whole tree over
+		# the processes of the job following the Morton order.
+		# Until loadBalance is not called for the first time the mesh 
+		# is serial
+		void loadBalance()
+
+		# Get the local number of ghost octants:
+		# return ---> local number of ghost octants.
+		uint32_t getNumGhosts() const
+
+		
+		# Get the level of an octant:
+		# param[in] idx ---> local index of target octant;
+		# return ---> level of octant.
+		uint8_t getLevel(uint32_t idx)
+ 
 # Wrapper Python for class Class_Para_Tree<2>
 cdef class  Py_Class_Para_Tree_D2:
 	# Pointer to the object Class_Para_Tree<2>
@@ -314,6 +354,11 @@ cdef class  Py_Class_Para_Tree_D2:
 	def write(self, file_name):
 		self.thisptr.write(file_name)
 
+	def write_test(self, string file_name, vector[double] data):
+		cdef string c_file_name = file_name
+		cdef vector[double] c_data = data
+		self.thisptr.writeTest(c_file_name, c_data)
+
 	def write_logical(self, file_name):
 		self.thisptr.writeLogical(file_name)
 
@@ -380,12 +425,24 @@ cdef class  Py_Class_Para_Tree_D2:
 		py_oct = <uintptr_t>octant
 		return py_oct
 
-	def adapt(self):
-		result = self.thisptr.adapt()
+	def adapt(self, mapidx = None):
+		if (not mapidx):
+			result = self.thisptr.adapt()
+		else:
+			result = self.thisptr.adapt(mapidx)
 		return result
 
 	def get_nodes(self, uint32_t idx):
 		nodes = self.thisptr.getNodes(idx)
+	def load_balance(self):
+		self.thisptr.loadBalance()
+
+	def get_num_ghosts(self):
+		return self.thisptr.getNumGhosts()
+
+	def get_level(self, uint32_t idx):
+		cdef uint32_t c_idx = idx
+		return self.thisptr.getLevel(c_idx)
 
 		return nodes
 		
