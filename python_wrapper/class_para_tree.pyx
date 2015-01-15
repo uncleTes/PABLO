@@ -458,6 +458,84 @@ cdef class  Py_Class_Para_Tree_D2:
 	def get_level(self, uint32_t idx):
 		cdef uint32_t c_idx = idx
 		return self.thisptr.getLevel(c_idx)
-
-		return nodes
+	
+	def for_test_bubbles(self, int nrefperiter, int nocts, int nnodes, int nb, BB):
+		cdef int c_nocts = nocts
+		cdef int c_nrefperiter = nrefperiter
+		cdef int c_nnodes = nnodes
+		cdef int c_nb = nb
+		cdef int ib
+		cdef int i
+		cdef int j
+		cdef int iref
+		cdef vector[double] center
+		cdef dvector2D nodes
+		cdef double radius
+		cdef double radius_sqr
+		cdef double xc
+		cdef double yc
+		cdef double x_2
+		cdef double y_2
+		cdef double x_1
+		cdef double y_1
 		
+		
+		cdef bool inside
+
+		for iref in xrange(0, nrefperiter):
+			for i in xrange(0, c_nocts):
+				inside = False
+				nodes = self.thisptr.getNodes(i)
+				center = self.thisptr.getCenter(i)
+				level = self.thisptr.getLevel(i)
+				ib = 0
+			 	
+				while (not inside and ib < c_nb):
+					(xc, yc) = BB[ib].center
+					(x_2, y_2) = (center[0]-xc, center[1]-yc)
+					radius = BB[ib].radius
+					radius_sqr = radius*radius
+					for j in xrange(0, c_nnodes):
+						(x, y) = (nodes[j][0], nodes[j][1])
+						(x_1, y_1) = (x-xc, y-yc)
+						if ((((x_1)*(x_1) +
+						     (y_1)*(y_1)) <=
+						     1.15*(radius_sqr) and
+						     ((x_1)*(x_1) + 
+						     (y_1)*(y_1)) >=
+						     0.85*(radius_sqr)) or
+						    (((x_2)*(x_2) +
+						     (y_2)*(y_2)) <=
+						     1.15*(radius_sqr) and
+						     ((x_2)*(x_2) + 
+						     (y_2)*(y_2)) >=
+						     0.85*(radius_sqr))):
+						#if utils.check_prova(x_1, y_1, x_2, y_2, radius_sqr):
+							if (level < 9):
+								# Set to refine inside the sphere
+								#pabloBB.set_marker(i, 1, from_index = True)
+								self.thisptr.setMarker(i, 1)
+							#else:
+							#	pabloBB.set_marker(i, 0, True)
+							
+							inside = True
+					ib += 1
+				
+				if (level > 6 and (not inside)):
+					# Set to coarse if the octant has a level higher than 5
+					#pabloBB.set_marker(i, -1, from_index = True)
+					self.thisptr.setMarker(i, -1)
+
+			adapt = self.thisptr.adapt()
+
+			# PARALLEL TEST: (Load)Balance the octree over the 
+			# processes with communicating the data
+			self.thisptr.loadBalance()
+
+			c_nocts = self.thisptr.getNumOctants()
+
+		
+		self.thisptr.updateConnectivity()
+
+	#def for_test(self, int nrefperiter, int nocts, int nnodes, int nb, BB):
+	#	for_test_bubbles(int nrefperiter, int nocts, int nnodes, int nb, BB)
