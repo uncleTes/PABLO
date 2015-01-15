@@ -372,6 +372,13 @@ cdef class  Py_Class_Para_Tree_D2:
 	def update_connectivity(self):
 		self.thisptr.updateConnectivity()
 
+	def get_center_from_index(self, uint32_t idx):
+		cdef uint32_t c_idx = idx
+		#cdef vector[double] center = self.thisptr.getCenter(c_idx)
+		return self.thisptr.getCenter(c_idx)
+
+		#return center
+
 	def get_center(self, uintptr_t idx, from_octant = False):
 		cdef vector[double] center
 		py_center = []
