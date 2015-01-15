@@ -169,6 +169,9 @@ cdef extern from "Class_Para_Tree.hpp":
 
 		# Adapt the octree mesh refining all the octants by one level
 		bool adaptGlobalRefine()
+		
+		# Adapt the octree mesh coarsening all the octants by one level
+		bool adaptGlobalCoarse()
 
 		# Update the connectivity of octants
 		void updateConnectivity()		
@@ -371,6 +374,9 @@ cdef class  Py_Class_Para_Tree_D2:
 	
 	def update_connectivity(self):
 		self.thisptr.updateConnectivity()
+
+	def adapt_global_coarse(self):
+		self.thisptr.adaptGlobalCoarse()
 
 	def get_center_from_index(self, uint32_t idx):
 		cdef uint32_t c_idx = idx
