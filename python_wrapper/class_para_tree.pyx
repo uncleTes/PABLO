@@ -446,7 +446,9 @@ cdef class  Py_Class_Para_Tree_D2:
 		return result
 
 	def get_nodes(self, uint32_t idx):
-		nodes = self.thisptr.getNodes(idx)
+		cdef uint32_t c_idx = idx
+		return self.thisptr.getNodes(c_idx)
+
 	def load_balance(self):
 		self.thisptr.loadBalance()
 
