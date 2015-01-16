@@ -48,3 +48,7 @@ cdef class Py_Class_Global_D2:
 	property nnodes:
 		def __get__(self):
 			return self.thisptr.nnodes 
+
+	property nfaces:
+		def __get__(self):
+			return self.thisptr.nfaces
