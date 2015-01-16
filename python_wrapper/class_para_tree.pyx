@@ -205,6 +205,12 @@ cdef extern from "Class_Para_Tree.hpp":
 		# param[in] idx ---> local index of target octant.
 		# return ---> pointer to target octant.
 		Class_Octant[T]* getOctant(uint32_t idx)
+	
+		# Get a ghost octant as pointer to the target octant:
+		# param[in] idx ---> local index (in ghosts structure) of 
+		# target ghost octant;
+		# return ---> pointer to target ghost octant.
+		Class_Octant[T]* getGhostOctant(uint32_t idx) 
 
 		# Set the balancing condition of an octant:
 		# param[in] oct ---> pointer to target octant.
@@ -247,9 +253,14 @@ cdef extern from "Class_Para_Tree.hpp":
 		void balance21(bool first)
 
 		# Get the coordinates of the nodes of an octant:
-		# param[in] idx ---> local index of target octant.
+		# param[in] idx ---> local index of target octant;
 		# return ---> nodes coordinates of the nodes of octant.
 		dvector2D getNodes(uint32_t idx)
+
+		# Get the coordinates of the nodes of an octant:
+		# param[in] oct ---> pointer to target octant;
+		# return --->nodes coordinates of the nodes of octant.
+		dvector2D getNodes(Class_Octant[T]* oct)
 
 		
 		# Distribute Load-Balancing the octants of the whole tree over
@@ -267,6 +278,26 @@ cdef extern from "Class_Para_Tree.hpp":
 		# param[in] idx ---> local index of target octant;
 		# return ---> level of octant.
 		uint8_t getLevel(uint32_t idx)
+
+		# Finds neighbours of octant through iface in vector octants.
+		# Returns a vector (empty if iface is a bound face) with the 
+		# index of neighbours in their structure (octants or ghosts) and
+		# sets isghost[i] = true if the i-th neighbour is ghost in the 
+		# local tree:
+		# param[in] idx ---> index of current octant;
+		# param[in] iface ---> index of face/edge/node passed through 
+		# for neighbours finding;
+		# param[in] codim ---> codimension of the iface-th entity 1=edge, 
+		# 2=node;
+		# param[out] neighbours ---> vector of neighbours indices in 
+		# octants/ghosts structure;
+		# param[out] isghost ---> vector with boolean flag; true if the 
+		# respective octant in neighbours is a ghost octant.
+		void findNeighbours(uint32_t idx,
+				    uint8_t iface,
+				    uint8_t codim,
+				    u32vector& neighbours,
+				    vector[bool]& isghost)
  
 # Wrapper Python for class Class_Para_Tree<2>
 cdef class  Py_Class_Para_Tree_D2:
@@ -444,6 +475,15 @@ cdef class  Py_Class_Para_Tree_D2:
 		py_oct = <uintptr_t>octant
 		return py_oct
 
+	def get_ghost_octant(self, uint32_t idx):
+		cdef Class_Octant[D2]* octant
+		
+		octant = self.thisptr.getGhostOctant(idx)
+
+		py_oct = <uintptr_t>octant
+
+		return py_oct
+
 	def adapt(self, mapidx = None):
 		if (not mapidx):
 			result = self.thisptr.adapt()
@@ -451,9 +491,15 @@ cdef class  Py_Class_Para_Tree_D2:
 			result = self.thisptr.adapt(mapidx)
 		return result
 
-	def get_nodes(self, uint32_t idx):
-		cdef uint32_t c_idx = idx
-		return self.thisptr.getNodes(c_idx)
+	def get_nodes(self, uintptr_t idx, from_octant = False):
+		if (not from_octant):
+			return self.thisptr.getNodes(<uint32_t>idx)
+
+		return self.thisptr.getNodes(<Class_Octant[D2]*><void*>idx)
+
+	#def get_nodes(self, uint32_t idx):
+	#	cdef uint32_t c_idx = idx
+	#	return self.thisptr.getNodes(c_idx)
 
 	def load_balance(self):
 		self.thisptr.loadBalance()
@@ -464,6 +510,16 @@ cdef class  Py_Class_Para_Tree_D2:
 	def get_level(self, uint32_t idx):
 		cdef uint32_t c_idx = idx
 		return self.thisptr.getLevel(c_idx)
+
+	def find_neighbours(self, uint32_t idx,
+				uint8_t iface,
+				uint8_t codim,
+				u32vector& neighbours,
+				vector[bool]& isghost):
+		self.thisptr.findNeighbours(idx, iface, codim, neighbours,
+						isghost)
+
+		return (neighbours, isghost)
 	
 	def for_test_bubbles(self, int nrefperiter, int nocts, int nnodes, int nb, BB):
 		cdef int c_nocts = nocts
