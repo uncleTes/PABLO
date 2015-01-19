@@ -246,6 +246,11 @@ cdef extern from "Class_Para_Tree.hpp":
 		#                    the j-th old octant was the first child of 
 		#                    the new octant.
 		bool adapt(u32vector& mapidx)
+	
+		# Get if the octant is new after coarsening:
+		# param[in] idx ---> local index of target octant;
+		# return ---> is octant new?
+		bool getIsNewC(uint32_t idx)
 
 		bool getBalance(Class_Octant[T]* oct)
 		bool getBalance(uint32_t idx)
@@ -520,6 +525,9 @@ cdef class  Py_Class_Para_Tree_D2:
 						isghost)
 
 		return (neighbours, isghost)
+
+	def get_is_new_c(self, uint32_t idx):
+		return self.thisptr.getIsNewC(idx)
 	
 	def for_test_bubbles(self, int nrefperiter, int nocts, int nnodes, int nb, BB):
 		cdef int c_nocts = nocts
