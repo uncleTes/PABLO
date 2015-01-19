@@ -232,19 +232,18 @@ cdef extern from "Class_Para_Tree.hpp":
 		# balancing conditions
 		bool adapt()
 
-		
 		# Adapt the octree mesh with user setup for markers and 2:1 
 		# balancing conditions.
 		# Track the changes in structure octant by a mapper:
-		# param[out] mapidx ---> mapper from new octants to old octants
-		# mapidx[i] = j ---> the i-th octant after adapt was in the 
-		#                    j-th position before adapt;
-		#                    if the i-th octant is new after refinement 
-		#                    the j-th old octant was the father of the 
-		#                    new octant;
-		#                    if the i-th octant is new after coarsening 
-		#                    the j-th old octant was the first child of 
-		#                    the new octant.
+		# param[out] mapidx ---> mapper from new octants to old octants;
+		#                        mapidx[i] = j -> the i-th octant after 
+		#                        adapt was in the j-th position before 
+		#                        adapt; if the i-th octant is new after 
+		#                        refinement the j-th old octant was the 
+		#                        father of the new octant;
+		#                        if the i-th octant is new after coarsening 
+		#                        the j-th old octant was the first child 
+		#                        of the new octant.
 		bool adapt(u32vector& mapidx)
 	
 		# Get if the octant is new after coarsening:
@@ -252,6 +251,7 @@ cdef extern from "Class_Para_Tree.hpp":
 		# return ---> is octant new?
 		bool getIsNewC(uint32_t idx)
 
+		
 		bool getBalance(Class_Octant[T]* oct)
 		bool getBalance(uint32_t idx)
 
@@ -489,12 +489,15 @@ cdef class  Py_Class_Para_Tree_D2:
 
 		return py_oct
 
-	def adapt(self, mapidx = None):
-		if (not mapidx):
-			result = self.thisptr.adapt()
-		else:
-			result = self.thisptr.adapt(mapidx)
-		return result
+	def adapt_mapper(self, u32vector& mapidx):
+		result = self.thisptr.adapt(<u32vector&>mapidx)
+
+		# the same as return (result, mapidx)
+		return result, mapidx
+
+	def adapt(self):
+		return self.thisptr.adapt()
+
 
 	def get_nodes(self, uintptr_t idx, from_octant = False):
 		if (not from_octant):
