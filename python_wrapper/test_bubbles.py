@@ -78,11 +78,13 @@ def main():
 		t += Dt
 
 		for i in xrange(0, nb):
-			#BB[i].center = BB0[i].center + [AA[i]*np.cos(OM[i]*t), Dt*DY[i]]
-			BB[i].center[0] = (BB0[i].center[0] +  
-					   AA[i] * math.cos(OM[i] * t))
-			BB[i].center[1] = (BB[i].center[1] + 
-					   Dt * DY[i])
+			#BB[i].center[0] = (BB0[i].center[0] +  
+			#		   AA[i] * math.cos(OM[i] * t))
+			#BB[i].center[1] = (BB[i].center[1] + 
+			#		   Dt * DY[i])
+			BB[i].center = [BB0[i].center[0] + AA[i] * 
+							   math.cos(OM[i]*t),
+					BB[i].center[1] + Dt * DY[i]]
 
 		nnodes = class_global.Py_Class_Global_D2().nnodes		
 
