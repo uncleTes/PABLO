@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <mpi.h>
 #include <iostream>
+#include <random>
 
 // Function: fileExists
 /**
@@ -8,6 +9,21 @@
 **/
 
 bool fileExists(const std::string& filename);
+
+// Class: FloatRandom
+/**
+	Float Random generator.
+**/
+class FloatRandom {
+public:
+	FloatRandom(long int _seed, int _min, int _max);
+	virtual ~FloatRandom();
+	float random();
+
+private :
+	std::mt19937 __mt;
+	std::uniform_real_distribution<float> __dis;
+};
 
 // Class: WrapMPI
 /**
@@ -35,3 +51,4 @@ private:
 	int __argc;
 	char** __argv;
 };
+
