@@ -3,6 +3,8 @@ import class_global
 import utils
 import random
 import math
+import copy
+
 class Bubble(object):
 	# Tuples are immutable, lists not
 	def __init__(self, center = [None, None], radius = None):
@@ -52,8 +54,12 @@ def main():
 		#aa = 0.15 * (random.random())
 		aa = 0.15 * py_gen.random()
 		bb = Bubble(center = randc, radius = randr)
-		BB.append(bb), BB0.append(bb), DY.append(dy) 
+		BB.append(bb), DY.append(dy) 
 		OM.append(omega), AA.append(aa)
+
+	# Making a deep copy...not only the reference are copied, but all the 
+	# objects		
+	BB0 = copy.deepcopy(BB)
 
 	t0 = 0
 	t = t0
