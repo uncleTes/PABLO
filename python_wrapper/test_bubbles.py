@@ -30,18 +30,27 @@ def main():
 	pabloBB.load_balance()
 
 	# Define a set of bubbles
-	random.seed() # Current system time is used
+	#random.seed() # Current system time is used
+	seed = 1418143772
+	py_gen = utils.Py_Float_Random(seed, 0, 1)
+
 	nb = 100
 	BB, BB0, DY, OM, AA = ([] for i in xrange(0, 5))
 	
 	for i in xrange(0, nb):
 		# random.random() returns floating point number in the range 
 		# [0.0, 1.0)
-		randc = [0.8 * (random.random()) + 0.1, (random.random()) - 0.5]
-		randr = 0.05 * (random.random()) + 0.02
-		dy = 0.005 + 0.05 * (random.random())
-		omega = 0.5 * (random.random())
-		aa = 0.15 * (random.random())
+		#randc = [0.8 * (random.random()) + 0.1, (random.random()) - 0.5]
+		randc = [0.8 * py_gen.random() + 0.1, 
+			py_gen.random() - 0.5]
+		#randr = 0.05 * (random.random()) + 0.02
+		randr = 0.05 * py_gen.random() + 0.02
+		#dy = 0.005 + 0.05 * (random.random())
+		dy = 0.005 + 0.05 * py_gen.random()
+		#omega = 0.5 * (random.random())
+		omega = 0.5 * py_gen.random()
+		#aa = 0.15 * (random.random())
+		aa = 0.15 * py_gen.random()
 		bb = Bubble(center = randc, radius = randr)
 		BB.append(bb), BB0.append(bb), DY.append(dy) 
 		OM.append(omega), AA.append(aa)
