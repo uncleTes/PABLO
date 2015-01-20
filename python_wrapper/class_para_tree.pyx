@@ -532,7 +532,7 @@ cdef class  Py_Class_Para_Tree_D2:
 	def get_is_new_c(self, uint32_t idx):
 		return self.thisptr.getIsNewC(idx)
 	
-	def for_test_bubbles(self, int nrefperiter, int nocts, int nnodes, int nb, BB):
+	def for_test_bubbles(self, int iteration, int nrefperiter, int nocts, int nnodes, int nb, BB):
 		cdef int c_nocts = nocts
 		cdef int c_nrefperiter = nrefperiter
 		cdef int c_nnodes = nnodes
@@ -587,9 +587,9 @@ cdef class  Py_Class_Para_Tree_D2:
 							if (level < 9):
 								# Set to refine inside the sphere
 								#pabloBB.set_marker(i, 1, from_index = True)
-								self.thisptr.setMarker(i, 1)
+								self.thisptr.setMarker(<uint32_t>i, 1)
 							#else:
-							#	pabloBB.set_marker(i, 0, True)
+							#	self.thisptr.setMarker(<uint32_t>i, 0)
 							
 							inside = True
 					ib += 1
@@ -597,7 +597,7 @@ cdef class  Py_Class_Para_Tree_D2:
 				if (level > 6 and (not inside)):
 					# Set to coarse if the octant has a level higher than 5
 					#pabloBB.set_marker(i, -1, from_index = True)
-					self.thisptr.setMarker(i, -1)
+					self.thisptr.setMarker(<uint32_t>i, -1)
 
 			adapt = self.thisptr.adapt()
 
@@ -610,5 +610,5 @@ cdef class  Py_Class_Para_Tree_D2:
 		
 		self.thisptr.updateConnectivity()
 
-	#def for_test(self, int nrefperiter, int nocts, int nnodes, int nb, BB):
-	#	for_test_bubbles(int nrefperiter, int nocts, int nnodes, int nb, BB)
+		self.thisptr.write("PabloBubble_iter" + str(iteration))
+
