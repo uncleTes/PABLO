@@ -3,8 +3,6 @@ import class_global
 import utils
 import random
 import math
-import numpy as np
-
 class Bubble(object):
 	# Tuples are immutable, lists not
 	def __init__(self, center = [None, None], radius = None):
@@ -73,69 +71,12 @@ def main():
 
 		nnodes = class_global.Py_Class_Global_D2().nnodes		
 
-		pabloBB.for_test_bubbles(nrefperiter, nocts, nnodes, nb, BB)
-		#for iref in xrange(0, nrefperiter):
-			#for i in xrange(0, nocts):
-			#	inside = False
-			#	nodes = pabloBB.get_nodes(i)
-			#	center = pabloBB.get_center_from_index(i)
-			#	level = pabloBB.get_level(i)
-			#	ib = 0
-			#	while (not inside and ib < nb):
-			#		(xc, yc) = BB[ib].center
-			#		(x_2, y_2) = (center[0]-xc, center[1]-yc)
-			#		radius = BB[ib].radius
-			#		radius_sqr = radius*radius
-			#		for j in xrange(0, nnodes):
-			#			(x, y) = nodes[j][:2]
-			#			(x_1, y_1) = (x-xc, y-yc)
-			#			if ((((x_1)*(x_1) +
-			#			     (y_1)*(y_1)) <=
-			#			     1.15*(radius_sqr) and
-			#			     ((x_1)*(x_1) + 
-			#			     (y_1)*(y_1)) >=
-			#			     0.85*(radius_sqr)) or
-			#			    (((x_2)*(x_2) +
-			#			     (y_2)*(y_2)) <=
-			#			     1.15*(radius_sqr) and
-			#			     ((x_2)*(x_2) + 
-			#			     (y_2)*(y_2)) >=
-			#			     0.85*(radius_sqr))):
-			#			#if utils.check_prova(x_1, y_1, x_2, y_2, radius_sqr):
-			#				if (level < 9):
-			#					# Set to refine inside the sphere
-			#					#pabloBB.set_marker(i, 1, from_index = True)
-			#					pabloBB.set_marker(i, 1, True)
-			#				#else:
-			#				#	pabloBB.set_marker(i, 0, True)
-			#				
-			#				inside = True
-			#		ib += 1
-			#	
-			#	if (level > 6 and (not inside)):
-			#		# Set to coarse if the octant has a level higher than 5
-			#		#pabloBB.set_marker(i, -1, from_index = True)
-			#		pabloBB.set_marker(i, -1, True)
-
-			# Adapt the octree
-			#adapt = pabloBB.adapt()
-
-			## PARALLEL TEST: (Load)Balance the octree over the 
-			## processes with communicating the data
-			#pabloBB.load_balance()
-
-			#nocts = pabloBB.get_num_octants()
-
-		#oct_data = [0.0] * nocts
-
-		# Update the connectivity and write the para_tree
-		#pabloBB.update_connectivity()
-		#pabloBB.write_test("PabloBubble_iter" + str(iteration), oct_data)
-		pabloBB.write("PabloBubble_iter" + str(iteration))
+		pabloBB.for_test_bubbles(iteration, nrefperiter, nocts, nnodes, nb, BB)
 	
 	del pabloBB
 	return 0
 
+# "cProfile" used for profiling
 if __name__ == "__main__":
 	#import cProfile
 	wrapper = utils.Py_Wrap_MPI(main)
