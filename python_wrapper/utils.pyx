@@ -58,7 +58,20 @@ cdef extern from "utils.hpp":
 def file_exists(file_name):
 	return fileExists(file_name)
 
+cdef extern from "utils.hpp":
+	cdef cppclass FloatRandom:
+		FloatRandom(long int c_seed, int min, int max)
+		float random()
 
+cdef class Py_Float_Random:
+	cdef FloatRandom* thisptr;
 
+	def __cinit__(self, seed, min, max):
+		self.thisptr = new FloatRandom(seed, min, max)
 
+	def __dealloc__(self):
+		if (self.thisptr):
+			del self.thisptr
 
+	def random(self):
+		return self.thisptr.random()
