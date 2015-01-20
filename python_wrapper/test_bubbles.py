@@ -88,9 +88,17 @@ def main():
 							   math.cos(OM[i]*t),
 					BB[i].center[1] + Dt * DY[i]]
 
-		nnodes = class_global.Py_Class_Global_D2().nnodes		
+		nnodes = class_global.Py_Class_Global_D2().nnodes
+	
+		dict_parameters = {"iteration" : iteration, 
+				   "nrefperiter" : nrefperiter,
+				   "nocts" : nocts,
+				   "nnodes" : nnodes,
+				   "nb" : nb,
+				   "BB" : BB}		
 
-		pabloBB.for_test_bubbles(iteration, nrefperiter, nocts, nnodes, nb, BB)
+		#pabloBB.for_test_bubbles(iteration, nrefperiter, nocts, nnodes, nb, BB)
+		pabloBB.for_test_bubbles(**dict_parameters)
 	
 	del pabloBB
 	return 0
