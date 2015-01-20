@@ -555,7 +555,7 @@ cdef class  Py_Class_Para_Tree_D2:
 		
 		cdef bool inside
 
-		for iref in xrange(0, nrefperiter):
+		for iref in xrange(0, c_nrefperiter):
 			for i in xrange(0, c_nocts):
 				inside = False
 				nodes = self.thisptr.getNodes(i)
@@ -583,13 +583,12 @@ cdef class  Py_Class_Para_Tree_D2:
 						     ((x_2)*(x_2) + 
 						     (y_2)*(y_2)) >=
 						     0.85*(radius_sqr))):
-						#if utils.check_prova(x_1, y_1, x_2, y_2, radius_sqr):
 							if (level < 9):
 								# Set to refine inside the sphere
 								#pabloBB.set_marker(i, 1, from_index = True)
 								self.thisptr.setMarker(<uint32_t>i, 1)
-							#else:
-							#	self.thisptr.setMarker(<uint32_t>i, 0)
+							else:
+								self.thisptr.setMarker(<uint32_t>i, 0)
 							
 							inside = True
 					ib += 1
@@ -612,3 +611,4 @@ cdef class  Py_Class_Para_Tree_D2:
 
 		self.thisptr.write("PabloBubble_iter" + str(iteration))
 
+		return c_nocts
