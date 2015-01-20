@@ -2,8 +2,6 @@ from libcpp.string cimport string
 from libcpp cimport bool
 from libc.stdlib cimport malloc, free
 import sys
-import numpy as np
-cimport numpy as cnp
 
 cdef extern from *:
 	ctypedef int RTI "int" # RTI = ReturnTypeInteger
@@ -60,16 +58,7 @@ cdef extern from "utils.hpp":
 def file_exists(file_name):
 	return fileExists(file_name)
 
-cdef class Array_Finalizer:
-	cdef void* data
 
-	def __dealloc__(self):
-		if (self.data is not NULL):
-			free(self.data)
 
-cdef void set_base(cnp.ndarray array, void* c_array):
-	cdef Array_Finalizer array_finalizer = Array_Finalizer()
 
-	array_finalizer.data = <void*>c_array
 
-	cnp.set_array_base(array, array_finalizer)
