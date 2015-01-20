@@ -4,6 +4,7 @@
 #include "User_Data_Comm.hpp"
 #include "User_Data_LB.hpp"
 
+
 using namespace std;
 
 // =================================================================================== //
@@ -45,6 +46,11 @@ int main(int argc, char *argv[]) {
 
 		/**<Update the number of local octants.*/
 		uint32_t nocts = pabloBB.getNumOctants();
+		/**<Define a set of bubbles.*/
+		//srand(time(NULL));
+		//srand(1418143772);
+		long int seed = 1418143772;
+		FloatRandom fr(seed, 0, 1);
 
 		/**<Define and initialize a set of bubbles and their trajectories.*/
 		srand(time(NULL));
@@ -62,12 +68,18 @@ int main(int argc, char *argv[]) {
 
 		for (int i=0; i<nb; i++){
 			double randc[2];
-			randc[0] = 0.8 * (double) (rand()) /  RAND_MAX + 0.1;
-			randc[1] = (double) (rand()) /  RAND_MAX - 0.5;
-			double randr = 0.05 * (double) (rand()) / RAND_MAX + 0.02;
-			double dy = 0.005 + 0.05 * (double) (rand()) / RAND_MAX;
-			double omega = 0.5 * (double) (rand()) / RAND_MAX;
-			double aa = 0.15 * (double) (rand()) / RAND_MAX;
+			//randc[0] = 0.8 * (double) (rand()) /  RAND_MAX + 0.1;
+			randc[0] = 0.8*fr.random() + 0.1;
+			//randc[1] = (double) (rand()) /  RAND_MAX - 0.5;
+			randc[1] = fr.random() - 0.5;
+			//double randr = 0.05 * (double) (rand()) / RAND_MAX + 0.02;
+			double randr = 0.05 *fr.random() + 0.02;
+			//double dy = 0.005 + 0.05 * (double) (rand()) / RAND_MAX;
+			double dy = 0.005 + 0.05*fr.random();
+			//double omega = 0.5 * (double) (rand()) / RAND_MAX;
+			double omega = 0.5*fr.random();
+			//double aa = 0.15 * (double) (rand()) / RAND_MAX;
+			double aa = 0.15*fr.random();
 			bubble bb;
 			bb.c[0] = randc[0];
 			bb.c[1] = randc[1];
