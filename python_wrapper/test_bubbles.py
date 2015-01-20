@@ -11,6 +11,11 @@ class Bubble(object):
 		self.center = center
 		self.radius = radius
 
+	def __str__(self):
+		return ("center = " + str(self.center[0]) + " " + 
+				      str(self.center[1]) + " radius = " + 
+				      str(self.radius))
+
 def main():
 	# Instantation of a 2D para_tree object
 	pabloBB = class_para_tree.Py_Class_Para_Tree_D2()
