@@ -97,8 +97,8 @@ def main():
 				   "nb" : nb,
 				   "BB" : BB}		
 
-		#pabloBB.for_test_bubbles(iteration, nrefperiter, nocts, nnodes, nb, BB)
-		pabloBB.for_test_bubbles(**dict_parameters)
+		#nocts = pabloBB.for_test_bubbles(iteration, nrefperiter, nocts, nnodes, nb, BB)
+		nocts = pabloBB.for_test_bubbles(**dict_parameters)
 	
 	del pabloBB
 	return 0
