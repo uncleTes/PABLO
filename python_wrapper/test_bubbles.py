@@ -74,7 +74,9 @@ def main():
 	nrefperiter = 4
 
 	for iteration in xrange(itstart, itend):
-		print("iter " + str(iteration))
+		if pabloBB.rank == 0:
+			print("iter " + str(iteration))
+		
 		t += Dt
 
 		for i in xrange(0, nb):
