@@ -47,6 +47,13 @@ int main(int argc, char *argv[]) {
 
 		/**<Update the number of local octants.*/
 		uint32_t nocts = pabloBB.getNumOctants();
+		/**<Define a set of bubbles.*/
+		//cout << time(NULL) << endl;
+		//srand(time(NULL));
+//		srand(1418143772);
+
+		long int seed = 1418143772;
+		FloatRandom fr(seed, 0, 1);
 
 		/**<Define and initialize a set of bubbles and their trajectories.*/
 		srand(time(NULL));
@@ -64,14 +71,21 @@ int main(int argc, char *argv[]) {
 
 		for (int i=0; i<nb; i++){
 			double randc[3];
-			randc[0] = 0.8 * (double) (rand()) /  RAND_MAX + 0.1;
-			randc[1] = 0.8 * (double) (rand()) /  RAND_MAX + 0.1;
-			randc[2] = (double) (rand()) /  RAND_MAX - 0.5;
-			double randr = (0.05 * (double) (rand()) / RAND_MAX + 0.04);
+			//randc[0] = 0.8 * (double) (rand()) /  RAND_MAX + 0.1;
+			randc[0] = 0.8*fr.random() + 0.1;
+			//randc[1] = 0.8 * (double) (rand()) /  RAND_MAX + 0.1;
+			randc[1] = 0.8 *fr.random() + 0.1;
+			//randc[2] = (double) (rand()) /  RAND_MAX - 0.5;
+			randc[2] = fr.random() - 0.5;
+			//double randr = (0.05 * (double) (rand()) / RAND_MAX + 0.04);
+			double randr = 0.05*fr.random() + 0.04;
 			//double randr = 0.005 * (double) (rand()) / RAND_MAX + 0.002;
-			double dz = 0.005 + 0.05 * (double) (rand()) / RAND_MAX;
-			double omega = 0.5 * (double) (rand()) / RAND_MAX;
-			double aa = 0.15 * (double) (rand()) / RAND_MAX;
+			//double dz = 0.005 + 0.05 * (double) (rand()) / RAND_MAX;
+			double dz = 0.005 + 0.05*fr.random();
+			//double omega = 0.5 * (double) (rand()) / RAND_MAX;
+			double omega = 0.5 * fr.random();
+			//double aa = 0.15 * (double) (rand()) / RAND_MAX;
+			double aa = 0.15 * fr.random();
 			bubble bb;
 			bb.c[0] = randc[0];
 			bb.c[1] = randc[1];
@@ -94,7 +108,7 @@ int main(int argc, char *argv[]) {
 
 		/**<Adapt itend times with refinement on the interface of the bubbles.*/
 		int itstart = 1;
-		int itend = 200;
+		int itend = 6;//200;
 
 		/**<Set the number of refinement per time iteration.*/
 		int nrefperiter = 3;
