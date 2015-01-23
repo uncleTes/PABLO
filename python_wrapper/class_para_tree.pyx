@@ -228,6 +228,11 @@ cdef extern from "Class_Para_Tree.hpp":
 
 		uint8_t getMarker(Class_Octant[T]* oct)
 
+		# Get the refinement marker of an octant:
+		# param[in] idx ---> local index of target octant;
+		# return ---> marker of octant
+		uint8_t getMarker(uint32_t idx)
+
 		# Adapt the octree mesh with user setup for markers and 2:1 
 		# balancing conditions
 		bool adapt()
@@ -457,12 +462,19 @@ cdef class  Py_Class_Para_Tree_D2:
 		else:
 			self.thisptr.setMarker(<uint32_t>octant, <int8_t>marker)
 
+	def get_marker(self, uintptr_t octant, bool from_index = False):
+		if (not from_index):
+			return self.thisptr.getMarker(<Class_Octant[D2]*><void*>octant)
+		else:
+			return self.thisptr.getMarker(<uint32_t>octant)
 
-	def get_marker(self, octant):
-		cdef Class_Octant[D2]* oct
-		oct =  <Class_Octant[D2]*><void*>octant
-		return self.thisptr.getMarker(oct)
-		
+	#def get_marker(self, octant):
+	#	cdef Class_Octant[D2]* oct
+	#	oct =  <Class_Octant[D2]*><void*>octant
+	#	return self.thisptr.getMarker(oct)
+
+
+	
 	def get_balance(self, idx):
 		cdef Class_Octant[D2]* oct
 		
