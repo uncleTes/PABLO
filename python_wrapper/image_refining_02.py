@@ -57,5 +57,4 @@ def main(image_to_load):
 if __name__ == "__main__":
 	image_to_load = str(sys.argv[1])
 	wrapper = utils.Py_Wrap_MPI(main)
-	#image_to_load = "/home/federico/Downloads/Dogue_de_Bordeaux.jpg"
 	result = wrapper.execute(image_to_load)
