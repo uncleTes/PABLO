@@ -127,7 +127,7 @@ def main():
 			# each
            		contours, hierarchy = cv2.findContours(marker_mask,             # input 8 bit single channel image
 							       cv2.RETR_CCOMP,          # contour's retrieval mode
-							       cv2.CHAIN_APPROX_SIMPLE) # contours' approximation method
+							       cv2.CHAIN_APPROX_NONE) # contours' approximation method
 
            		if len(contours) == 0:
            			continue
