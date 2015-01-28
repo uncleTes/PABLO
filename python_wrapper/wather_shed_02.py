@@ -187,6 +187,9 @@ def main():
 
 			wshed = ((wshed * 0.5) + (img_gray * 0.5)).astype('uint8')
 			cv2.imshow("watershed transform", wshed)
+		if c == ord('o'):
+			prova = cv2.cvtColor(wshed, cv2.COLOR_BGR2GRAY)
+			cv2.imshow("prova", prova)
 
 if __name__ == "__main__":
 	main()
