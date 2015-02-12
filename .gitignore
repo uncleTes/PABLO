@@ -2,7 +2,7 @@ build/*
 .settings/*
 .project
 .cproject
-doxy/html/*
+doxy/*
 *.orig
 python_wrapper/*.so
 python_wrapper/*cpp
