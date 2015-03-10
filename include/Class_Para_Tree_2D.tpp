@@ -102,6 +102,11 @@ public:
 			partition_last_desc[p] = firstDescMorton;
 		}
 		// Write info log
+		if(rank==0){
+			if (fileExists("PABLO.log")) {
+                                int sysError = system("rm PABLO.log");
+                        }
+		}
 		log.writeLog("---------------------------------------------");
 		log.writeLog("- PABLO PArallel Balanced Linear Octree -");
 		log.writeLog("---------------------------------------------");
@@ -113,11 +118,6 @@ public:
 		log.writeLog("---------------------------------------------");
 		log.writeLog(" ");
 
-		if(rank==0){
-			if (fileExists("PABLO.log")) {
-                                int sysError = system("rm PABLO.log");
-                        }
-		}
 #if NOMPI==0
 		MPI_Barrier(comm);
 #endif
