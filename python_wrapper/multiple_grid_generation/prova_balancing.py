@@ -1,19 +1,109 @@
+# Python script to start palying with multiple PABLO, with different comunicators
+# Import MPI (yeah, pretty fundamental...)
 from mpi4py import MPI
+# Import module "class_para_tree" created with Cython
 import class_para_tree
-n = range(2)
+import xml.etree.cElementTree as ET
+import os
 
+def split_list_in_two(list_to_be_splitted):
+    half_len = len(list_to_be_splitted)/2
+
+    return list_to_be_splitted[:half_len], list_to_be_splitted[half_len:]
+
+#def write_vtk_multi_block_data_set(**kwargs):
+def write_vtk_multi_block_data_set(kwargs = {}):
+    VTKFile = ET.Element("VTKFile", 
+                         type = "vtkMultiBlockDataSet", 
+                         version = "0.1",
+                         byte_order = "LittleEndian",
+                         compressor = "vtkZLibDataCompressor")
+
+    vtkMultiBlockDataSet = ET.SubElement(VTKFile, 
+                                         "vtkMultiBlockDataSet")
+
+    iter = 0
+    for pablo_file in kwargs["pablo_file_names"]:
+        for vtu_file in kwargs["vtu_files"]:
+            if pablo_file in vtu_file:
+                DataSet = ET.SubElement(vtkMultiBlockDataSet,
+                                        "DataSet",
+                                        group = str(iter),
+                                        dataset = "0",
+                                        file = vtu_file)
+                
+        iter += 1
+
+    vtkTree = ET.ElementTree(VTKFile)
+    vtkTree.write("multiple_PABLO.vtm")
+
+    
+# Getting the "WORLD" communicator
 comm_world = MPI.COMM_WORLD
+# Getting the "WORLD" group
 group_world = comm_world.Get_group()
-group_zero_level = group_world.Excl(n)
-comm_zero_level = comm_world.Create(group_zero_level)
+# How many processes we have in the MPI "WORLD"?...
+n_world_processes = comm_world.Get_size()
+# Getting a list of total processes, and divide it in two...
+world_processes_list = range(0, n_world_processes)
+zero_list, one_list = split_list_in_two(world_processes_list)
+# Creating new groups with half of the "WORLD" processes each
+group_zero = group_world.Incl(zero_list)
+group_one = group_world.Incl(one_list)
+# Creating new communicators for the groups previously created
+comm_zero = comm_world.Create(group_zero)
+comm_one = comm_world.Create(group_one)
+# Defining names for the new communicators here, elsewhere they
+# won't be defined outside their scope.
+comm_zero_name = "comm_zero"
+comm_one_name = "comm_one"
 
-if comm_zero_level:
-    pablo = class_para_tree.Py_Class_Para_Tree_D2(comm_zero_level)
+pablo_file_names = []
+
+if comm_zero:
+    comm_zero.Set_name(comm_zero_name)
+    comm_zero_file_name = comm_zero_name + ".log"
+    pablo_zero = class_para_tree.Py_Class_Para_Tree_D2(0, 0, 0, 1,
+                                                       comm_zero_file_name,
+                                                       comm_zero)
+
     for iteration in xrange(1, 4):
-        pablo.adapt_global_refine()
+        pablo_zero.adapt_global_refine()
 
-    pablo.load_balance()
+    pablo_zero.load_balance()
+    pablo_zero.write(comm_zero_name)
 
-    print(pablo.rank)
-else:
-    print(comm_zero_level.ob_mpi)
+
+elif comm_one:
+    comm_one.Set_name(comm_one_name)
+    comm_one_file_name = comm_one_name + ".log"
+    pablo_one = class_para_tree.Py_Class_Para_Tree_D2(0.5, 0.5, 0, 0.5,
+                                                      comm_one_file_name,
+                                                      comm_one)
+
+    for iteration in xrange(1, 8):
+        pablo_one.adapt_global_refine()
+
+    pablo_one.load_balance()
+    pablo_one.write(comm_one_name)
+   
+rank = comm_world.Get_rank()
+
+if rank == (n_world_processes-1):
+    files_vtu = []
+
+    for file in os.listdir("./"):
+        if file.endswith(".vtu"):
+            files_vtu.append(file)
+
+    pablo_file_names.append(comm_zero_name)
+    pablo_file_names.append(comm_one_name)
+
+    info_dictionary = {}
+    info_dictionary.update({"vtu_files" : files_vtu})
+    info_dictionary.update({"pablo_file_names" : pablo_file_names})
+
+    #write_vtk_multi_block_data_set(**info_dictionary)
+    write_vtk_multi_block_data_set(info_dictionary)
+
+
