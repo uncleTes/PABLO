@@ -81,7 +81,7 @@ cdef extern from "Class_Para_Tree.hpp":
 		# -------------------------CONSTRUCTORS------------------------
 		# Default constructor of Para_Tree. It builds one octant with 
 		# node 0 in the Origin (0,0,0) and side of length 1
-		Class_Para_Tree(string logfile, MPI_Comm MPI_Comm) except +
+		Class_Para_Tree(string logfile, MPI_Comm mpi_comm) except +
 
 		# Constructor of Para_Tree with input parameters. It builds one
 		# octant with:
@@ -93,7 +93,8 @@ cdef extern from "Class_Para_Tree.hpp":
 				double Y, 
 				double Z, 
 				double L,
-				string logfile) except +
+				string logfile,
+				MPI_Comm mpi_comm) except +
 		
 		# Constructor of Para_Tree for restart a simulation with input 
 		# parameters. For each process it builds a vector of octants. 
@@ -315,7 +316,7 @@ cdef extern from "Class_Para_Tree.hpp":
 cdef class  Py_Class_Para_Tree_D2:
 	# Pointer to the object Class_Para_Tree<2>
 	cdef Class_Para_Tree[D2]* thisptr
-	cdef MPI_Comm mpi_comm
+	cdef MPI.Comm mpi_comm
 
 	# ------------------------------Constructor-----------------------------
 	# different number of arguments can be passed, so different 
@@ -324,29 +325,38 @@ cdef class  Py_Class_Para_Tree_D2:
 		number_of_parameters = len(args)
 		
 		if (number_of_parameters == 0):
-			self.thisptr = new Class_Para_Tree[D2]("PABLO.log", MPI_COMM_WORLD)
+			mpi_comm = MPI_COMM_WORLD
+			self.thisptr = new Class_Para_Tree[D2]("PABLO.log", mpi_comm)
 		elif (number_of_parameters == 1):
-			self.thisptr = new Class_Para_Tree[D2]("PABLO.log", (<MPI.Comm>args[0]).ob_mpi)
+			mpi_comm = (<MPI.Comm>args[0]).ob_mpi
+			self.thisptr = new Class_Para_Tree[D2]("PABLO.log", mpi_comm)
+		elif (number_of_parameters == 2):
+			mpi_comm = (<MPI.Comm>args[1]).ob_mpi
+			self.thisptr = new Class_Para_Tree[D2](args[0], mpi_comm)
 		elif (number_of_parameters == 4):
+			mpi_comm = MPI_COMM_WORLD
 			self.thisptr = new Class_Para_Tree[D2](args[0],
 								args[1],
 								args[2],
 								args[3],
-								"PABLO.log")
+								"PABLO.log",
+								mpi_comm)
 		elif (number_of_parameters == 5):
+			mpi_comm = (<MPI.Comm>args[4]).ob_mpi
 			self.thisptr = new Class_Para_Tree[D2](args[0],
 								args[1],
 								args[2],
 								args[3],
-								args[4])
+								"PABLO.log",
+								mpi_comm)
 		elif (number_of_parameters == 6):
+			mpi_comm = (<MPI.Comm>args[5]).ob_mpi
 			self.thisptr = new Class_Para_Tree[D2](args[0],
 								args[1],
 								args[2],
 								args[3],
 								args[4],
-								args[5],
-								"PABLO.log")
+								mpi_comm)
 		elif (number_of_parameters == 7):
 			self.thisptr = new Class_Para_Tree[D2](args[0],
 								args[1],
