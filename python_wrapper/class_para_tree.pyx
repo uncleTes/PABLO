@@ -4,6 +4,8 @@ from libcpp.string cimport string
 from libcpp cimport bool
 from libc.stdint cimport uint8_t, uint32_t, uint64_t, int8_t, uintptr_t
 import class_octant
+cimport mpi4py.MPI as MPI
+from mpi4py.mpi_c cimport *
 
 cdef extern from *:
 	ctypedef void* D2 "2"
@@ -79,7 +81,7 @@ cdef extern from "Class_Para_Tree.hpp":
 		# -------------------------CONSTRUCTORS------------------------
 		# Default constructor of Para_Tree. It builds one octant with 
 		# node 0 in the Origin (0,0,0) and side of length 1
-		Class_Para_Tree(string logfile) except +
+		Class_Para_Tree(string logfile, MPI_Comm MPI_Comm) except +
 
 		# Constructor of Para_Tree with input parameters. It builds one
 		# octant with:
@@ -313,6 +315,7 @@ cdef extern from "Class_Para_Tree.hpp":
 cdef class  Py_Class_Para_Tree_D2:
 	# Pointer to the object Class_Para_Tree<2>
 	cdef Class_Para_Tree[D2]* thisptr
+	cdef MPI_Comm mpi_comm
 
 	# ------------------------------Constructor-----------------------------
 	# different number of arguments can be passed, so different 
@@ -321,9 +324,9 @@ cdef class  Py_Class_Para_Tree_D2:
 		number_of_parameters = len(args)
 		
 		if (number_of_parameters == 0):
-			self.thisptr = new Class_Para_Tree[D2]("PABLO.log")
+			self.thisptr = new Class_Para_Tree[D2]("PABLO.log", MPI_COMM_WORLD)
 		elif (number_of_parameters == 1):
-			self.thisptr = new Class_Para_Tree[D2](args[0])
+			self.thisptr = new Class_Para_Tree[D2]("PABLO.log", (<MPI.Comm>args[0]).ob_mpi)
 		elif (number_of_parameters == 4):
 			self.thisptr = new Class_Para_Tree[D2](args[0],
 								args[1],
