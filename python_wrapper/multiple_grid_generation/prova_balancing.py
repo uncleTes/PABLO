@@ -13,6 +13,8 @@ def split_list_in_two(list_to_be_splitted):
 
 #def write_vtk_multi_block_data_set(**kwargs):
 def write_vtk_multi_block_data_set(kwargs = {}):
+    file_name = kwargs["file_name"]
+
     VTKFile = ET.Element("VTKFile", 
                          type = "vtkMultiBlockDataSet", 
                          version = "0.1",
@@ -35,7 +37,7 @@ def write_vtk_multi_block_data_set(kwargs = {}):
         iter += 1
 
     vtkTree = ET.ElementTree(VTKFile)
-    vtkTree.write("multiple_PABLO.vtm")
+    vtkTree.write(file_name)
 
     
 # Getting the "WORLD" communicator
@@ -90,6 +92,7 @@ elif comm_one:
 rank = comm_world.Get_rank()
 
 if rank == (n_world_processes-1):
+    file_name = "multiple_PABLO.vtm"
     files_vtu = []
 
     for file in os.listdir("./"):
@@ -102,6 +105,7 @@ if rank == (n_world_processes-1):
     info_dictionary = {}
     info_dictionary.update({"vtu_files" : files_vtu})
     info_dictionary.update({"pablo_file_names" : pablo_file_names})
+    info_dictionary.update({"file_name" : file_name})
 
     #write_vtk_multi_block_data_set(**info_dictionary)
     write_vtk_multi_block_data_set(info_dictionary)
