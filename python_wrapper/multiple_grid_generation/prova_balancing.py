@@ -5,6 +5,7 @@ from mpi4py import MPI
 import class_para_tree
 import xml.etree.cElementTree as ET
 import os
+import class_octant
 
 def split_list_in_two(list_to_be_splitted):
     half_len = len(list_to_be_splitted)/2
@@ -75,6 +76,18 @@ if comm_zero:
     pablo_zero.load_balance()
     pablo_zero.write(comm_zero_name)
 
+    py_octant = pablo_zero.get_point_owner_physical([0.5, 0.5, 0])
+
+
+    if py_octant != 0:
+        #print(py_octant)
+        octant = class_octant.Py_Class_Octant_D2(py_octant, True)
+        #print(octant.x)
+        #print(octant.y)
+        #print(octant.level)
+        #print(octant.get_size())
+
+
 
 elif comm_one:
     comm_one.Set_name(comm_one_name)
@@ -88,8 +101,20 @@ elif comm_one:
 
     pablo_one.load_balance()
     pablo_one.write(comm_one_name)
+
+    py_octant = pablo_one.get_point_owner_physical([0.75, 0.75, 0])
+
+
+    if py_octant != 0:
+        #print(py_octant)
+        octant = class_octant.Py_Class_Octant_D2(py_octant, True)
+        print(octant.x)
+        print(octant.y)
+        print(octant.level)
+        print(octant.get_size())
    
 rank = comm_world.Get_rank()
+
 
 if rank == (n_world_processes-1):
     file_name = "multiple_PABLO.vtm"
