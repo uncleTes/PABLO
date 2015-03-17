@@ -316,7 +316,7 @@ cdef extern from "Class_Para_Tree.hpp":
 cdef class  Py_Class_Para_Tree_D2:
 	# Pointer to the object Class_Para_Tree<2>
 	cdef Class_Para_Tree[D2]* thisptr
-	cdef MPI.Comm mpi_comm
+	cdef MPI_Comm mpi_comm
 
 	# ------------------------------Constructor-----------------------------
 	# different number of arguments can be passed, so different 
