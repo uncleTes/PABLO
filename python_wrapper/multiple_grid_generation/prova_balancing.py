@@ -81,11 +81,14 @@ if comm_zero:
     pablo_zero = class_para_tree.Py_Class_Para_Tree_D2(0, 0, 0, 1,
                                                        comm_zero_file_name,
                                                        comm_zero)
+    #pablo_zero.set_balance(0, True)
 
     for iteration in xrange(1, 4):
         pablo_zero.adapt_global_refine()
 
     pablo_zero.load_balance()
+    #adapt = pablo_zero.adapt()
+    #pablo_zero.update_connectivity()
     pablo_zero.write(comm_zero_name)
 
     py_octant = pablo_zero.get_point_owner_physical([0.5, 0.5, 0])
@@ -107,11 +110,15 @@ elif comm_one:
     pablo_one = class_para_tree.Py_Class_Para_Tree_D2(0.5, 0.5, 0, 0.5,
                                                       comm_one_file_name,
                                                       comm_one)
+    #pablo_one.set_balance(0, True)
+    
 
     for iteration in xrange(1, 8):
         pablo_one.adapt_global_refine()
 
     pablo_one.load_balance()
+    #adapt = pablo_one.adapt()
+    #pablo_one.update_connectivity()
     pablo_one.write(comm_one_name)
 
     py_octant = pablo_one.get_point_owner_physical([0.75, 0.75, 0])
