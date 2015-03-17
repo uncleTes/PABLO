@@ -73,6 +73,8 @@ cdef extern from "Class_Para_Tree.hpp":
 		# octree is distributed
 		bool serial
 
+		MPI_Comm comm
+
 		# -------------------------map member--------------------------
 		# Transoformation map from logical to physical domain
 		Class_Map[T] trans
