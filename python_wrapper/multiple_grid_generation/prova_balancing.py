@@ -6,6 +6,18 @@ import class_para_tree
 import xml.etree.cElementTree as ET
 import os
 import class_octant
+import paraview
+from paraview.simple import *
+
+def rendering_multi_block_data(file_name):
+    reader = XMLMultiBlockDataReader(FileName = file_name)
+    
+    Show(reader)
+    dp = GetDisplayProperties(reader)
+    dp.Representation = "Surface With Edges"
+    
+    while True:
+        Render()
 
 def split_list_in_two(list_to_be_splitted):
     half_len = len(list_to_be_splitted)/2
@@ -134,5 +146,7 @@ if rank == (n_world_processes-1):
 
     #write_vtk_multi_block_data_set(**info_dictionary)
     write_vtk_multi_block_data_set(info_dictionary)
+
+    rendering_multi_block_data(file_name)
 
 
