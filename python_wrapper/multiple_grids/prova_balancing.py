@@ -27,7 +27,7 @@ def write_vtk_multi_block_data_set(kwargs = {}):
 
     VTKFile = ET.Element("VTKFile", 
                          type = "vtkMultiBlockDataSet", 
-                         version = "0.1",
+                         version = "1.0",
                          byte_order = "LittleEndian",
                          compressor = "vtkZLibDataCompressor")
 
