@@ -9,6 +9,9 @@ python_wrapper/*cpp
 python_wrapper/*.h
 python_wrapper/build/*
 python_wrapper/*.pvtu
-python_wrapper/*.vtu
+python_wrapper/*.vt?
 python_wrapper/*.log
 python_wrapper/CUDA/*
+python_wrapper/multiple_grid_generation/*.log
+python_wrapper/multiple_grid_generation/*.pvtu
+python_wrapper/multiple_grid_generation/*.vt?
