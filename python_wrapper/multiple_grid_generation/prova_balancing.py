@@ -1,7 +1,4 @@
-# Python script to start palying with multiple PABLO, with different comunicators
-# Import MPI (yeah, pretty fundamental...)
 from mpi4py import MPI
-# Import module "class_para_tree" created with Cython
 import class_para_tree
 import xml.etree.cElementTree as ET
 import os
@@ -53,89 +50,38 @@ def write_vtk_multi_block_data_set(kwargs = {}):
     vtkTree.write(file_name)
 
     
-# Getting the "WORLD" communicator
 comm_world = MPI.COMM_WORLD
-# Getting the "WORLD" group
+rank_world = comm_world.Get_rank()
 group_world = comm_world.Get_group()
-# How many processes we have in the MPI "WORLD"?...
 n_world_processes = comm_world.Get_size()
-# Getting a list of total processes, and divide it in two...
 world_processes_list = range(0, n_world_processes)
 zero_list, one_list = split_list_in_two(world_processes_list)
-# Creating new groups with half of the "WORLD" processes each
-group_zero = group_world.Incl(zero_list)
-group_one = group_world.Incl(one_list)
-# Creating new communicators for the groups previously created
-comm_zero = comm_world.Create(group_zero)
-comm_one = comm_world.Create(group_one)
-# Defining names for the new communicators here, elsewhere they
-# won't be defined outside their scope.
-comm_zero_name = "comm_zero"
-comm_one_name = "comm_one"
+group = group_world.Incl(zero_list if (rank_world < (n_world_processes /2)) else one_list)
+local_comm = comm_world.Create(group)
+comm_names = ["comm_zero", "comm_one"]
+pablo_an = [0, 0, 0] if (rank_world < (n_world_processes / 2)) else [0.5, 0.5, 0]
+pablo_ed = 1 if (rank_world < (n_world_processes / 2)) else 0.5
 
-pablo_file_names = []
+comm_name = comm_names[0] if (rank_world < (n_world_processes / 2)) else comm_names[1]
 
-if comm_zero:
-    comm_zero.Set_name(comm_zero_name)
-    comm_zero_file_name = comm_zero_name + ".log"
-    pablo_zero = class_para_tree.Py_Class_Para_Tree_D2(0, 0, 0, 1,
-                                                       comm_zero_file_name,
-                                                       comm_zero)
-    #pablo_zero.set_balance(0, True)
+pablo = class_para_tree.Py_Class_Para_Tree_D2(pablo_an[0],
+                                              pablo_an[1],
+                                              pablo_an[2],
+                                              pablo_ed,
+                                              comm_name + ".log", 
+                                              local_comm)
 
-    for iteration in xrange(1, 4):
-        pablo_zero.adapt_global_refine()
+pablo.set_balance(0, True)
 
-    pablo_zero.load_balance()
-    #adapt = pablo_zero.adapt()
-    #pablo_zero.update_connectivity()
-    pablo_zero.write(comm_zero_name)
+for iteration in xrange(1, 4):
+    pablo.adapt_global_refine()
 
-    py_octant = pablo_zero.get_point_owner_physical([0.5, 0.5, 0])
+pablo.load_balance()
+pablo.write(comm_name)
 
+comm_world.Barrier()
 
-    if py_octant != 0:
-        #print(py_octant)
-        octant = class_octant.Py_Class_Octant_D2(py_octant, True)
-        #print(octant.x)
-        #print(octant.y)
-        #print(octant.level)
-        #print(octant.get_size())
-
-
-
-elif comm_one:
-    comm_one.Set_name(comm_one_name)
-    comm_one_file_name = comm_one_name + ".log"
-    pablo_one = class_para_tree.Py_Class_Para_Tree_D2(0.5, 0.5, 0, 0.5,
-                                                      comm_one_file_name,
-                                                      comm_one)
-    #pablo_one.set_balance(0, True)
-    
-
-    for iteration in xrange(1, 8):
-        pablo_one.adapt_global_refine()
-
-    pablo_one.load_balance()
-    #adapt = pablo_one.adapt()
-    #pablo_one.update_connectivity()
-    pablo_one.write(comm_one_name)
-
-    py_octant = pablo_one.get_point_owner_physical([0.75, 0.75, 0])
-
-
-    if py_octant != 0:
-        #print(py_octant)
-        octant = class_octant.Py_Class_Octant_D2(py_octant, True)
-        print(octant.x)
-        print(octant.y)
-        print(octant.level)
-        print(octant.get_size())
-   
-rank = comm_world.Get_rank()
-
-
-if rank == (n_world_processes-1):
+if rank_world == 0:
     file_name = "multiple_PABLO.vtm"
     files_vtu = []
 
@@ -143,12 +89,9 @@ if rank == (n_world_processes-1):
         if file.endswith(".vtu"):
             files_vtu.append(file)
 
-    pablo_file_names.append(comm_zero_name)
-    pablo_file_names.append(comm_one_name)
-
     info_dictionary = {}
     info_dictionary.update({"vtu_files" : files_vtu})
-    info_dictionary.update({"pablo_file_names" : pablo_file_names})
+    info_dictionary.update({"pablo_file_names" : comm_names})
     info_dictionary.update({"file_name" : file_name})
 
     #write_vtk_multi_block_data_set(**info_dictionary)
@@ -157,3 +100,4 @@ if rank == (n_world_processes-1):
     rendering_multi_block_data(file_name)
 
 
+                                          
