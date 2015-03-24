@@ -59,7 +59,7 @@ zero_list, one_list = split_list_in_two(world_processes_list)
 group = group_world.Incl(zero_list if (rank_world < (n_world_processes /2)) else one_list)
 local_comm = comm_world.Create(group)
 comm_names = ["comm_zero", "comm_one"]
-pablo_an = [0, 0, 0] if (rank_world < (n_world_processes / 2)) else [0.5, 0.5, 0]
+pablo_an = [0, 0, 0] if (rank_world < (n_world_processes / 2)) else [0.25, 0.25, 0]
 pablo_ed = 1 if (rank_world < (n_world_processes / 2)) else 0.5
 
 comm_name = comm_names[0] if (rank_world < (n_world_processes / 2)) else comm_names[1]
