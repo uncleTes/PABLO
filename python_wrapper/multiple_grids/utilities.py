@@ -4,6 +4,31 @@ from paraview.simple import *
 import logging
 import os
 
+# Suppose you have the string str = "0, 1, 0", calling this function as
+# "get_list_from_string(str, ", ", False)" will return the list 
+# [0.0, 1.0, 0.0].
+#http://stackoverflow.com/questions/19334374/python-converting-a-string-of-numbers-into-a-list-of-int
+def get_list_from_string(string, 
+                         splitter, 
+                         integer = True):
+
+    return [int(number) if integer else float(number) 
+            for number in string.split(splitter)]
+
+# Suppose you have the string str = "0, 1, 0; 1.5, 2, 3", calling this function
+# as "get_lists_from_string(str, "; ", ", "False)" will return the list 
+# [[0.0, 1.0, 0.0], [1.5, 2, 3]].
+def get_lists_from_string(string, 
+                          splitter_for_lists, 
+                          splitter_for_list, 
+                          integer = False):
+
+    return [get_list_from_string(string_chunk, 
+                                 splitter_for_list, 
+                                 integer) 
+            for string_chunk in string.split(splitter_for_lists)
+           ]
+
 def rendering_multi_block_data(file_name, data_to_render):
     reader = XMLMultiBlockDataReader(FileName = file_name)
     
@@ -16,6 +41,10 @@ def rendering_multi_block_data(file_name, data_to_render):
 
     while True:
         Render()
+
+# http://stackoverflow.com/questions/2130016/splitting-a-list-of-arbitrary-size-into-only-roughly-n-equal-parts
+def chunk_list(list_to_chunk, how_many_parts):
+    return [list_to_chunk[i::how_many_parts] for i in xrange(how_many_parts)]
 
 def split_list_in_two(list_to_be_splitted):
     half_len = len(list_to_be_splitted)/2
