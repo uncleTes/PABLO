@@ -1,10 +1,17 @@
+# ------------------------------------IMPORT------------------------------------
 from mpi4py import MPI
 import class_para_tree
-import sys, petsc4py
+import my_class_vtk_02
+import sys
+import petsc4py
 petsc4py.init(sys.argv)
 from petsc4py import PETSc
-import logging
 import numpy
+from utilities import *
+import copy
+import os
+import time
+# ------------------------------------------------------------------------------
 
 class Logger(object):
     def __init__(self, name):
