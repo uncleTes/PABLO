@@ -13,8 +13,9 @@ import os
 import time
 # ------------------------------------------------------------------------------
 
-global comm_w, rank_w, comm_names
-
+comm_w = MPI.COMM_WORLD
+rank_w = comm_w.Get_rank()
+comm_names = ["comm_zero", "comm_one"]
 log_file = "./Laplacian2D.log"
 
 # --------------------------------EXACT SOLUTION--------------------------------
@@ -105,16 +106,6 @@ class ExactSolution2D(object):
         return self.__sol
 # ------------------------------------------------------------------------------
 
-# -----------------------------SET GLOBAL VARIABLES-----------------------------
-def set_global_var():
-
-    global comm_w, rank_w, comm_names
-
-    comm_w = MPI.COMM_WORLD
-    rank_w = comm_w.Get_rank()
-    comm_names = ["comm_zero", "comm_one"]
-# ------------------------------------------------------------------------------
-
 # -------------------------------------MAIN-------------------------------------
 def main():
 
@@ -191,8 +182,6 @@ def main():
     
 if __name__ == "__main__":
 
-    set_global_var()
-
     if rank_w == 0:
         log = simple_message_log("STARTED LOG", 
                                  log_file)
@@ -222,11 +211,11 @@ if __name__ == "__main__":
         t_end = time.time()
         simple_message_log("EXECUTION TIME: "   +
                            str(t_end - t_start) +
-                           " secs."           , 
+                           " secs.", 
                            log_file,
                            log)
-        simple_message_log("ENDED LOG"     , 
-                           log_file,
+        simple_message_log("ENDED LOG", 
+                           log_file   ,
                            log)
 
         rendering_multi_block_data(file_name, "exact")
