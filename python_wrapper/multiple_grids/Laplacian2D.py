@@ -13,23 +13,6 @@ import os
 import time
 # ------------------------------------------------------------------------------
 
-class Logger(object):
-    def __init__(self, name):
-        self.logger = logging.getLogger(name)
-        self.logger.setLevel(logging.DEBUG)
-        self.handler = logging.FileHandler("./Laplacian2D.log")
-
-        self.formatter = logging.Formatter("%(name)15s - "    + 
-                                           "%(asctime)s - "   +
-                                           "%(funcName)8s - " +
-                                           "%(levelname)s - " +
-                                           "%(message)s")
-        self.handler.setFormatter(self.formatter)
-        self.logger.addHandler(self.handler)
-        self.logger.propagate = False
-    
-    def get_logger(self):
-        return self.logger
 
 class ExactSolution2D(object):
     def __init__(self, x, y):
