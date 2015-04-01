@@ -9,7 +9,6 @@ from petsc4py import PETSc
 import numpy
 from utilities import *
 import copy
-import os
 import time
 # ------------------------------------------------------------------------------
 
@@ -194,11 +193,7 @@ if __name__ == "__main__":
 
     if rank_w == 0:
         file_name = "multiple_PABLO.vtm"
-        files_vtu = []
-    
-        for file in os.listdir("./"):
-            if file.endswith(".vtu"):
-                files_vtu.append(file)
+        files_vtu = find_files_in_dir(".vtu", "./")
     
         info_dictionary = {}
         info_dictionary.update({"vtu_files" : files_vtu})
