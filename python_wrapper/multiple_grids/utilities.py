@@ -25,10 +25,10 @@ def split_list_in_two(list_to_be_splitted):
 def write_vtk_multi_block_data_set(kwargs = {}):
     file_name = kwargs["file_name"]
 
-    VTKFile = ET.Element("VTKFile", 
+    VTKFile = ET.Element("VTKFile"                    , 
                          type = "vtkMultiBlockDataSet", 
-                         version = "1.0",
-                         byte_order = "LittleEndian",
+                         version = "1.0"              ,
+                         byte_order = "LittleEndian"  ,
                          compressor = "vtkZLibDataCompressor")
 
     vtkMultiBlockDataSet = ET.SubElement(VTKFile, 
@@ -39,9 +39,9 @@ def write_vtk_multi_block_data_set(kwargs = {}):
         for vtu_file in kwargs["vtu_files"]:
             if pablo_file in vtu_file:
                 DataSet = ET.SubElement(vtkMultiBlockDataSet,
-                                        "DataSet",
-                                        group = str(iter),
-                                        dataset = "0",
+                                        "DataSet"           ,
+                                        group = str(iter)   ,
+                                        dataset = "0"       ,
                                         file = vtu_file)
                 
         iter += 1
@@ -49,11 +49,11 @@ def write_vtk_multi_block_data_set(kwargs = {}):
     vtkTree = ET.ElementTree(VTKFile)
     vtkTree.write(file_name)
 
-def simple_message_log(message, logger = None):
+def simple_message_log(message, log_file, logger = None):
     if logger is None:
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
-        handler = logging.FileHandler("./Laplacian2D.log")
+        handler = logging.FileHandler(log_file)
         formatter = logging.Formatter("%(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
@@ -62,19 +62,20 @@ def simple_message_log(message, logger = None):
     return logger
 
 class Logger(object):
-    def __init__(self, name):
-        self.logger = logging.getLogger(name)
-        self.logger.setLevel(logging.DEBUG)
-        self.handler = logging.FileHandler("./Laplacian2D.log")
+    def __init__(self, name, log_file):
+        self.__logger = logging.getLogger(name)
+        self.__logger.setLevel(logging.DEBUG)
+        self.__handler = logging.FileHandler(log_file)
 
-        self.formatter = logging.Formatter("%(name)15s - "    + 
-                                           "%(asctime)s - "   +
-                                           "%(funcName)8s - " +
-                                           "%(levelname)s - " +
-                                           "%(message)s")
-        self.handler.setFormatter(self.formatter)
-        self.logger.addHandler(self.handler)
-        self.logger.propagate = False
-    
-    def get_logger(self):
-        return self.logger
+        self.__formatter = logging.Formatter("%(name)15s - "    + 
+                                             "%(asctime)s - "   +
+                                             "%(funcName)8s - " +
+                                             "%(levelname)s - " +
+                                             "%(message)s")
+        self.__handler.setFormatter(self.__formatter)
+        self.__logger.addHandler(self.__handler)
+        self.__logger.propagate = False
+
+    @property
+    def logger(self):
+        return self.__logger
