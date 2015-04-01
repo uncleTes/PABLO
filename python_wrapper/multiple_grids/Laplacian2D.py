@@ -10,12 +10,34 @@ import numpy
 from utilities import *
 import copy
 import time
+import ConfigParser
 # ------------------------------------------------------------------------------
+
+config_file = "./PABLO.ini"
+log_file = "./Laplacian2D.log"
+
+config = ConfigParser.ConfigParser()
+config.read(config_file)
+
+n_grids = config.getint("PABLO", 
+                        "NumberOfGrids")
+
+anchors = get_lists_from_string(config.get("PABLO", "Anchors"), 
+                                "; "                          , 
+                                ", "                          ,
+                                False)
+
+edges = get_list_from_string(config.get("PABLO", "Edges"), 
+                             ", "                        , 
+                             False)
+
+refinements = get_list_from_string(config.get("PABLO", "Refinements"), 
+                                   ", ")  
+
+comm_names = ["comm_" + str(j) for j in range(n_grids)]
 
 comm_w = MPI.COMM_WORLD
 rank_w = comm_w.Get_rank()
-comm_names = ["comm_zero", "comm_one"]
-log_file = "./Laplacian2D.log"
 
 # --------------------------------EXACT SOLUTION--------------------------------
 class ExactSolution2D(object):
@@ -65,6 +87,7 @@ class ExactSolution2D(object):
                          str(self.comm.Get_rank())       + 
                          "\".")
     
+    # Exact solution = sin((x - 0.5)^2 + (y - 0.5)^2).
     def evaluate(self, x, y):
         try:
             assert len(x) == len(y)
@@ -108,20 +131,21 @@ class ExactSolution2D(object):
 # -------------------------------------MAIN-------------------------------------
 def main():
 
+    proc_grid = rank_w % n_grids 
     group_w = comm_w.Get_group()
     procs_w = comm_w.Get_size()
     procs_w_list = range(0, procs_w)
-    zero_list, one_list = split_list_in_two(procs_w_list)
-    group_l = group_w.Incl(zero_list if (rank_w < (procs_w /2 )) else one_list)
+    procs_l_lists = chunk_list(procs_w_list, n_grids)
+    group_l = group_w.Incl(procs_l_lists[proc_grid])
     # Creating differents MPI intracommunicators.
     comm_l = comm_w.Create(group_l)
-    refinement_levels = 7 if (rank_w < (procs_w / 2)) else 10
+    refinement_levels = refinements[proc_grid]
     # Anchor node for PABLO.
-    an = [0, 0, 0] if (rank_w < (procs_w / 2)) else [0.25, 0.25, 0]
+    an = anchors[proc_grid]
     # Edge's length for PABLO.
-    ed = 1 if (rank_w < (procs_w / 2)) else 0.5
+    ed = edges[proc_grid]
     # Current intracommunicator's name.
-    comm_name = comm_names[0] if (rank_w < (procs_w / 2)) else comm_names[1]
+    comm_name = comm_names[proc_grid]
     comm_l.Set_name(comm_name)
 
     logger = Logger(__name__, 
