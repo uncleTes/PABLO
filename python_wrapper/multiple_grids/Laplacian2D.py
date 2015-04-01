@@ -15,27 +15,92 @@ import time
 
 global comm_w, rank_w, comm_names
 
+# --------------------------------EXACT SOLUTION--------------------------------
 class ExactSolution2D(object):
-    def __init__(self, x, y):
+
+    def __init__(self, comm, octree):
         self.logger = Logger(type(self).__name__).get_logger()
-        self.logger.info("Initialized class")
+
+        # Mangling with the prefix "__".
+        if isinstance(comm, MPI.Intracomm):
+            self.__comm = comm
+            self.logger.info("Setted \"self.comm\" for comm \"" +
+                             str(self.comm.Get_name())          + 
+                             "\" and rank \""                   +
+                             str(self.comm.Get_rank())          + 
+                             "\".")
+
+        else:
+            self.__comm = None
+            self.logger.error("First parameter must be an \"MPI.Intracomm\"." +
+                              "\nSetted \"self.comm\" to None.")
+
+        if isinstance(octree, class_para_tree.Py_Class_Para_Tree_D2):
+            self.__octree = octree
+            self.logger.info("Setted \"self.octree\" for comm \"" +
+                             str(self.comm.Get_name())            + 
+                             "\" and rank \""                     +
+                             str(self.comm.Get_rank())            + 
+                             "\".")
+
+        else:
+            self.__octree = None
+            self.logger.error("Second parameter must be a "                  + 
+                              "\"class_para_tree.Py_Class_Para_Tree_D2\".\n" +
+                              "Setted \"self.octree\" to None.")
+
+        self.logger.info("Initialized class for comm \"" +
+                         str(self.comm.Get_name())       + 
+                         "\" and rank \""                +
+                         str(self.comm.Get_rank())       + 
+                         "\".")
+    
+    def __del__(self):
+        self.logger.info("Called destructor for comm \"" +
+                         str(self.comm.Get_name())       + 
+                         "\" and rank \""                +
+                         str(self.comm.Get_rank())       + 
+                         "\".")
+    
+    def evaluate(self, x, y):
         try:
             assert len(x) == len(y)
             sol = numpy.sin(numpy.power(x - 0.5, 2) + 
                             numpy.power(y - 0.5, 2))
-            self.logger.info("Evaluated exact solution " + 
+            self.logger.info("Evaluated exact solution for comm \"" +
+                             str(self.comm.Get_name())              +
+                             "\" and rank \""                       + 
+                             str(self.comm.Get_rank())              +
+                             "\":\n"                                + 
                              str(sol))
         except AssertionError:
-            self.logger.error("Different size for coordinates' vectors",
+            self.logger.error("Different size for coordinates' vectors.",
                               exc_info = True)
             sol = numpy.empty([len(x), len(y)])
-            self.logger.info("Set exact solution as empty matrix:\n" + 
-                             str(sol))
+            self.logger.info("Set exact solution as empty matrix for comm \"" +
+                             str(self.comm.Get_name())                        +
+                             "\" and rank \""                                 + 
+                             str(self.comm.Get_rank())                        +
+                             "\".") 
         finally:
-            self.sol = sol
+            self.__sol = sol
 
-    def __del__(self):
-        self.logger.info("Called destructor")
+    # Here three read only properties. class "ExactSolution2D" derives from
+    # class "object", so it is a new class type which launch an "AttributeError"
+    # exception if someone try to change these properties, not being the setters
+    # "@comm.setter", "@octree.setter", "@sol.setter".
+    @property
+    def comm(self):
+        return self.__comm
+
+    @property
+    def octree(self):
+        return self.__octree
+
+    @property
+    def sol(self):
+        return self.__sol
+# ------------------------------------------------------------------------------
 
 # -----------------------------SET GLOBAL VARIABLES-----------------------------
 def set_global_var():
