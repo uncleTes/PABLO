@@ -16,3 +16,7 @@ python_wrapper/multiple_grids/*.pvtu
 python_wrapper/multiple_grids/*.vt?
 opt_base/build/*
 opt_IO/build/*
+python_wrapper/opt_IO_impl/build/*
+python_wrapper/opt_IO_impl/*.so
+python_wrapper/opt_IO_impl/*.cpp
+python_wrapper/opt_IO_impl/*.h
