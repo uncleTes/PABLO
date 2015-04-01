@@ -2,6 +2,7 @@ import xml.etree.cElementTree as ET
 import paraview
 from paraview.simple import *
 import logging
+import os
 
 def rendering_multi_block_data(file_name, data_to_render):
     reader = XMLMultiBlockDataReader(FileName = file_name)
@@ -60,6 +61,15 @@ def simple_message_log(message, log_file, logger = None):
 
     logger.info(message.center(140, "-"))
     return logger
+
+def find_files_in_dir(extension, directory):
+    files_founded = []
+
+    for file in os.listdir(directory):
+        if file.endswith(extension):
+            files_founded.append(file)
+
+    return files_founded
 
 class Logger(object):
     def __init__(self, name, log_file):
