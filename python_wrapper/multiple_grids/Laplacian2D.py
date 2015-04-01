@@ -186,5 +186,39 @@ def main():
 # ------------------------------------------------------------------------------
     
 if __name__ == "__main__":
-    simple_message_log("STARTED LOG")
+
+    set_global_var()
+
+    if rank_w == 0:
+        log = simple_message_log("STARTED LOG")
+
+    t_start = time.time()
+
     main()
+
+    comm_w.Barrier()
+
+    if rank_w == 0:
+        file_name = "multiple_PABLO.vtm"
+        files_vtu = []
+    
+        for file in os.listdir("./"):
+            if file.endswith(".vtu"):
+                files_vtu.append(file)
+    
+        info_dictionary = {}
+        info_dictionary.update({"vtu_files" : files_vtu})
+        info_dictionary.update({"pablo_file_names" : comm_names})
+        info_dictionary.update({"file_name" : file_name})
+    
+        #write_vtk_multi_block_data_set(**info_dictionary)
+        write_vtk_multi_block_data_set(info_dictionary)
+    
+        t_end = time.time()
+        simple_message_log("EXECUTION TIME: "   +
+                           str(t_end - t_start) +
+                           " secs.", 
+                           log)
+        simple_message_log("ENDED LOG", log)
+
+        rendering_multi_block_data(file_name, "exact")
