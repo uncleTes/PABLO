@@ -172,6 +172,8 @@ cdef extern from "Class_Para_Tree.hpp":
 		# of nodes
 		void computeConnectivity()
 
+		void computeGhostsConnectivity()
+
 		# Adapt the octree mesh refining all the octants by one level
 		bool adaptGlobalRefine()
 		
@@ -179,7 +181,11 @@ cdef extern from "Class_Para_Tree.hpp":
 		bool adaptGlobalCoarse()
 
 		# Update the connectivity of octants
-		void updateConnectivity()		
+		void updateConnectivity()
+
+		void updateGhostsConnectivity()
+
+		dvector getNodeCoordinates(uint32_t inode)
 
 		#---------------------------------------------------------------
 		# ------------------Local tree get/set methods------------------
@@ -276,6 +282,16 @@ cdef extern from "Class_Para_Tree.hpp":
 		# param[in] oct ---> pointer to target octant;
 		# return --->nodes coordinates of the nodes of octant.
 		dvector2D getNodes(Class_Octant[T]* oct)
+
+		const u32vector2D& getNodes()
+
+		const u32vector2D& getGhostNodes()
+
+		const u32vector2D& getConnectivity()
+
+		const u32vector2D& getGhostConnectivity()
+
+		uint32_t getNumNodes()
 
 		
 		# Distribute Load-Balancing the octants of the whole tree over
@@ -427,12 +443,18 @@ cdef class  Py_Class_Para_Tree_D2:
 	def compute_connectivity(self):
 		self.thisptr.computeConnectivity()
 
+	def compute_ghosts_connectivity(self):
+		self.thisptr.computeGhostsConnectivity()
+
 	def adapt_global_refine(self):
 		result = self.thisptr.adaptGlobalRefine()
 		return result
 	
 	def update_connectivity(self):
 		self.thisptr.updateConnectivity()
+
+	def update_ghosts_connectivity(self):
+		self.thisptr.updateGhostsConnectivity()
 
 	def adapt_global_coarse(self):
 		self.thisptr.adaptGlobalCoarse()
@@ -546,6 +568,20 @@ cdef class  Py_Class_Para_Tree_D2:
 	def adapt(self):
 		return self.thisptr.adapt()
 
+	def get_nodes(self):
+		return self.thisptr.getNodes()
+
+	def get_ghost_nodes(self):
+		return self.thisptr.getGhostNodes()
+
+	def get_connectivity(self):
+		return self.thisptr.getConnectivity()
+
+	def get_ghost_connectivity(self):
+		return self.thisptr.getGhostConnectivity()
+
+	def get_num_nodes(self):
+		return self.thisptr.getNumNodes()
 
 	def get_nodes(self, uintptr_t idx, from_octant = False):
 		if (not from_octant):
