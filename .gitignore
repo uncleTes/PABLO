@@ -14,3 +14,4 @@ python_wrapper/*.log
 python_wrapper/multiple_grids/*.log
 python_wrapper/multiple_grids/*.pvtu
 python_wrapper/multiple_grids/*.vt?
+opt_base/build/*
