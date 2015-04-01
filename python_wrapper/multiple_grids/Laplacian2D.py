@@ -208,6 +208,30 @@ if __name__ == "__main__":
     if rank_w == 0:
         log = simple_message_log("STARTED LOG", 
                                  log_file)
+        simple_message_log("NUMBER OF GRIDS: " + 
+                           str(n_grids)        +
+                           "."     ,
+                           log_file,
+                           log)
+        
+        simple_message_log("ANCHORS: "  + 
+                           str(anchors) +
+                           "."     ,
+                           log_file,
+                           log)
+        
+        simple_message_log("EDGES: "  + 
+                           str(edges) +
+                           "."     ,
+                           log_file,
+                           log)
+        
+        simple_message_log("REFINEMENT LEVELS: "  + 
+                           str(refinements) +
+                           "."     ,
+                           log_file,
+                           log)
+
 
     t_start = time.time()
 
