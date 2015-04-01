@@ -15,11 +15,14 @@ import time
 
 global comm_w, rank_w, comm_names
 
+log_file = "./Laplacian2D.log"
+
 # --------------------------------EXACT SOLUTION--------------------------------
 class ExactSolution2D(object):
 
     def __init__(self, comm, octree):
-        self.logger = Logger(type(self).__name__).get_logger()
+        self.logger = Logger(type(self).__name__,
+                             log_file).logger
 
         # Mangling with the prefix "__".
         if isinstance(comm, MPI.Intracomm):
@@ -131,7 +134,8 @@ def main():
     comm_name = comm_names[0] if (rank_w < (procs_w / 2)) else comm_names[1]
     comm_l.Set_name(comm_name)
 
-    logger = Logger(__name__).get_logger()
+    logger = Logger(__name__, 
+                    log_file).logger
     logger.info("Started function for comm \"" + 
                 str(comm_l.Get_name())         + 
                 "\" and rank \""               +
@@ -190,7 +194,8 @@ if __name__ == "__main__":
     set_global_var()
 
     if rank_w == 0:
-        log = simple_message_log("STARTED LOG")
+        log = simple_message_log("STARTED LOG", 
+                                 log_file)
 
     t_start = time.time()
 
@@ -217,8 +222,11 @@ if __name__ == "__main__":
         t_end = time.time()
         simple_message_log("EXECUTION TIME: "   +
                            str(t_end - t_start) +
-                           " secs.", 
+                           " secs."           , 
+                           log_file,
                            log)
-        simple_message_log("ENDED LOG", log)
+        simple_message_log("ENDED LOG"     , 
+                           log_file,
+                           log)
 
         rendering_multi_block_data(file_name, "exact")
