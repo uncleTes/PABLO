@@ -13,6 +13,7 @@ import os
 import time
 # ------------------------------------------------------------------------------
 
+global comm_w, rank_w, comm_names
 
 class ExactSolution2D(object):
     def __init__(self, x, y):
@@ -36,8 +37,15 @@ class ExactSolution2D(object):
     def __del__(self):
         self.logger.info("Called destructor")
 
-    def get_sol(self):
-        return self.sol
+# -----------------------------SET GLOBAL VARIABLES-----------------------------
+def set_global_var():
+
+    global comm_w, rank_w, comm_names
+
+    comm_w = MPI.COMM_WORLD
+    rank_w = comm_w.Get_rank()
+    comm_names = ["comm_zero", "comm_one"]
+# ------------------------------------------------------------------------------
 
 def main():
     logger = Logger(__name__).get_logger()
