@@ -1,9 +1,12 @@
+# ------------------------------------IMPORT------------------------------------
 import xml.etree.cElementTree as ET
 import paraview
 from paraview.simple import *
 import logging
 import os
+# ------------------------------------------------------------------------------
 
+# ----------------------------------FUNCTIONS-----------------------------------
 # Suppose you have the string str = "0, 1, 0", calling this function as
 # "get_list_from_string(str, ", ", False)" will return the list 
 # [0.0, 1.0, 0.0].
@@ -29,21 +32,36 @@ def get_lists_from_string(string,
             for string_chunk in string.split(splitter_for_lists)
            ]
 
-def rendering_multi_block_data(file_name, data_to_render):
+# MutliBlockData are read and displayed using paraview from python.
+def rendering_multi_block_data(file_name, 
+                               data_to_render):
     reader = XMLMultiBlockDataReader(FileName = file_name)
     
     show = Show(reader)
+    # Obtain display's properties.
     dp = GetDisplayProperties(reader)
+    # Choose representation: "Surface", "Surface With Edges", etc.
     dp.Representation = "Surface With Edges"
+    # "ColorBy" colors data depending by the parameters you insert; Here we
+    # have chosen "CELLS" instead of "POINTS" because we know that (for the
+    # moment), data are evaluated on the center of the cells. The parameter
+    # "data_to_render" is the data you want to display (in the "Laplacian2D.py"
+    # is for example "exact" solution).
     ColorBy(dp, ("CELLS", data_to_render))
+    # Rescale visualized values to the data's ones.
     dp.RescaleTransferFunctionToDataRange(True)
+    # Visualize scalar bar.
     dp.SetScalarBarVisibility(GetRenderView(), True)
 
     while True:
         Render()
 
+# Suppose you have the list "lst = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"; calling 
+# this functio as chunk_list(lst, 3), will return the following list:
+# [[0, 3, 6, 9], [1, 4, 7, 10], [2, 5, 8]].
 # http://stackoverflow.com/questions/2130016/splitting-a-list-of-arbitrary-size-into-only-roughly-n-equal-parts
-def chunk_list(list_to_chunk, how_many_parts):
+def chunk_list(list_to_chunk, 
+               how_many_parts):
     return [list_to_chunk[i::how_many_parts] for i in xrange(how_many_parts)]
 
 def split_list_in_two(list_to_be_splitted):
@@ -79,7 +97,9 @@ def write_vtk_multi_block_data_set(kwargs = {}):
     vtkTree = ET.ElementTree(VTKFile)
     vtkTree.write(file_name)
 
-def simple_message_log(message, log_file, logger = None):
+def simple_message_log(message, 
+                       log_file, 
+                       logger = None):
     if logger is None:
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
@@ -91,7 +111,8 @@ def simple_message_log(message, log_file, logger = None):
     logger.info(message.center(140, "-"))
     return logger
 
-def find_files_in_dir(extension, directory):
+def find_files_in_dir(extension, 
+                      directory):
     files_founded = []
 
     for file in os.listdir(directory):
@@ -99,9 +120,13 @@ def find_files_in_dir(extension, directory):
             files_founded.append(file)
 
     return files_founded
+# ------------------------------------------------------------------------------
 
+# ------------------------------------LOGGER------------------------------------
 class Logger(object):
-    def __init__(self, name, log_file):
+    def __init__(self, 
+                 name, 
+                 log_file):
         self.__logger = logging.getLogger(name)
         self.__logger.setLevel(logging.DEBUG)
         self.__handler = logging.FileHandler(log_file)
@@ -118,3 +143,4 @@ class Logger(object):
     @property
     def logger(self):
         return self.__logger
+# ------------------------------------------------------------------------------
