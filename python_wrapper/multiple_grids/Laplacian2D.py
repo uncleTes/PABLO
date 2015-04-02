@@ -15,7 +15,7 @@ import ConfigParser
 
 config_file = "./PABLO.ini"
 log_file = "./Laplacian2D.log"
-
+# Initialize the parser for the configuration file and read it.
 config = ConfigParser.ConfigParser()
 config.read(config_file)
 
@@ -42,7 +42,9 @@ rank_w = comm_w.Get_rank()
 # --------------------------------EXACT SOLUTION--------------------------------
 class ExactSolution2D(object):
 
-    def __init__(self, comm, octree):
+    def __init__(self, 
+                 comm, 
+                 octree):
         self.logger = Logger(type(self).__name__,
                              log_file).logger
 
@@ -88,7 +90,9 @@ class ExactSolution2D(object):
                          "\".")
     
     # Exact solution = sin((x - 0.5)^2 + (y - 0.5)^2).
-    def evaluate(self, x, y):
+    def evaluate(self, 
+                 x, 
+                 y):
         try:
             assert len(x) == len(y)
             sol = numpy.sin(numpy.power(x - 0.5, 2) + 
@@ -108,6 +112,7 @@ class ExactSolution2D(object):
                              "\" and rank \""                                 + 
                              str(self.comm.Get_rank())                        +
                              "\".") 
+        # A numpy vector is given to "self.__sol".
         finally:
             self.__sol = sol
 
@@ -261,4 +266,4 @@ if __name__ == "__main__":
                            log_file   ,
                            log)
 
-        rendering_multi_block_data(file_name, "exact")
+        #rendering_multi_block_data(file_name, "exact")
