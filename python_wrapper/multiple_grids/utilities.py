@@ -120,6 +120,13 @@ def find_files_in_dir(extension,
             files_founded.append(file)
 
     return files_founded
+
+def set_class_logger(obj, 
+                     log_file):
+    obj_logger = Logger(type(obj).__name__,
+                        log_file).logger
+    return obj_logger
+
 # ------------------------------------------------------------------------------
 
 # ------------------------------------LOGGER------------------------------------
