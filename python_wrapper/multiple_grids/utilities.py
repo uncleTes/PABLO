@@ -5,6 +5,7 @@ from paraview.simple import *
 import logging
 import os
 from mpi4py import MPI
+import class_para_tree
 # ------------------------------------------------------------------------------
 
 # ----------------------------------FUNCTIONS-----------------------------------
@@ -145,6 +146,25 @@ def check_mpi_intracomm(comm,
                      "\nSetted \"self.comm\" to None.")
 
     return l_comm
+
+def check_octree(octree, 
+                 comm,
+                 logger):
+    if isinstance(octree, class_para_tree.Py_Class_Para_Tree_D2):
+        l_octree = octree
+        logger.info("Setted \"self.octree\" for comm \"" +
+                    str(comm.Get_name())                 + 
+                    "\" and rank \""                     +
+                    str(comm.Get_rank())                 + 
+                    "\".")
+    
+    else:
+        l_octree = None
+        logger.error("Second parameter must be a "                  + 
+                     "\"class_para_tree.Py_Class_Para_Tree_D2\".\n" +
+                     "Setted \"self.octree\" to None.")
+
+    return l_octree
     
 # ------------------------------------------------------------------------------
 
