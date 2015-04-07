@@ -1,6 +1,5 @@
 # ------------------------------------IMPORT------------------------------------
 from utilities import *
-import class_para_tree
 import my_class_vtk_02
 import sys
 import petsc4py
@@ -48,20 +47,7 @@ class ExactSolution2D(object):
 
         # Mangling with the prefix "__".
         self.__comm = check_mpi_intracomm(comm, self.logger)
-
-        if isinstance(octree, class_para_tree.Py_Class_Para_Tree_D2):
-            self.__octree = octree
-            self.logger.info("Setted \"self.octree\" for comm \"" +
-                             str(self.comm.Get_name())            + 
-                             "\" and rank \""                     +
-                             str(self.comm.Get_rank())            + 
-                             "\".")
-
-        else:
-            self.__octree = None
-            self.logger.error("Second parameter must be a "                  + 
-                              "\"class_para_tree.Py_Class_Para_Tree_D2\".\n" +
-                              "Setted \"self.octree\" to None.")
+        self.__octree = check_octree(octree, self.__comm, self.logger)
 
         self.logger.info("Initialized class for comm \"" +
                          str(self.comm.Get_name())       + 
