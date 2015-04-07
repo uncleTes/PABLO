@@ -33,7 +33,7 @@ refinements = get_list_from_string(config.get("PABLO", "Refinements"),
                                    ", ")  
 
 comm_names = ["comm_" + str(j) for j in range(n_grids)]
-
+# Initialize MPI.
 comm_w = MPI.COMM_WORLD
 rank_w = comm_w.Get_rank()
 
@@ -48,18 +48,17 @@ class ExactSolution2D(object):
         # Mangling with the prefix "__".
         self.__comm = check_mpi_intracomm(comm, self.logger)
         self.__octree = check_octree(octree, self.__comm, self.logger)
-
         self.logger.info("Initialized class for comm \"" +
-                         str(self.comm.Get_name())       + 
+                         str(self.__comm.Get_name())     + 
                          "\" and rank \""                +
-                         str(self.comm.Get_rank())       + 
+                         str(self.__comm.Get_rank())     + 
                          "\".")
     
     def __del__(self):
         self.logger.info("Called destructor for comm \"" +
-                         str(self.comm.Get_name())       + 
+                         str(self.__comm.Get_name())     + 
                          "\" and rank \""                +
-                         str(self.comm.Get_rank())       + 
+                         str(self.__comm.Get_rank())     + 
                          "\".")
     
     # Exact solution = sin((x - 0.5)^2 + (y - 0.5)^2).
@@ -71,9 +70,9 @@ class ExactSolution2D(object):
             sol = numpy.sin(numpy.power(x - 0.5, 2) + 
                             numpy.power(y - 0.5, 2))
             self.logger.info("Evaluated exact solution for comm \"" +
-                             str(self.comm.Get_name())              +
+                             str(self.__comm.Get_name())            +
                              "\" and rank \""                       + 
-                             str(self.comm.Get_rank())              +
+                             str(self.__comm.Get_rank())            +
                              "\":\n"                                + 
                              str(sol))
         except AssertionError:
@@ -81,9 +80,9 @@ class ExactSolution2D(object):
                               exc_info = True)
             sol = numpy.empty([len(x), len(y)])
             self.logger.info("Set exact solution as empty matrix for comm \"" +
-                             str(self.comm.Get_name())                        +
+                             str(self.__comm.Get_name())                      +
                              "\" and rank \""                                 + 
-                             str(self.comm.Get_rank())                        +
+                             str(self.__comm.Get_rank())                      +
                              "\".") 
         # A numpy vector is given to "self.__sol".
         finally:
