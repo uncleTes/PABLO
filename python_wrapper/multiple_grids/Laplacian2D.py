@@ -1,5 +1,5 @@
 # ------------------------------------IMPORT------------------------------------
-from mpi4py import MPI
+from utilities import *
 import class_para_tree
 import my_class_vtk_02
 import sys
@@ -7,7 +7,6 @@ import petsc4py
 petsc4py.init(sys.argv)
 from petsc4py import PETSc
 import numpy
-from utilities import *
 import copy
 import time
 import ConfigParser
@@ -48,18 +47,7 @@ class ExactSolution2D(object):
         self.logger = set_class_logger(self, log_file)
 
         # Mangling with the prefix "__".
-        if isinstance(comm, MPI.Intracomm):
-            self.__comm = comm
-            self.logger.info("Setted \"self.comm\" for comm \"" +
-                             str(self.comm.Get_name())          + 
-                             "\" and rank \""                   +
-                             str(self.comm.Get_rank())          + 
-                             "\".")
-
-        else:
-            self.__comm = None
-            self.logger.error("First parameter must be an \"MPI.Intracomm\"." +
-                              "\nSetted \"self.comm\" to None.")
+        self.__comm = check_mpi_intracomm(comm, self.logger)
 
         if isinstance(octree, class_para_tree.Py_Class_Para_Tree_D2):
             self.__octree = octree
