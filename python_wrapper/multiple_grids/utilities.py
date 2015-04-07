@@ -4,6 +4,7 @@ import paraview
 from paraview.simple import *
 import logging
 import os
+from mpi4py import MPI
 # ------------------------------------------------------------------------------
 
 # ----------------------------------FUNCTIONS-----------------------------------
@@ -127,6 +128,24 @@ def set_class_logger(obj,
                         log_file).logger
     return obj_logger
 
+def check_mpi_intracomm(comm, 
+                        logger):
+    
+    if isinstance(comm, MPI.Intracomm):
+        l_comm = comm
+        logger.info("Setted \"self.comm\" for comm \"" +
+                    str(comm.Get_name())          + 
+                    "\" and rank \""                   +
+                    str(comm.Get_rank())          + 
+                    "\".")
+    
+    else:
+        l_comm = None
+        self.logger.error("First parameter must be an \"MPI.Intracomm\"." +
+                          "\nSetted \"self.comm\" to None.")
+
+    return l_comm
+    
 # ------------------------------------------------------------------------------
 
 # ------------------------------------LOGGER------------------------------------
