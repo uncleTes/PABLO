@@ -45,8 +45,7 @@ class ExactSolution2D(object):
     def __init__(self, 
                  comm, 
                  octree):
-        self.logger = Logger(type(self).__name__,
-                             log_file).logger
+        self.logger = set_class_logger(self, log_file)
 
         # Mangling with the prefix "__".
         if isinstance(comm, MPI.Intracomm):
