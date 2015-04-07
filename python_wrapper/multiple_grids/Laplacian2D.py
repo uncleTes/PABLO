@@ -37,6 +37,31 @@ comm_names = ["comm_" + str(j) for j in range(n_grids)]
 comm_w = MPI.COMM_WORLD
 rank_w = comm_w.Get_rank()
 
+# ----------------------------------LAPLACIAN-----------------------------------
+class Laplacian2D(object):
+    def __init__(self, 
+                 comm,
+                 octree):
+        self.logger = set_class_logger(self, log_file)
+
+        # Mangling with the prefix "__".
+        self.__comm = check_mpi_intracomm(comm, self.logger)
+        self.__octree = check_octree(octree, self.__comm, self.logger)
+        self.logger.info("Initialized class for comm \"" +
+                         str(self.__comm.Get_name())     + 
+                         "\" and rank \""                +
+                         str(self.__comm.Get_rank())     + 
+                         "\".")
+    
+    def __del__(self):
+        self.logger.info("Called destructor for comm \"" +
+                         str(self.__comm.Get_name())     + 
+                         "\" and rank \""                +
+                         str(self.__comm.Get_rank())     + 
+                         "\".")
+        
+# ------------------------------------------------------------------------------
+
 # --------------------------------EXACT SOLUTION--------------------------------
 class ExactSolution2D(object):
 
@@ -156,7 +181,8 @@ def main():
     
     for i in xrange(0, n_octs):
         centers[i, :] = pablo.get_center(i)[:2]
-    
+   
+    laplacian = Laplacian2D(comm_l, pablo)
     exact_solution = ExactSolution2D(comm_l, pablo)
     # Evaluating exact solution in the centers' of the PABLO's cells.
     exact_solution.evaluate(centers[:, 0], centers[:, 1])
