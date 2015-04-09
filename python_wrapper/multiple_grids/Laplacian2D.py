@@ -177,6 +177,74 @@ class Laplacian2D(object):
                          "\" and rank \""                +
                          str(self.__comm.Get_rank())     + 
                          "\".")
+
+    def init_mat(self):
+        self.__mat = PETSc.Mat().create(comm=self.__comm)
+        # Local and global matrix's sizes.
+        size = (self.__n, 
+                self.__N)
+        self.__mat.setSizes((size, 
+                             size))
+        # Setting type of matrix directly. Using method "setFromOptions()"
+        # the user can choose what kind of matrix build at runtime.
+        #self.__mat.setFromOptions()
+        self.__mat.setType(PETSc.Mat.Type.AIJ)
+        # For better performances, instead of "setUp()" use 
+        # "setPreallocationCSR()".
+        self.__mat.setUp()
+        # The AIJ format is also called the Yale sparse matrix format or
+        # compressed row storage (CSR).
+        # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatMPIAIJSetPreallocation.html
+        #self.__mat.setPreallocationCSR((5, 1))
+        # Getting ranges of the matrix owned by the current process.
+        o_ranges = self.__mat.getOwnershipRange()
+        h = self.__edge / self.__N
+        h2 = h * h
+        n = numpy.sqrt(self.__N)
+
+        for o_range in xrange(o_ranges[0], o_ranges[1]):
+            Ii = o_range
+            v = -1.0 / h2
+            i = Ii // n
+            j = Ii - (i * n)
+            if (i > 0):
+                J = Ii - n
+                self.__mat.setValue(Ii, J, v)
+            if (i < n - 1):
+                J = Ii + n
+                self.__mat.setValue(Ii, J, v)
+            if (j > 0):
+                J = Ii - 1
+                self.__mat.setValue(Ii, J, v)
+            if (j < n - 1):
+                J = Ii + 1
+                self.__mat.setValue(Ii, J, v)
+
+            v = 4.0 / h2
+            self.__mat.setValue(Ii, Ii, v)
+
+        self.__mat.assemblyBegin()
+        self.__mat.assemblyEnd()
+
+        # ATTENTION!! Involves copy.
+        mat_numpy = self.__mat.getValuesCSR()
+
+        # View the matrix...(please note that it will be printed on the
+        # screen).
+        #self.__mat.view()
+
+        self.logger.info("Initialized matrix for comm \"" +
+                         str(self.__comm.Get_name())      + 
+                         "\" and rank \""                 +
+                         str(self.__comm.Get_rank())      +
+                         "\" with sizes \""               +
+                         str(self.__mat.getSizes())       +
+                         "\" and type \""                 +
+                         str(self.__mat.getType())        +
+                         "\":\n"                          +
+                         # http://lists.mcs.anl.gov/pipermail/petsc-users/2012-May/013379.html
+                         str(mat_numpy))
+
 # ------------------------------------------------------------------------------
 
 # -------------------------------------MAIN-------------------------------------
