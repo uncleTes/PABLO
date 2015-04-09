@@ -154,6 +154,14 @@ class My_Class_VTK_02:
 						str << endl;
 					}
 				}
+				else if (name == "evaluated") {
+					for (index = nElements; index < nElements * 2; ++index) {
+						flush_ascii(str, indent);
+						//cout << "Sol at " << grid.getCenter(index) << " = " <<data[index] << endl;
+						flush_ascii(str, data[index]);
+						str << endl;
+					}
+				}
 
 				
 			} 
