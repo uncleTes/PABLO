@@ -263,6 +263,17 @@ class Laplacian2D(object):
         # View the vector...
         #self.__rhs.view()
 
+    def init_sol(self):
+        self.__solution = PETSc.Vec().create(comm=self.__comm)
+        size = (self.__n, 
+                self.__N)
+        self.__solution.setSizes(size)
+        self.__solution.setUp()
+        # Set the solution to all zeros.
+        self.__solution.set(0)
+        # View the vector...
+        #self.__solution.view()
+    
 # ------------------------------------------------------------------------------
 
 # -------------------------------------MAIN-------------------------------------
