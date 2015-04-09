@@ -35,6 +35,9 @@ def get_lists_from_string(string,
            ]
 
 # MutliBlockData are read and displayed using paraview from python.
+# https://www.mail-archive.com/search?l=paraview@paraview.org&q=subject:%22%5BParaview%5D+Python+Script%3A+%22Rescale+to+Data+Range%22%22&o=newest&f=1
+# http://public.kitware.com/pipermail/paraview/2009-January/010809.html
+# http://www.paraview.org/Wiki/ParaView/Python/Lookup_tables
 def rendering_multi_block_data(file_name, 
                                data_to_render):
     reader = XMLMultiBlockDataReader(FileName = file_name)
