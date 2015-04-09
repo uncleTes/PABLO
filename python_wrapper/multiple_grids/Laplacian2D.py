@@ -38,31 +38,6 @@ comm_names = ["comm_" + str(j) for j in range(n_grids)]
 comm_w = MPI.COMM_WORLD
 rank_w = comm_w.Get_rank()
 
-# ----------------------------------LAPLACIAN-----------------------------------
-class Laplacian2D(object):
-    def __init__(self, 
-                 comm,
-                 octree):
-        self.logger = set_class_logger(self, log_file)
-
-        # Mangling with the prefix "__".
-        self.__comm = check_mpi_intracomm(comm, self.logger)
-        self.__octree = check_octree(octree, self.__comm, self.logger)
-        self.logger.info("Initialized class for comm \"" +
-                         str(self.__comm.Get_name())     + 
-                         "\" and rank \""                +
-                         str(self.__comm.Get_rank())     + 
-                         "\".")
-    
-    def __del__(self):
-        self.logger.info("Called destructor for comm \"" +
-                         str(self.__comm.Get_name())     + 
-                         "\" and rank \""                +
-                         str(self.__comm.Get_rank())     + 
-                         "\".")
-        
-# ------------------------------------------------------------------------------
-
 # --------------------------------EXACT SOLUTION--------------------------------
 class ExactSolution2D(object):
 
@@ -175,6 +150,33 @@ class ExactSolution2D(object):
         return self.__s_der
 # ------------------------------------------------------------------------------
 
+# ----------------------------------LAPLACIAN-----------------------------------
+class Laplacian2D(object):
+    def __init__(self, 
+                 comm,
+                 octree,
+                 edge):
+        self.logger = set_class_logger(self, log_file)
+
+        self.__comm = check_mpi_intracomm(comm, self.logger)
+        self.__octree = check_octree(octree, self.__comm, self.logger)
+        self.logger.info("Initialized class for comm \"" +
+                         str(self.__comm.Get_name())     + 
+                         "\" and rank \""                +
+                         str(self.__comm.Get_rank())     + 
+                         "\".")
+        # Total number of octants into the communicator.
+        self.__N = self.__octree.global_num_octants
+        # Local number of octants in the current process of the communicator.
+        self.__n = self.__octree.get_num_octants()
+        self.__edge = edge
+    
+    def __del__(self):
+        self.logger.info("Called destructor for comm \"" +
+                         str(self.__comm.Get_name())     + 
+                         "\" and rank \""                +
+                         str(self.__comm.Get_rank())     + 
+                         "\".")
 # ------------------------------------------------------------------------------
 
 # -------------------------------------MAIN-------------------------------------
