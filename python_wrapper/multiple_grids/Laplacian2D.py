@@ -2,6 +2,7 @@
 from utilities import *
 import my_class_vtk_02
 import sys
+# https://pythonhosted.org/petsc4py/apiref/petsc4py-module.html
 import petsc4py
 petsc4py.init(sys.argv)
 from petsc4py import PETSc
@@ -71,8 +72,12 @@ class ExactSolution2D(object):
         self.logger = set_class_logger(self, log_file)
 
         # Mangling with the prefix "__".
-        self.__comm = check_mpi_intracomm(comm, self.logger)
-        self.__octree = check_octree(octree, self.__comm, self.logger)
+        # http://stackoverflow.com/questions/1641219/does-python-have-private-variables-in-classes
+        self.__comm = check_mpi_intracomm(comm, 
+                                          self.logger)
+        self.__octree = check_octree(octree, 
+                                     self.__comm, 
+                                     self.logger)
         self.logger.info("Initialized class for comm \"" +
                          str(self.__comm.Get_name())     + 
                          "\" and rank \""                +
@@ -116,7 +121,9 @@ class ExactSolution2D(object):
     # Here three read only properties. class "ExactSolution2D" derives from
     # class "object", so it is a new class type which launch an "AttributeError"
     # exception if someone try to change these properties, not being the setters
-    # "@comm.setter", "@octree.setter", "@sol.setter".
+    # "@comm.setter", "@octree.setter", "@solution.setter".
+    # http://stackoverflow.com/questions/15458613/python-why-is-read-only-property-writable
+    # https://docs.python.org/2/library/functions.html#property
     @property
     def comm(self):
         return self.__comm
@@ -126,7 +133,7 @@ class ExactSolution2D(object):
         return self.__octree
 
     @property
-    def sol(self):
+    def function(self):
         return self.__sol
 # ------------------------------------------------------------------------------
 
