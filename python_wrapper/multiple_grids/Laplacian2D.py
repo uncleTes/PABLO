@@ -245,6 +245,24 @@ class Laplacian2D(object):
                          # http://lists.mcs.anl.gov/pipermail/petsc-users/2012-May/013379.html
                          str(mat_numpy))
 
+    def init_rhs(self, numpy_array):
+        self.__rhs = PETSc.Vec().create(comm=self.__comm)
+        size = (self.__n, 
+                self.__N)
+        self.__rhs.setSizes(size)
+        self.__rhs.setUp()
+        # The method "createWithArray()" put in common the memory used to create
+        # the numpy vector with the PETSc's one.
+        petsc_array = PETSc.Vec().createWithArray(numpy_array,
+                                                  size=(self.__n, self.__N),
+                                                  comm=self.__comm)
+        # Operation "mult()" multiplies "self.__mat" for "petsc_array" and store 
+        # the result in "self.__rhs".
+        self.__mat.mult(petsc_array, 
+                        self.__rhs)
+        # View the vector...
+        #self.__rhs.view()
+
 # ------------------------------------------------------------------------------
 
 # -------------------------------------MAIN-------------------------------------
