@@ -42,8 +42,10 @@ rank_w = comm_w.Get_rank()
 class ExactSolution2D(object):
 
     def __init__(self, 
-                 comm, 
-                 octree):
+                 kwargs = {}):
+        comm = kwargs["communicator"]
+        octree = kwargs["octree"]
+
         self.logger = set_class_logger(self, log_file)
 
         # Mangling with the prefix "__".
@@ -153,9 +155,11 @@ class ExactSolution2D(object):
 # ----------------------------------LAPLACIAN-----------------------------------
 class Laplacian2D(object):
     def __init__(self, 
-                 comm,
-                 octree,
-                 edge):
+                 kwargs = {}):
+        comm = kwargs["communicator"]
+        edge = kwargs["edge"]
+        octree = kwargs["octree"]
+        
         self.logger = set_class_logger(self, log_file)
 
         self.__comm = check_mpi_intracomm(comm, self.logger)
@@ -351,6 +355,10 @@ def main():
     comm_name = comm_names[proc_grid]
     comm_l.Set_name(comm_name)
 
+    comm_dictionary = {}
+    comm_dictionary.update({"edge" : ed})
+    comm_dictionary.update({"communicator" : comm_l})
+
     logger = Logger(__name__, 
                     log_file).logger
     logger.info("Started function for comm \"" + 
@@ -383,9 +391,11 @@ def main():
     for i in xrange(0, n_octs):
         centers[i, :] = pablo.get_center(i)[:2]
    
-    laplacian = Laplacian2D(comm_l, pablo, ed)
+    comm_dictionary.update({"octree" : pablo})
+    #laplacian = Laplacian2D(comm_l, pablo, ed)
+    laplacian = Laplacian2D(comm_dictionary)
     laplacian.init_mat()
-    exact_solution = ExactSolution2D(comm_l, pablo)
+    exact_solution = ExactSolution2D(comm_dictionary)
     # Evaluating exact solution in the centers of the PABLO's cells.
     exact_solution.evaluate(centers[:, 0], centers[:, 1])
     exact_solution.evaluate_second_derivative(centers[:, 0], centers[:, 1])
