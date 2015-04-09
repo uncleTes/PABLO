@@ -406,6 +406,10 @@ cdef class  Py_Class_Para_Tree_D2:
 		def __get__(self):
 			return self.thisptr.serial
 
+	property global_num_octants:
+		def __get__(self):
+			return self.thisptr.global_num_octants
+
 	# ---------------------------Get/set methods----------------------------
 	#def get_x(self, oct):
 	#	return self.trans.map_x(oct.x)
