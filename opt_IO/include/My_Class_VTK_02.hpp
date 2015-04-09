@@ -212,7 +212,6 @@ class My_Class_VTK_02:
 		}
 
 		void printVTK() {
-			this->Add_Data("exact", 1, "Float64", "Cell", "ascii");
 			this->Set_Parallel(grid.nproc, grid.rank);
 			this->Write();
 		}
