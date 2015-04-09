@@ -383,10 +383,16 @@ def main():
     for i in xrange(0, n_octs):
         centers[i, :] = pablo.get_center(i)[:2]
    
-    laplacian = Laplacian2D(comm_l, pablo)
+    laplacian = Laplacian2D(comm_l, pablo, ed)
+    laplacian.init_mat()
     exact_solution = ExactSolution2D(comm_l, pablo)
     # Evaluating exact solution in the centers' of the PABLO's cells.
     exact_solution.evaluate(centers[:, 0], centers[:, 1])
+    exact_solution.evaluate_second_derivative(centers[:, 0], centers[:, 1])
+    #laplacian.init_rhs(exact_solution.second_derivative)
+    laplacian.init_rhs(exact_solution.function)
+    laplacian.init_sol()
+    laplacian.solve()
     
     vtk = my_class_vtk_02.Py_Class_VTK(exact_solution.sol  , # Data
                                        pablo               , # Octree
