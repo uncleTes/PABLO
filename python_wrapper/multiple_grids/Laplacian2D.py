@@ -302,6 +302,33 @@ class Laplacian2D(object):
                          "\" iterations:"                 +
                          str(self.__solution.getArray()))
     
+    @property
+    def comm(self):
+        return self.__comm
+
+    @property
+    def octree(self):
+        return self.__octree
+
+    @property
+    def N(self):
+        return self.__N
+
+    @property
+    def n(self):
+        return self.__n
+
+    @property
+    def mat(self):
+        return self.__mat
+
+    @property
+    def rhs(self):
+        return self.__rhs
+
+    @property
+    def solution(self):
+        return self.__solution
 # ------------------------------------------------------------------------------
 
 # -------------------------------------MAIN-------------------------------------
