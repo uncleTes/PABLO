@@ -22,6 +22,12 @@ cdef extern from "My_Class_VTK_02.hpp":
 
 		void printVTK()
 
+		void Add_Data(string name_, 
+		              int comp_, 
+		              string type_, 
+		              string loc_, 
+		              string cod_)
+
 
 cdef class Py_Class_VTK:
 	cdef My_Class_VTK_02[Class_Para_Tree[D2],
@@ -53,3 +59,16 @@ cdef class Py_Class_VTK:
 
 	def print_vtk(self):
 		self.thisptr.printVTK()
+
+	def add_data(self,
+		     string dataName,
+		     int dataDim,
+		     string dataType,
+		     string pointOrCell,
+		     string fileType):
+		self.thisptr.Add_Data(dataName,
+			              dataDim,
+			              dataType,
+			              pointOrCell,
+			              fileType)
+
