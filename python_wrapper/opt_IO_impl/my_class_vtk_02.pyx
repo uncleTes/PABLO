@@ -46,6 +46,10 @@ cdef class Py_Class_VTK:
 		self.thisptr = new My_Class_VTK_02[Class_Para_Tree[D2],
 						double,
 						# http://stackoverflow.com/questions/22055196/how-to-pass-numpy-array-to-cython-function-correctly
+						# For one dimensional numpy
+						# array see:
+						# https://github.com/cython/cython/wiki/tutorials-NumpyPointerToC
+						# http://trac.cython.org/ticket/838
 						D2](&data[0, 0],
 							(<Py_Class_Para_Tree_D2>octree).thisptr[0],
 							directory,
