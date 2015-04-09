@@ -404,17 +404,22 @@ def main():
     laplacian.init_sol()
     laplacian.solve()
 
-    vtk = my_class_vtk_02.Py_Class_VTK(exact_solution.function, # Data
-                                       pablo                  , # Octree
-                                       "./"                   , # Dir
-                                       "exact_" + comm_name   , # Name
-                                       "ascii"                , # Type
-                                       n_octs                 , # Ncells
-                                       n_nodes                , # Nnodes
-                                       4*n_octs)                # (Nnodes * 
-                                                                #  pow(2,dim))
+    data_to_save = numpy.array([exact_solution.function,
+                                laplacian.solution.getArray()])
+
+    vtk = my_class_vtk_02.Py_Class_VTK(data_to_save            , # Data
+                                       pablo                   , # Octree
+                                       "./"                    , # Dir
+                                       "laplacian_" + comm_name, # Name
+                                       "ascii"                 , # Type
+                                       n_octs                  , # Ncells
+                                       n_nodes                 , # Nnodes
+                                       4*n_octs)                 # (Nnodes * 
+                                                                 #  pow(2,dim))
     
     
+    vtk.add_data("evaluated", 1, "Float64", "Cell", "ascii")
+    vtk.add_data("exact", 1, "Float64", "Cell", "ascii")
     vtk.print_vtk()
         
     logger.info("Ended function for comm \"" + 
