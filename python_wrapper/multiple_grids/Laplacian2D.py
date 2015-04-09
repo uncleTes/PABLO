@@ -118,6 +118,40 @@ class ExactSolution2D(object):
         finally:
             self.__sol = sol
 
+    # Second derivative = 4 * cos((x - 0.5)^2 + (y - 0.5)^2) - 
+    #                     4 * sin((x - 0.5)^2 + (y - 0.5)^2) *
+    #                     ((x - 0.5)^2 + (y - 0.5)^2).
+    def evaluate_second_derivative(self, 
+                                   x,
+                                   y):
+        try:
+            assert len(x) == len(y)
+            s_der = (numpy.multiply(numpy.cos(numpy.power(x - 0.5, 2)       + 
+                                              numpy.power(y - 0.5, 2)),
+                                    4)                                      -
+                     numpy.multiply(numpy.sin(numpy.power(x - 0.5, 2)       + 
+                                              numpy.power(y - 0.5, 2)), 
+                                    numpy.multiply(numpy.power(x - 0.5, 2)  + 
+                                                   numpy.power(y - 0.5, 2),
+                                                   4)))
+            self.logger.info("Evaluated second derivative for comm \"" +
+                             str(self.__comm.Get_name())               +
+                             "\" and rank \""                          + 
+                             str(self.__comm.Get_rank())               +
+                             "\":\n"                                   + 
+                             str(s_der))
+        except AssertionError:
+            self.logger.error("Different size for coordinates' vectors.",
+                              exc_info = True)
+            s_der = numpy.empty([len(x), len(y)])
+            self.logger.info("Set second_derivative as empty matrix for comm \"" +
+                             str(self.__comm.Get_name())                         +
+                             "\" and rank \""                                    + 
+                             str(self.__comm.Get_rank())                         +
+                             "\".") 
+        finally:
+            self.__s_der = s_der
+
     # Here three read only properties. class "ExactSolution2D" derives from
     # class "object", so it is a new class type which launch an "AttributeError"
     # exception if someone try to change these properties, not being the setters
@@ -135,6 +169,12 @@ class ExactSolution2D(object):
     @property
     def function(self):
         return self.__sol
+
+    @property
+    def second_derivative(self):
+        return self.__s_der
+# ------------------------------------------------------------------------------
+
 # ------------------------------------------------------------------------------
 
 # -------------------------------------MAIN-------------------------------------
