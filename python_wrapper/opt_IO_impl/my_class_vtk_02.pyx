@@ -35,7 +35,7 @@ cdef class Py_Class_VTK:
 			D2]* thisptr
 
 	def __cinit__(self, 
-			np.ndarray[double, ndim = 1, mode = "c"] data,
+			np.ndarray[double, ndim = 2, mode = "c"] data,
 			octree,
 			string directory,
 			string file_name,
@@ -45,7 +45,8 @@ cdef class Py_Class_VTK:
                         int n_conn):
 		self.thisptr = new My_Class_VTK_02[Class_Para_Tree[D2],
 						double,
-						D2](&data[0],
+						# http://stackoverflow.com/questions/22055196/how-to-pass-numpy-array-to-cython-function-correctly
+						D2](&data[0, 0],
 							(<Py_Class_Para_Tree_D2>octree).thisptr[0],
 							directory,
 							file_name,
