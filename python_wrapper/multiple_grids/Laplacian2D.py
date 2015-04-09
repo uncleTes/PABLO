@@ -274,6 +274,34 @@ class Laplacian2D(object):
         # View the vector...
         #self.__solution.view()
     
+    def solve(self):
+        # Creating a "KSP" object.
+        ksp = PETSc.KSP()
+        ksp.create(self.__comm)
+        # Using conjugate gradient's method.
+        ksp.setType("cg")
+        ksp.setOperators(self.__mat, 
+                         self.__mat)
+        # Setting tolerances.
+        ksp.setTolerances(rtol = 1.e-50, 
+                          atol = 1.e-50, 
+                          divtol = PETSc.DEFAULT, # Let's PETSc use DEAFULT
+                          max_it = PETSc.DEFAULT) # Let's PETSc use DEAFULT
+        # Solve the system.
+        ksp.solve(self.__rhs, 
+                  self.__solution)
+        # How many iterations are done.
+        it_number = ksp.getIterationNumber()
+
+        self.logger.info("Evaluated solution for comm \"" +
+                         str(self.__comm.Get_name())      +
+                         "\" and rank \""                 + 
+                         str(self.__comm.Get_rank())      +
+                         "\" Using \""                    +
+                         str(it_number)                   +
+                         "\" iterations:"                 +
+                         str(self.__solution.getArray()))
+    
 # ------------------------------------------------------------------------------
 
 # -------------------------------------MAIN-------------------------------------
