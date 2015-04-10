@@ -74,6 +74,13 @@ def rendering_multi_block_data(file_name,
                           GetRenderViews()[data], 
                           "link_" + str(data))
     # Finally, visualize the data(s).
+    #for view in GetViews():
+    #    # This is the body of method "Interact()" of Paraview python. For the
+    #    # moment is not supported for pvpython, it has been inserted into
+    #    # a nightly release and will be pushed in the next stable 4.4.
+    #    # http://www.kitware.com/blog/home/post/837.
+    #    Render(view)
+    #    view.GetInteractor().Start()
     while True:
         RenderAllViews()
 
