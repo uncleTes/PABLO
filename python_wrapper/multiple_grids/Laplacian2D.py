@@ -488,4 +488,6 @@ if __name__ == "__main__":
                            log_file   ,
                            log)
 
-        #rendering_multi_block_data(file_name, "exact")
+        data_to_render = ["exact", "evaluated"]
+
+        rendering_multi_block_data(file_name, data_to_render)
