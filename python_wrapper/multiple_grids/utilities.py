@@ -63,6 +63,8 @@ def rendering_multi_block_data(file_name,
         # Visualize scalar bar.
         dp.SetScalarBarVisibility(render_view, True)
         show = Show(reader, render_view)
+        # http://public.kitware.com/pipermail/paraview-developers/2012-April/001510.html
+        render_view.ViewSize = [800, 600]
 
     # If there are more than one data to render, link the camera to each
     # other to obtain the same scale in eac araview's RenderView.
@@ -71,7 +73,6 @@ def rendering_multi_block_data(file_name,
             AddCameraLink(GetRenderViews()[0], 
                           GetRenderViews()[data], 
                           "link_" + str(data))
-
     # Finally, visualize the data(s).
     while True:
         RenderAllViews()
