@@ -184,12 +184,12 @@ class Laplacian2D(object):
                          "\".")
 
     def init_mat(self):
-        self.__mat = PETSc.Mat().create(comm=self.__comm)
+        self.__mat = PETSc.Mat().create(comm = self.__comm)
         # Local and global matrix's sizes.
-        size = (self.__n, 
-                self.__N)
-        self.__mat.setSizes((size, 
-                             size))
+        sizes = (self.__n, 
+                 self.__N)
+        self.__mat.setSizes((sizes, 
+                             sizes))
         # Setting type of matrix directly. Using method "setFromOptions()"
         # the user can choose what kind of matrix build at runtime.
         #self.__mat.setFromOptions()
@@ -252,15 +252,15 @@ class Laplacian2D(object):
 
     def init_rhs(self, numpy_array):
         self.__rhs = PETSc.Vec().create(comm=self.__comm)
-        size = (self.__n, 
-                self.__N)
-        self.__rhs.setSizes(size)
+        sizes = (self.__n, 
+                 self.__N)
+        self.__rhs.setSizes(sizes)
         self.__rhs.setUp()
         # The method "createWithArray()" put in common the memory used to create
         # the numpy vector with the PETSc's one.
         petsc_array = PETSc.Vec().createWithArray(numpy_array,
-                                                  size=(self.__n, self.__N),
-                                                  comm=self.__comm)
+                                                  size = sizes,
+                                                  comm = self.__comm)
         # Operation "mult()" multiplies "self.__mat" for "petsc_array" and store 
         # the result in "self.__rhs".
         self.__mat.mult(petsc_array, 
@@ -269,10 +269,10 @@ class Laplacian2D(object):
         #self.__rhs.view()
 
     def init_sol(self):
-        self.__solution = PETSc.Vec().create(comm=self.__comm)
-        size = (self.__n, 
-                self.__N)
-        self.__solution.setSizes(size)
+        self.__solution = PETSc.Vec().create(comm = self.__comm)
+        sizes = (self.__n, 
+                 self.__N)
+        self.__solution.setSizes(sizes)
         self.__solution.setUp()
         # Set the solution to all zeros.
         self.__solution.set(0)
@@ -305,6 +305,11 @@ class Laplacian2D(object):
                          "\" Using \""                    +
                          str(it_number)                   +
                          "\" iterations:"                 +
+                         # The "getArray()" method call from "self.__solution"
+                         # is a method which return the numpy array from the
+                         # PETSC's one. The returned NumPy array shares the 
+                         # memory buffer wit the PETSc Vec, so NO copies are 
+                         # involved.
                          str(self.__solution.getArray()))
     
     @property
@@ -343,7 +348,8 @@ def main():
     group_w = comm_w.Get_group()
     procs_w = comm_w.Get_size()
     procs_w_list = range(0, procs_w)
-    procs_l_lists = chunk_list(procs_w_list, n_grids)
+    procs_l_lists = chunk_list(procs_w_list,
+                               n_grids)
     group_l = group_w.Incl(procs_l_lists[proc_grid])
     # Creating differents MPI intracommunicators.
     comm_l = comm_w.Create(group_l)
@@ -390,10 +396,10 @@ def main():
     centers = numpy.empty([n_octs, 2])
     
     for i in xrange(0, n_octs):
+        # Getting fields 0 and 1 of "pablo.get_center(i)".
         centers[i, :] = pablo.get_center(i)[:2]
    
     comm_dictionary.update({"octree" : pablo})
-    #laplacian = Laplacian2D(comm_l, pablo, ed)
     laplacian = Laplacian2D(comm_dictionary)
     laplacian.init_mat()
     exact_solution = ExactSolution2D(comm_dictionary)
@@ -404,7 +410,8 @@ def main():
     laplacian.init_rhs(exact_solution.function)
     laplacian.init_sol()
     laplacian.solve()
-
+    # Creating a numpy.array with two single numpy.array. Note that you 
+    # could have done this also with two simple python's lists.
     data_to_save = numpy.array([exact_solution.function,
                                 laplacian.solution.getArray()])
 
@@ -418,9 +425,18 @@ def main():
                                        4*n_octs)                 # (Nnodes * 
                                                                  #  pow(2,dim))
     
-    
-    vtk.add_data("evaluated", 1, "Float64", "Cell", "ascii")
-    vtk.add_data("exact", 1, "Float64", "Cell", "ascii")
+    # Add data to "vtk" object to be written later.
+    vtk.add_data("evaluated", # Data
+                 1          , # Data dim
+                 "Float64"  , # Data type
+                 "Cell"     , # Cell or Point
+                 "ascii")     # File type
+    vtk.add_data("exact"  , 
+                 1        , 
+                 "Float64", 
+                 "Cell"   , 
+                 "ascii")
+    # Call parallelization and writing onto file.
     vtk.print_vtk()
         
     logger.info("Ended function for comm \"" + 
@@ -435,11 +451,11 @@ if __name__ == "__main__":
     if rank_w == 0:
         log = simple_message_log("STARTED LOG", 
                                  log_file)
-        simple_message_log("NUMBER OF GRIDS: " + 
+        simple_message_log("NUMBER OF GRIDS: " + # Message
                            str(n_grids)        +
                            "."     ,
-                           log_file,
-                           log)
+                           log_file,             # Log file's name
+                           log)                  # logger
         
         simple_message_log("ANCHORS: "  + 
                            str(anchors) +
@@ -490,4 +506,5 @@ if __name__ == "__main__":
 
         data_to_render = ["exact", "evaluated"]
 
-        rendering_multi_block_data(file_name, data_to_render)
+        rendering_multi_block_data(file_name, 
+                                   data_to_render)
