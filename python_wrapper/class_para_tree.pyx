@@ -492,6 +492,7 @@ cdef class  Py_Class_Para_Tree_D2:
 		cdef Class_Octant[D2]* octant
 		
 		if (type(idx) is not int):
+			# ??? Should not be octant = <Class_Octant[D2]*><void*>idx ???
 			oct = <Class_Octant[D2]*><void*>idx
 			self.thisptr.setBalance(<Class_Octant[D2]*>octant, balance)
 		else:
