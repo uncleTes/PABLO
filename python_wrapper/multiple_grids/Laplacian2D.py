@@ -11,8 +11,10 @@ import numpy
 import copy
 import time
 import ConfigParser
+import class_global
 # ------------------------------------------------------------------------------
 
+glob = class_global.Py_Class_Global_D2()
 config_file = "./PABLO.ini"
 log_file = "./Laplacian2D.log"
 # Initialize the parser for the configuration file and read it.
