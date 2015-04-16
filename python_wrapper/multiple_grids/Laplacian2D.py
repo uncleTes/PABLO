@@ -206,40 +206,81 @@ class Laplacian2D(object):
         self.__mat.setType(PETSc.Mat.Type.AIJ)
         # For better performances, instead of "setUp()" use 
         # "setPreallocationCSR()".
-        self.__mat.setUp()
         # The AIJ format is also called the Yale sparse matrix format or
         # compressed row storage (CSR).
         # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatMPIAIJSetPreallocation.html
-        #self.__mat.setPreallocationCSR((5, 1))
+        #self.__mat.setPreallocationCSR((5, 4))
+        self.__mat.setUp()
         # Getting ranges of the matrix owned by the current process.
         o_ranges = self.__mat.getOwnershipRange()
         h = self.__edge / self.__N
         h2 = h * h
         n = numpy.sqrt(self.__N)
+        local_nocts = self.__n
+        nfaces = glob.nfaces
 
-        for o_range in xrange(o_ranges[0], o_ranges[1]):
-            Ii = o_range
-            v = -1.0 / h2
-            i = Ii // n
-            j = Ii - (i * n)
-            if (i > 0):
-                J = Ii - n
-                self.__mat.setValue(Ii, J, v)
-            if (i < n - 1):
-                J = Ii + n
-                self.__mat.setValue(Ii, J, v)
-            if (j > 0):
-                J = Ii - 1
-                self.__mat.setValue(Ii, J, v)
-            if (j < n - 1):
-                J = Ii + 1
-                self.__mat.setValue(Ii, J, v)
+        for octant in xrange(0, local_nocts):
+            g_octant = o_ranges[0] + octant
+            indices, values = ([] for i in range(0, 2))
+            b_indices, b_values = ([] for i in range(0, 2))
+            neighs, ghosts = ([] for i in range(0, 2))
 
-            v = 4.0 / h2
-            self.__mat.setValue(Ii, Ii, v)
+            indices.append(g_octant)
+            values.append(-4.0 / h2)
+            py_oct = self.__octree.get_octant(octant)
 
+            for face in xrange(0, nfaces):
+                if not self.__octree.get_bound(py_oct, face):
+                    (neighs, ghosts) = self.__octree.find_neighbours(octant, 
+                                                                     face, 
+                                                                     1, 
+                                                                     neighs, 
+                                                                     ghosts)
+                    if not ghosts[0]:
+                        indices.append(neighs[0] + o_ranges[0])
+                    else:
+                        indices.append(self.__octree.get_ghost_global_idx(neighs[0]))
+                    values.append(1.0 / h2)
+                else:
+                    center  = self.__octree.get_center(octant)[:2]
+
+                    if face == 0:
+                        center[0] = center[0] - h
+                    if face == 1:
+                        center[0] = center[0] + h
+                    if face == 2:
+                        center[1] = center[1] - h
+                    if face == 3:
+                        center[1] = center[1] + h
+
+                    boundary_value = ExactSolution2D.solution(center[0], center[1])
+
+                    # Instead of using for each cicle the commented function
+                    # "setValue()", we have decided to save two list containing
+                    # the indices and the values to be added at the "self.__rhs"
+                    # and then use the function "setValues()".
+                    b_indices.append(g_octant)
+                    b_values.append((boundary_value * -1) / h2)
+
+                    #self.__rhs.setValue(g_octant, 
+                    #                    (boundary_value * -1) / h2, 
+                    #                    PETSc.InsertMode.ADD_VALUES)
+
+            self.__mat.setValues(g_octant, 
+                                 indices, 
+                                 values)
+            self.__rhs.setValues(b_indices, 
+                                 b_values, 
+                                 PETSc.InsertMode.ADD_VALUES)
+
+        # ATTENTION!! Non using these functions will give you an unassembled
+        # matrix PETSc.
         self.__mat.assemblyBegin()
         self.__mat.assemblyEnd()
+        # ATTENTION!! Non using these functions will give you an unassembled
+        # vector PETSc.
+        self.__rhs.assemblyBegin()
+        self.__rhs.assemblyEnd()
 
         # ATTENTION!! Involves copy.
         mat_numpy = self.__mat.getValuesCSR()
@@ -417,6 +458,7 @@ def main():
     exact_solution.evaluate_solution(centers[:, 0], centers[:, 1])
     exact_solution.evaluate_second_derivative(centers[:, 0], centers[:, 1])
     laplacian.init_rhs(exact_solution.second_derivative)
+    laplacian.init_mat()
     laplacian.init_sol()
     laplacian.solve()
     # Creating a numpy.array with two single numpy.array. Note that you 
