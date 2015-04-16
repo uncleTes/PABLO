@@ -212,6 +212,10 @@ cdef extern from "Class_Para_Tree.hpp":
 
 		void setBalance(Class_Octant[T]* oct, bool balance)
 
+		bool getBound(Class_Octant[T]* octant, uint8_t iface)
+
+		uint64_t getGhostGlobalIdx(uint32_t idx)
+
 		# Get an octant as pointer to the target octant:
 		# param[in] idx ---> local index of target octant.
 		# return ---> pointer to target octant.
@@ -535,6 +539,13 @@ cdef class  Py_Class_Para_Tree_D2:
 
 		py_oct = <uintptr_t>octant
 		return py_oct
+
+	def get_bound(self, uintptr_t octant, uint8_t iface):
+		return self.thisptr.getBound(<Class_Octant[D2]*><void*>octant,
+						iface)
+
+	def get_ghost_global_idx(self, uint32_t idx):
+		return self.thisptr.getGhostGlobalIdx(idx)
 
 	def get_point_owner_logical(self, u32vector& point):
 		cdef Class_Octant[D2]* octant
