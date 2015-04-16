@@ -213,7 +213,7 @@ class Laplacian2D(object):
         self.__mat.setUp()
         # Getting ranges of the matrix owned by the current process.
         o_ranges = self.__mat.getOwnershipRange()
-        h = self.__edge / self.__N
+        h = self.__edge / numpy.sqrt(self.__N)
         h2 = h * h
         n = numpy.sqrt(self.__N)
         local_nocts = self.__n
