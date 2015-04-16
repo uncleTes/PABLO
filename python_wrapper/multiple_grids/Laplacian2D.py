@@ -309,15 +309,10 @@ class Laplacian2D(object):
         self.__rhs.setUp()
         # The method "createWithArray()" put in common the memory used to create
         # the numpy vector with the PETSc's one.
-        petsc_array = PETSc.Vec().createWithArray(numpy_array,
-                                                  size = sizes,
-                                                  comm = self.__comm)
-        # Operation "mult()" multiplies "self.__mat" for "petsc_array" and store 
-        # the result in "self.__rhs".
-        self.__mat.mult(petsc_array, 
-                        self.__rhs)
-        # View the vector...
-        #self.__rhs.view()
+        petsc_temp = PETSc.Vec().createWithArray(numpy_array,
+                                                 size = sizes,
+                                                 comm = self.__comm)
+        petsc_temp.copy(self.__rhs)
 
     def init_sol(self):
         self.__solution = PETSc.Vec().create(comm = self.__comm)
