@@ -333,7 +333,7 @@ class Laplacian2D(object):
         ksp.create(self.__comm)
         # Using conjugate gradient's method.
         ksp.setType("cg")
-        ksp.setOperators(self.__mat, 
+        ksp.setOperators(self.__mat,
                          self.__mat)
         # Setting tolerances.
         ksp.setTolerances(rtol = 1.e-50, 
@@ -449,7 +449,6 @@ def main():
    
     comm_dictionary.update({"octree" : pablo})
     laplacian = Laplacian2D(comm_dictionary)
-    laplacian.init_mat()
     exact_solution = ExactSolution2D(comm_dictionary)
     # Evaluating exact solution in the centers of the PABLO's cells.
     exact_solution.evaluate_solution(centers[:, 0], centers[:, 1])
@@ -458,6 +457,7 @@ def main():
     laplacian.init_mat()
     laplacian.init_sol()
     laplacian.solve()
+    #comm_w.Barrier()
     # Creating a numpy.array with two single numpy.array. Note that you 
     # could have done this also with two simple python's lists.
     data_to_save = numpy.array([exact_solution.function,
@@ -554,5 +554,5 @@ if __name__ == "__main__":
 
         data_to_render = ["exact", "evaluated"]
 
-        rendering_multi_block_data(file_name, 
-                                   data_to_render)
+        #rendering_multi_block_data(file_name, 
+        #                           data_to_render)
