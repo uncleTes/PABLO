@@ -42,6 +42,28 @@ rank_w = comm_w.Get_rank()
 # --------------------------------EXACT SOLUTION--------------------------------
 class ExactSolution2D(object):
 
+    # Exact solution = sin((x - 0.5)^2 + (y - 0.5)^2).
+    @staticmethod
+    def solution(x, 
+                 y):
+        return numpy.sin(numpy.power(x - 0.5, 2) + 
+                         numpy.power(y - 0.5, 2))
+    
+    # Second derivative = 4 * cos((x - 0.5)^2 + (y - 0.5)^2) - 
+    #                     4 * sin((x - 0.5)^2 + (y - 0.5)^2) *
+    #                     ((x - 0.5)^2 + (y - 0.5)^2).
+    @staticmethod
+    def second_derivative_solution(x,
+                                   y):
+        return (numpy.multiply(numpy.cos(numpy.power(x - 0.5, 2)       + 
+                                         numpy.power(y - 0.5, 2)),
+                               4)                                      -
+                numpy.multiply(numpy.sin(numpy.power(x - 0.5, 2)       + 
+                                         numpy.power(y - 0.5, 2)), 
+                               numpy.multiply(numpy.power(x - 0.5, 2)  + 
+                                              numpy.power(y - 0.5, 2),
+                                              4)))
+
     def __init__(self, 
                  kwargs = {}):
         comm = kwargs["communicator"]
@@ -69,14 +91,12 @@ class ExactSolution2D(object):
                          str(self.__comm.Get_rank())     + 
                          "\".")
     
-    # Exact solution = sin((x - 0.5)^2 + (y - 0.5)^2).
-    def evaluate(self, 
-                 x, 
-                 y):
+    def evaluate_solution(self, 
+                          x, 
+                          y):
         try:
             assert len(x) == len(y)
-            sol = numpy.sin(numpy.power(x - 0.5, 2) + 
-                            numpy.power(y - 0.5, 2))
+            sol = ExactSolution2D.solution(x, y)
             self.logger.info("Evaluated exact solution for comm \"" +
                              str(self.__comm.Get_name())            +
                              "\" and rank \""                       + 
@@ -96,22 +116,12 @@ class ExactSolution2D(object):
         finally:
             self.__sol = sol
 
-    # Second derivative = 4 * cos((x - 0.5)^2 + (y - 0.5)^2) - 
-    #                     4 * sin((x - 0.5)^2 + (y - 0.5)^2) *
-    #                     ((x - 0.5)^2 + (y - 0.5)^2).
     def evaluate_second_derivative(self, 
                                    x,
                                    y):
         try:
             assert len(x) == len(y)
-            s_der = (numpy.multiply(numpy.cos(numpy.power(x - 0.5, 2)       + 
-                                              numpy.power(y - 0.5, 2)),
-                                    4)                                      -
-                     numpy.multiply(numpy.sin(numpy.power(x - 0.5, 2)       + 
-                                              numpy.power(y - 0.5, 2)), 
-                                    numpy.multiply(numpy.power(x - 0.5, 2)  + 
-                                                   numpy.power(y - 0.5, 2),
-                                                   4)))
+            s_der = ExactSolution2D.second_derivative_solution(x, y)
             self.logger.info("Evaluated second derivative for comm \"" +
                              str(self.__comm.Get_name())               +
                              "\" and rank \""                          + 
@@ -404,10 +414,9 @@ def main():
     laplacian.init_mat()
     exact_solution = ExactSolution2D(comm_dictionary)
     # Evaluating exact solution in the centers of the PABLO's cells.
-    exact_solution.evaluate(centers[:, 0], centers[:, 1])
+    exact_solution.evaluate_solution(centers[:, 0], centers[:, 1])
     exact_solution.evaluate_second_derivative(centers[:, 0], centers[:, 1])
-    #laplacian.init_rhs(exact_solution.second_derivative)
-    laplacian.init_rhs(exact_solution.function)
+    laplacian.init_rhs(exact_solution.second_derivative)
     laplacian.init_sol()
     laplacian.solve()
     # Creating a numpy.array with two single numpy.array. Note that you 
