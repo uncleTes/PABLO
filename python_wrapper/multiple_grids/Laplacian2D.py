@@ -401,19 +401,10 @@ def main():
     group_l = group_w.Incl(procs_l_lists[proc_grid])
     # Creating differents MPI intracommunicators.
     comm_l = comm_w.Create(group_l)
-    refinement_levels = refinements[proc_grid]
-    # Anchor node for PABLO.
-    an = anchors[proc_grid]
-    # Edge's length for PABLO.
-    ed = edges[proc_grid]
     # Current intracommunicator's name.
     comm_name = comm_names[proc_grid]
     comm_l.Set_name(comm_name)
-
-    comm_dictionary = {}
-    comm_dictionary.update({"edge" : ed})
-    comm_dictionary.update({"communicator" : comm_l})
-
+    
     logger = Logger(__name__, 
                     log_file).logger
     logger.info("Started function for comm \"" + 
@@ -421,6 +412,60 @@ def main():
                 "\" and rank \""               +
                 str(comm_l.Get_rank())         +
                 "\".")
+    # Creating differents MPI intercommunicators.
+    # http://www.linux-mag.com/id/1412/
+    # http://mpi4py.scipy.org/svn/mpi4py/mpi4py/tags/0.4.0/mpi/MPI.py
+    # Choosing how many intercommunicators are present for each grid: for grid
+    # of level "1" only one intercommunicator will be present, that is the one
+    # to communicate with the background grid of level "0".
+    # Instead, for level "0", we need "n_grids - 1" intercommunicators.
+    if procs_w > 1:
+        n_intercomm = (n_grids - 1) if proc_grid == 0 else 1
+        # Dictionary to save intercommunicator objects.
+        intercomm_dictionary = {}
+        for i in xrange(n_intercomm):
+            # If we are onto the grid "0" (that is, the one at level "0", or of
+            # background) we need to iterate from grid "1" to the end. Otherwise,
+            # we need only the grid "0".
+            list_index = i + 1 if proc_grid == 0 else i
+            # The tag is the grid index (which is also the index of the group of
+            # processors).
+            communication_tag = list_index if proc_grid == 0 else proc_grid
+                                                  # Local leader (each 
+                                                  # intracommunicator has "0" as  
+                                                  # leader).
+            intercomm_l = comm_l.Create_intercomm(0                           ,
+                                                  # Peer communicator in common 
+                                                  # between intracommunicators.
+                                                  comm_w                      ,
+                                                  # Remote leader (in the 
+                                                  # MPI_COMM_WORLD it wil be the
+                                                  # first of each group).
+                                                  procs_l_lists[list_index][0],
+                                                  # "Safe" tag for communication 
+                                                  # between the two process 
+                                                  # leaders in the MPI_COMM_WORLD 
+                                                  # context.
+                                                  communication_tag)
+            logger.info("Created intercomm for comm \"" + 
+                        str(comm_l.Get_name())          +
+                        "\" and rank \""                +
+                        str(comm_l.Get_rank())          +
+                        "\" with comm \""               +
+                        "comm_" + str(list_index)       +
+                        "\".")
+
+            intercomm_dictionary.update({list_index : intercomm_l})
+
+    refinement_levels = refinements[proc_grid]
+    # Anchor node for PABLO.
+    an = anchors[proc_grid]
+    # Edge's length for PABLO.
+    ed = edges[proc_grid]
+
+    comm_dictionary = {}
+    comm_dictionary.update({"edge" : ed})
+    comm_dictionary.update({"communicator" : comm_l})
 
     pablo = class_para_tree.Py_Class_Para_Tree_D2(an[0]             ,
                                                   an[1]             ,
