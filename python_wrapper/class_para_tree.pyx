@@ -336,6 +336,7 @@ cdef extern from "Class_Para_Tree.hpp":
 
 		Class_Octant[T]* getPointOwner(u32vector& point)
 		Class_Octant[T]* getPointOwner(dvector& point)
+		uint32_t getPointOwnerIdx(dvector& point)
  
 # Wrapper Python for class Class_Para_Tree<2>
 cdef class  Py_Class_Para_Tree_D2:
@@ -565,6 +566,9 @@ cdef class  Py_Class_Para_Tree_D2:
 		py_oct = <uintptr_t>octant
 
 		return py_oct
+
+	def get_point_owner_idx(self, dvector& point):
+		return self.thisptr.getPointOwnerIdx(<dvector&>point)
 
 	def get_ghost_octant(self, uint32_t idx):
 		cdef Class_Octant[D2]* octant
