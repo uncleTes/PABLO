@@ -195,6 +195,66 @@ class Laplacian2D(object):
                          str(self.__comm.Get_rank())     + 
                          "\".")
 
+    def set_boundary_conditions(self):
+        penalization = self.__penalization
+        p_boundaries = self.__penalization_boundaries
+        level = self.__grid_level
+        local_nocts = self.__n
+        nfaces = glob.nfaces
+        o_ranges = self.__mat.getOwnershipRange()
+        h = self.__edge / numpy.sqrt(self.__N)
+        h2 = h * h
+
+        for octant in xrange(0, local_nocts):
+            g_octant = o_ranges[0] + octant
+            b_indices, b_values = ([] for i in range(0, 2))
+            py_oct = self.__octree.get_octant(octant)
+            is_penalized = False
+
+            for face in xrange(0, nfaces):
+                if self.__octree.get_bound(py_oct, face):
+                    center  = self.__octree.get_center(octant)[:2]
+                    b_indices.append(g_octant)
+                    # Can't use list as dictionary's keys.
+                    # http://stackoverflow.com/questions/7257588/why-cant-i-use-a-list-as-a-dict-key-in-python
+                    # https://wiki.python.org/moin/DictionaryKeys
+                    if not level:
+                        # We make this thing because not using a deepcopy
+                        # to append "center" in "self.boundary_elements",
+                        # it woulb be changed by the following lines of code.
+                        (x_center, y_center) = center
+                        if face == 0:
+                            x_center = center[0] - h
+                        if face == 1:
+                            x_center = center[0] + h
+                        if face == 2:
+                            y_center = center[1] - h
+                        if face == 3:
+                            y_center = center[1] + h
+
+                        boundary_value = ExactSolution2D.solution(x_center, y_center)
+
+                        # Instead of using for each cicle the commented function
+                        # "setValue()", we have decided to save two list containing
+                        # the indices and the values to be added at the "self.__rhs"
+                        # and then use the function "setValues()".
+                        b_values.append((boundary_value * -1) / h2)
+                    else:
+                        key = (level, g_octant, face)
+                        self.temp_vec.update({key : center})
+                        b_values.append((self.__inter_extra_array.getValue(g_octant) * -1) / h2)
+
+                        #self.__rhs.setValue(g_octant, 
+                        #                    (boundary_value * -1) / h2, 
+                        #                    PETSc.InsertMode.ADD_VALUES)
+            self.__rhs.setValues(b_indices, 
+                                 b_values, 
+                                 PETSc.InsertMode.ADD_VALUES)
+        # ATTENTION!! Non using these functions will give you an unassembled
+        # vector PETSc.
+        self.__rhs.assemblyBegin()
+        self.__rhs.assemblyEnd()
+
     def init_mat(self):
         self.__mat = PETSc.Mat().create(comm = self.__comm)
         # Local and global matrix's sizes.
@@ -243,46 +303,15 @@ class Laplacian2D(object):
                     else:
                         indices.append(self.__octree.get_ghost_global_idx(neighs[0]))
                     values.append(1.0 / h2)
-                else:
-                    center  = self.__octree.get_center(octant)[:2]
-
-                    if face == 0:
-                        center[0] = center[0] - h
-                    if face == 1:
-                        center[0] = center[0] + h
-                    if face == 2:
-                        center[1] = center[1] - h
-                    if face == 3:
-                        center[1] = center[1] + h
-
-                    boundary_value = ExactSolution2D.solution(center[0], center[1])
-
-                    # Instead of using for each cicle the commented function
-                    # "setValue()", we have decided to save two list containing
-                    # the indices and the values to be added at the "self.__rhs"
-                    # and then use the function "setValues()".
-                    b_indices.append(g_octant)
-                    b_values.append((boundary_value * -1) / h2)
-
-                    #self.__rhs.setValue(g_octant, 
-                    #                    (boundary_value * -1) / h2, 
-                    #                    PETSc.InsertMode.ADD_VALUES)
 
             self.__mat.setValues(g_octant, 
                                  indices, 
                                  values)
-            self.__rhs.setValues(b_indices, 
-                                 b_values, 
-                                 PETSc.InsertMode.ADD_VALUES)
 
         # ATTENTION!! Non using these functions will give you an unassembled
         # matrix PETSc.
         self.__mat.assemblyBegin()
         self.__mat.assemblyEnd()
-        # ATTENTION!! Non using these functions will give you an unassembled
-        # vector PETSc.
-        self.__rhs.assemblyBegin()
-        self.__rhs.assemblyEnd()
 
         # ATTENTION!! Involves copy.
         mat_numpy = self.__mat.getValuesCSR()
