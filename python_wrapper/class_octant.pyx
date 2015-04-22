@@ -1,4 +1,5 @@
 from libc.stdint cimport uint32_t, uint8_t, int8_t, uintptr_t
+from libcpp.vector cimport vector
 from libcpp cimport bool
 from libc.stdlib cimport malloc, free
 
@@ -56,6 +57,18 @@ cdef class Py_Class_Octant_D2:
 
 	def set_marker(self, int8_t marker):
 		self.thisptr.setMarker(marker)
+               
+	# Logic coordinates
+	def get_center(self):
+		cdef vector[double] center
+		py_center = []
+
+		center = <vector[double]>self.thisptr.getCenter()
+
+		for i in xrange(0, 3):
+			py_center.append(center[i])
+	
+		return py_center
 
 	property x:
 		def __get__(self):
