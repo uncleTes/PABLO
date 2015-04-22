@@ -169,6 +169,7 @@ class ExactSolution2D(object):
 class Laplacian2D(object):
     def __init__(self, 
                  kwargs = {}):
+        self.temp_vec = {}
         comm = kwargs["communicator"]
         edge = kwargs["edge"]
         octree = kwargs["octree"]
@@ -186,6 +187,7 @@ class Laplacian2D(object):
         self.__penalization_boundaries = kwargs.setdefault("penalization_boundaries",
                                                            None)
         self.__grid_level = kwargs.setdefault("grid_level", 0)
+
         self.logger.info("Initialized class for comm \"" +
                          str(self.__comm.Get_name())     + 
                          "\" and rank \""                +
@@ -296,7 +298,6 @@ class Laplacian2D(object):
             indices, values = ([] for i in range(0, 2))
             neighs, ghosts = ([] for i in range(0, 2))
             g_octant = o_ranges[0] + octant
-
             indices.append(g_octant)
             py_oct = self.__octree.get_octant(octant)
 
@@ -318,6 +319,7 @@ class Laplacian2D(object):
 
             for face in xrange(0, nfaces):
                 if not self.__octree.get_bound(py_oct, 
+                                               face):
                     (neighs, ghosts) = self.__octree.find_neighbours(octant, 
                                                                      face, 
                                                                      1, 
@@ -328,6 +330,7 @@ class Laplacian2D(object):
                     else:
                         indices.append(self.__octree.get_ghost_global_idx(neighs[0]))
                     values.append(1.0 / h2)
+                    
 
             self.__mat.setValues(g_octant, 
                                  indices, 
@@ -356,6 +359,21 @@ class Laplacian2D(object):
                          "\":\n"                          +
                          # http://lists.mcs.anl.gov/pipermail/petsc-users/2012-May/013379.html
                          str(mat_numpy))
+
+    def set_inter_extra_array(self, numpy_array = None):
+        self.__inter_extra_array = PETSc.Vec().create(comm = self.__comm)
+        sizes = (self.__n, 
+                 self.__N)
+        self.__inter_extra_array.setSizes(sizes)
+        self.__inter_extra_array.setUp()
+        if numpy_array is None:
+            self.__inter_extra_array.set(0)
+        else:
+            petsc_temp = PETSc.Vec().createWithArray(numpy_array,
+                                                     size = sizes,
+                                                     comm = self.__comm)
+            petsc_temp.copy(self.__inter_extra_array)
+
 
     def init_rhs(self, numpy_array):
         level = self.__grid_level
@@ -418,6 +436,15 @@ class Laplacian2D(object):
                          # memory buffer wit the PETSc Vec, so NO copies are 
                          # involved.
                          str(self.__solution.getArray()))
+
+    def update_values(self):
+        level = self.__grid_level
+        if level:
+            for index, dictionary in enumerate(self.temp_vec):
+                for key, center in dictionary.items():
+                    global_idx = self.__octree.get_point_owner_idx(center)
+                    print(global_idx)
+
     
     @property
     def comm(self):
@@ -446,6 +473,10 @@ class Laplacian2D(object):
     @property
     def solution(self):
         return self.__solution
+
+    #@property
+    #def boundary_elements(self):
+    #    return self.__boundary_elements
 # ------------------------------------------------------------------------------
 
 # -------------------------------------MAIN-------------------------------------
@@ -605,16 +636,18 @@ def main():
                  "ascii")
     # Call parallelization and writing onto file.
     vtk.print_vtk()
-        
+
     data = {}
 
     for key, intercomm in intercomm_dictionary.items():
         laplacian.temp_vec = intercomm.allgather(laplacian.temp_vec)
+
     logger.info("Ended function for comm \"" + 
                 str(comm_l.Get_name())       + 
                 "\" and rank \""             +
                 str(comm_l.Get_rank())       +
                 "\".")
+
     print("Received in  global " + str(comm_w.Get_rank()) + " local " + str(comm_l.Get_rank()) + " " +  str(laplacian.temp_vec))
     laplacian.update_values()
 # ------------------------------------------------------------------------------
