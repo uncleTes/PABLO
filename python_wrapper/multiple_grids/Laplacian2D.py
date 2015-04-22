@@ -172,11 +172,20 @@ class Laplacian2D(object):
         comm = kwargs["communicator"]
         edge = kwargs["edge"]
         octree = kwargs["octree"]
+        penalization = kwargs["penalization"]
+        # [[x_anchor, x_anchor + edge, 
+        #   y_anchor, y_anchor + edge]...]
+        penalization_boundaries = kwargs["penalization_boundaries"]
+        grid_level = kwargs["grid_level"]
         
         self.logger = set_class_logger(self, log_file)
 
         self.__comm = check_mpi_intracomm(comm, self.logger)
         self.__octree = check_octree(octree, self.__comm, self.logger)
+        self.__penalization = kwargs.setdefault("penalization", 0)
+        self.__penalization_boundaries = kwargs.setdefault("penalization_boundaries",
+                                                           None)
+        self.__grid_level = kwargs.setdefault("grid_level", 0)
         self.logger.info("Initialized class for comm \"" +
                          str(self.__comm.Get_name())     + 
                          "\" and rank \""                +
@@ -256,6 +265,9 @@ class Laplacian2D(object):
         self.__rhs.assemblyEnd()
 
     def init_mat(self):
+        penalization = self.__penalization
+        p_boundaries = self.__penalization_boundaries
+        level = self.__grid_level
         self.__mat = PETSc.Mat().create(comm = self.__comm)
         # Local and global matrix's sizes.
         sizes = (self.__n, 
@@ -277,22 +289,35 @@ class Laplacian2D(object):
         o_ranges = self.__mat.getOwnershipRange()
         h = self.__edge / numpy.sqrt(self.__N)
         h2 = h * h
-        n = numpy.sqrt(self.__N)
         local_nocts = self.__n
         nfaces = glob.nfaces
 
         for octant in xrange(0, local_nocts):
-            g_octant = o_ranges[0] + octant
             indices, values = ([] for i in range(0, 2))
-            b_indices, b_values = ([] for i in range(0, 2))
             neighs, ghosts = ([] for i in range(0, 2))
+            g_octant = o_ranges[0] + octant
 
             indices.append(g_octant)
-            values.append(-4.0 / h2)
+            py_oct = self.__octree.get_octant(octant)
+
+            is_penalized = False
+
+            if not level:
+                if penalization is not None:
+                    if p_boundaries is not None:
+                        center  = self.__octree.get_center(octant)[:2]
+                        is_penalized = check_point_into_squares_2D(center,
+                                                                   p_boundaries)
+                        if is_penalized:
+                            key = (level, g_octant)
+                            self.temp_vec.update({key : center})
+            
+            values.append(((-4.0 - penalization) if is_penalized 
+                           else -4.0)/ h2)
             py_oct = self.__octree.get_octant(octant)
 
             for face in xrange(0, nfaces):
-                if not self.__octree.get_bound(py_oct, face):
+                if not self.__octree.get_bound(py_oct, 
                     (neighs, ghosts) = self.__octree.find_neighbours(octant, 
                                                                      face, 
                                                                      1, 
@@ -333,11 +358,16 @@ class Laplacian2D(object):
                          str(mat_numpy))
 
     def init_rhs(self, numpy_array):
+        level = self.__grid_level
         self.__rhs = PETSc.Vec().create(comm=self.__comm)
         sizes = (self.__n, 
                  self.__N)
         self.__rhs.setSizes(sizes)
         self.__rhs.setUp()
+        numpy_rhs = numpy.subtract(numpy_array,
+                                   self.__inter_extra_array.getArray()) if not \
+                    level else \
+                    numpy_array
         # The method "createWithArray()" put in common the memory used to create
         # the numpy vector with the PETSc's one.
         petsc_temp = PETSc.Vec().createWithArray(numpy_array,
@@ -495,6 +525,20 @@ def main():
     comm_dictionary = {}
     comm_dictionary.update({"edge" : ed})
     comm_dictionary.update({"communicator" : comm_l})
+    penalization = 1.0e16 if proc_grid == 0 else 0
+    penalization_boundaries = None
+    if not proc_grid:
+        penalization_boundaries = []
+        for i in xrange(1, n_grids):
+            # For the moment it is in 2D.
+            boundary = [anchors[i][0], anchors[i][0] + edges[i],
+                        anchors[i][1], anchors[i][1] + edges[i]]
+            penalization_boundaries.append(boundary)
+    grid_level = 0 if proc_grid == 0 else 1
+    comm_dictionary.update({"penalization" : penalization})
+    comm_dictionary.update({"penalization_boundaries" : penalization_boundaries})
+    comm_dictionary.update({"grid_level" : grid_level})
+
 
     pablo = class_para_tree.Py_Class_Para_Tree_D2(an[0]             ,
                                                   an[1]             ,
@@ -527,11 +571,12 @@ def main():
     # Evaluating exact solution in the centers of the PABLO's cells.
     exact_solution.evaluate_solution(centers[:, 0], centers[:, 1])
     exact_solution.evaluate_second_derivative(centers[:, 0], centers[:, 1])
+    laplacian.set_inter_extra_array()
     laplacian.init_rhs(exact_solution.second_derivative)
     laplacian.init_mat()
+    laplacian.set_boundary_conditions()
     laplacian.init_sol()
     laplacian.solve()
-    #comm_w.Barrier()
     # Creating a numpy.array with two single numpy.array. Note that you 
     # could have done this also with two simple python's lists.
     data_to_save = numpy.array([exact_solution.function,
@@ -561,11 +606,17 @@ def main():
     # Call parallelization and writing onto file.
     vtk.print_vtk()
         
+    data = {}
+
+    for key, intercomm in intercomm_dictionary.items():
+        laplacian.temp_vec = intercomm.allgather(laplacian.temp_vec)
     logger.info("Ended function for comm \"" + 
                 str(comm_l.Get_name())       + 
                 "\" and rank \""             +
                 str(comm_l.Get_rank())       +
                 "\".")
+    print("Received in  global " + str(comm_w.Get_rank()) + " local " + str(comm_l.Get_rank()) + " " +  str(laplacian.temp_vec))
+    laplacian.update_values()
 # ------------------------------------------------------------------------------
     
 if __name__ == "__main__":
