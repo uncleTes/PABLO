@@ -541,9 +541,13 @@ class Laplacian2D(object):
     def solution(self):
         return self.__solution
 
-    #@property
-    #def boundary_elements(self):
-    #    return self.__boundary_elements
+    @property
+    def temp_data(self):
+        return self.__temp_data
+
+    @property
+    def inter_extra_array(self):
+        return self.__inter_extra_array
 # ------------------------------------------------------------------------------
 
 # -------------------------------------MAIN-------------------------------------
