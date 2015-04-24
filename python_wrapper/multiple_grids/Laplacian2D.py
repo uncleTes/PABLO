@@ -670,11 +670,17 @@ def main():
     exact_solution.evaluate_solution(centers[:, 0], centers[:, 1])
     exact_solution.evaluate_second_derivative(centers[:, 0], centers[:, 1])
     laplacian.set_inter_extra_array()
-    laplacian.init_rhs(exact_solution.second_derivative)
-    laplacian.init_mat()
-    laplacian.set_boundary_conditions()
     laplacian.init_sol()
-    laplacian.solve()
+    for i in xrange(0, 200):
+        laplacian.init_rhs(exact_solution.second_derivative)
+        laplacian.init_mat()
+        laplacian.set_boundary_conditions()
+        laplacian.solve()
+        laplacian.update_values(intercomm_dictionary)
+        if comm_w.Get_rank() == 0:
+            norm_inf = numpy.linalg.norm(numpy.subtract(exact_solution.function,
+                                                        laplacian.solution.getArray()), numpy.inf)
+            print("iteration " + str(i) + " has norm infinite equal to " + str(norm_inf))
     # Creating a numpy.array with two single numpy.array. Note that you 
     # could have done this also with two simple python's lists.
     data_to_save = numpy.array([exact_solution.function,
@@ -706,8 +712,6 @@ def main():
 
     data = {}
 
-    for key, intercomm in intercomm_dictionary.items():
-        laplacian.temp_vec = intercomm.allgather(laplacian.temp_vec)
 
     logger.info("Ended function for comm \"" + 
                 str(comm_l.Get_name())       + 
@@ -715,8 +719,7 @@ def main():
                 str(comm_l.Get_rank())       +
                 "\".")
 
-    print("Received in  global " + str(comm_w.Get_rank()) + " local " + str(comm_l.Get_rank()) + " " +  str(laplacian.temp_vec))
-    laplacian.update_values()
+    #print("Received in  global " + str(comm_w.Get_rank()) + " local " + str(comm_l.Get_rank()) + " " +  str(laplacian.temp_data))
 # ------------------------------------------------------------------------------
     
 if __name__ == "__main__":
