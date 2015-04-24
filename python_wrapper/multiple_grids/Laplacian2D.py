@@ -169,7 +169,7 @@ class ExactSolution2D(object):
 class Laplacian2D(object):
     def __init__(self, 
                  kwargs = {}):
-        self.temp_vec = {}
+        self.__temp_data = {}
         comm = kwargs["communicator"]
         edge = kwargs["edge"]
         octree = kwargs["octree"]
