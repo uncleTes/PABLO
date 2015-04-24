@@ -311,10 +311,10 @@ class Laplacian2D(object):
                                                                    p_boundaries)
                         if is_penalized:
                             key = (level, g_octant)
-                            self.temp_vec.update({key : center})
+                            self.__temp_data.update({key : center})
             
-            values.append(((-4.0 - penalization) if is_penalized 
-                           else -4.0)/ h2)
+            values.append(((-4.0 / h2) - penalization) if is_penalized 
+                           else (-4.0 / h2))
             py_oct = self.__octree.get_octant(octant)
 
             for face in xrange(0, nfaces):
@@ -376,6 +376,7 @@ class Laplacian2D(object):
 
 
     def init_rhs(self, numpy_array):
+        penalization = self.__penalization
         level = self.__grid_level
         self.__rhs = PETSc.Vec().create(comm=self.__comm)
         sizes = (self.__n, 
@@ -383,12 +384,13 @@ class Laplacian2D(object):
         self.__rhs.setSizes(sizes)
         self.__rhs.setUp()
         numpy_rhs = numpy.subtract(numpy_array,
-                                   self.__inter_extra_array.getArray()) if not \
+                                   numpy.multiply(penalization,
+                                   self.__inter_extra_array.getArray())) if not\
                     level else \
                     numpy_array
         # The method "createWithArray()" put in common the memory used to create
         # the numpy vector with the PETSc's one.
-        petsc_temp = PETSc.Vec().createWithArray(numpy_array,
+        petsc_temp = PETSc.Vec().createWithArray(numpy_rhs,
                                                  size = sizes,
                                                  comm = self.__comm)
         petsc_temp.copy(self.__rhs)
@@ -436,6 +438,7 @@ class Laplacian2D(object):
                          # memory buffer wit the PETSc Vec, so NO copies are 
                          # involved.
                          str(self.__solution.getArray()))
+        self.set_inter_extra_array()
 
     def update_values(self, intercomm_dictionary = {}):
         self.__intra_extra_indices = []
