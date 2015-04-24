@@ -437,13 +437,80 @@ class Laplacian2D(object):
                          # involved.
                          str(self.__solution.getArray()))
 
-    def update_values(self):
+    def update_values(self, intercomm_dictionary = {}):
+        self.__intra_extra_indices = []
+        self.__intra_extra_values = []
+        local_nocts = self.__n
+        o_ranges = self.__mat.getOwnershipRange()
         level = self.__grid_level
-        if level:
-            for index, dictionary in enumerate(self.temp_vec):
-                for key, center in dictionary.items():
-                    global_idx = self.__octree.get_point_owner_idx(center)
-                    print(global_idx)
+        max_id_octree_contained = o_ranges[0] + local_nocts
+        ids_octree_contained = range(o_ranges[0], max_id_octree_contained)
+        # Calling "allgather" to obtain data from the corresponding grid,
+        # onto the intercommunicators created, not the intracommunicators.
+        for key, intercomm in intercomm_dictionary.items():
+            self.__temp_data = intercomm.allgather(self.__temp_data)
+
+        # "self.__temp_data" will be a list of same structures of data,
+        # after the "allgather" call; these structures are dictionaries.
+        for index, dictionary in enumerate(self.__temp_data):
+            for key, center in dictionary.items():
+                # We are onto grids of the first level.
+                if level:
+                    global_idx = self.__octree.get_point_owner_idx(center) +\
+                                 o_ranges[0]
+                    #if global_idx in ids_octree_contained:
+                    #    print("center " + str(center) + 
+                    #          " owned by " + str(global_idx) +
+                    #          " has solution " + str(self.__solution.getValue(global_idx)))
+                # We are onto the background grid.
+                else:
+                    (x_center, y_center) = center
+                    if key[2] == 0:
+                        x_center = x_center - key[3]
+                    if key[2] == 1:
+                        x_center = x_center + key[3]
+                    if key[2] == 2:
+                        y_center = y_center - key[3]
+                    if key[2] == 3:
+                        y_center = y_center + key[3]
+
+                    global_idx = self.__octree.get_point_owner_idx((x_center, y_center)) + \
+                                 o_ranges[0]
+                    #if global_idx in ids_octree_contained:
+                    #    print("border " + str((x_center, y_center)) +
+                    #          " owned by " + str(global_idx) + 
+                    #          " has value " + str(self.__solution.getValue(global_idx)))
+                if global_idx in ids_octree_contained:
+                    #self.__intra_extra_indices.append(global_idx)
+                    self.__intra_extra_indices.append(key[1])
+                    self.__intra_extra_values.append(self.__solution.getValue(global_idx))
+
+
+        for key, intercomm in intercomm_dictionary.items():
+            self.__intra_extra_indices = intercomm.allgather(self.__intra_extra_indices)
+            self.__intra_extra_values = intercomm.allgather(self.__intra_extra_values)
+
+        #print (" Process global " + str(comm_w.Get_rank()) + "received indices " + str(self.__intra_extra_indices))
+        #print (" Process global " + str(comm_w.Get_rank()) + "received values " + str(self.__intra_extra_values))
+
+        for index, values in enumerate(self.__intra_extra_indices):
+            #print(self.__intra_extra_indices)
+            #self.__inter_extra_array.setValues(self.__intra_extra_indices[index], 
+            #                                   self.__intra_extra_values[index], 
+            #                                   PETSc.InsertMode.ADD_VALUES)
+            for i, v in enumerate(values):
+                if v in ids_octree_contained:
+                    #print("proc glob " + str(comm_w.Get_rank()) + " contains index " + str(v))
+                    if not level:
+                        self.__inter_extra_array.setValue(v, self.__intra_extra_values[index][i], PETSc.InsertMode.ADD_VALUES)
+                    else:
+                        self.__inter_extra_array.setValue(v, self.__intra_extra_values[index][i], PETSc.InsertMode.INSERT_VALUES)
+
+            self.__inter_extra_array.assemblyBegin()
+            self.__inter_extra_array.assemblyEnd()
+
+        self.__temp_data = {}
+
 
     
     @property
