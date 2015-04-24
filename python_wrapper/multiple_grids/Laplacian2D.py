@@ -225,6 +225,7 @@ class Laplacian2D(object):
             for face in xrange(0, nfaces):
                 if self.__octree.get_bound(py_oct, face):
                     center  = self.__octree.get_center(octant)[:2]
+                    #print(center)
                     b_indices.append(g_octant)
                     # Can't use list as dictionary's keys.
                     # http://stackoverflow.com/questions/7257588/why-cant-i-use-a-list-as-a-dict-key-in-python
@@ -251,8 +252,8 @@ class Laplacian2D(object):
                         # and then use the function "setValues()".
                         b_values.append((boundary_value * -1) / h2)
                     else:
-                        key = (level, g_octant, face)
-                        self.temp_vec.update({key : center})
+                        key = (level, g_octant, face, h)
+                        self.__temp_data.update({key : center})
                         b_values.append((self.__inter_extra_array.getValue(g_octant) * -1) / h2)
 
                         #self.__rhs.setValue(g_octant, 
@@ -299,7 +300,6 @@ class Laplacian2D(object):
             neighs, ghosts = ([] for i in range(0, 2))
             g_octant = o_ranges[0] + octant
             indices.append(g_octant)
-            py_oct = self.__octree.get_octant(octant)
 
             is_penalized = False
 
