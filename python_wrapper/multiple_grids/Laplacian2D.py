@@ -169,23 +169,22 @@ class ExactSolution2D(object):
 class Laplacian2D(object):
     def __init__(self, 
                  kwargs = {}):
+        # The "self.__temp_data" will contains temporary data of exchange
+        # between grids of different levels.
         self.__temp_data = {}
         comm = kwargs["communicator"]
-        edge = kwargs["edge"]
         octree = kwargs["octree"]
-        penalization = kwargs["penalization"]
-        # [[x_anchor, x_anchor + edge, 
-        #   y_anchor, y_anchor + edge]...]
-        penalization_boundaries = kwargs["penalization_boundaries"]
-        grid_level = kwargs["grid_level"]
-        
+        edge = kwargs["edge"]
         self.logger = set_class_logger(self, log_file)
-
         self.__comm = check_mpi_intracomm(comm, self.logger)
         self.__octree = check_octree(octree, self.__comm, self.logger)
+        # If some arguments are not presents, function "setdefault" will set 
+        # them to the default value.
         self.__penalization = kwargs.setdefault("penalization", 0)
-        self.__penalization_boundaries = kwargs.setdefault("penalization_boundaries",
-                                                           None)
+        # [[x_anchor, x_anchor + edge, 
+        #   y_anchor, y_anchor + edge]...]
+        self.__p_boundaries = kwargs.setdefault("penalization_boundaries",
+                                                None)
         self.__grid_level = kwargs.setdefault("grid_level", 0)
 
         self.logger.info("Initialized class for comm \"" +
@@ -208,7 +207,7 @@ class Laplacian2D(object):
 
     def set_boundary_conditions(self):
         penalization = self.__penalization
-        p_boundaries = self.__penalization_boundaries
+        p_boundaries = self.__p_boundaries
         level = self.__grid_level
         local_nocts = self.__n
         nfaces = glob.nfaces
@@ -225,15 +224,12 @@ class Laplacian2D(object):
             for face in xrange(0, nfaces):
                 if self.__octree.get_bound(py_oct, face):
                     center  = self.__octree.get_center(octant)[:2]
-                    #print(center)
                     b_indices.append(g_octant)
-                    # Can't use list as dictionary's keys.
-                    # http://stackoverflow.com/questions/7257588/why-cant-i-use-a-list-as-a-dict-key-in-python
-                    # https://wiki.python.org/moin/DictionaryKeys
+                    # Background's grid.
                     if not level:
                         # We make this thing because not using a deepcopy
                         # to append "center" in "self.boundary_elements",
-                        # it woulb be changed by the following lines of code.
+                        # it would be changed by the following lines of code.
                         (x_center, y_center) = center
                         if face == 0:
                             x_center = center[0] - h
@@ -251,14 +247,20 @@ class Laplacian2D(object):
                         # the indices and the values to be added at the "self.__rhs"
                         # and then use the function "setValues()".
                         b_values.append((boundary_value * -1) / h2)
+                    # Grids not of the background.
                     else:
-                        key = (level, g_octant, face, h)
+                        # Can't use list as dictionary's keys.
+                        # http://stackoverflow.com/questions/7257588/why-cant-i-use-a-list-as-a-dict-key-in-python
+                        # https://wiki.python.org/moin/DictionaryKeys
+                        key = (level   , # Level of the grid (it will be one) 
+                               g_octant, # Global index of the octant
+                               face    , # Boundary face
+                               h)        # Edge's length
+                        # We store the centers of the cells on the boundary.
                         self.__temp_data.update({key : center})
-                        b_values.append((self.__inter_extra_array.getValue(g_octant) * -1) / h2)
+                        boundary_value = self.__inter_extra_array.getValue(g_octant)
+                        b_values.append((boundary_value * -1) / h2)
 
-                        #self.__rhs.setValue(g_octant, 
-                        #                    (boundary_value * -1) / h2, 
-                        #                    PETSc.InsertMode.ADD_VALUES)
             self.__rhs.setValues(b_indices, 
                                  b_values, 
                                  PETSc.InsertMode.ADD_VALUES)
@@ -266,10 +268,18 @@ class Laplacian2D(object):
         # vector PETSc.
         self.__rhs.assemblyBegin()
         self.__rhs.assemblyEnd()
+        self.logger.info("Set boundary conditions for comm \"" +
+                         str(self.__comm.Get_name())           + 
+                         "\" and rank \""                      +
+                         str(self.__comm.Get_rank())           +
+                         "\" of level \""                      +
+                         str(self.__grid_level)                +
+                         "\":\n"                               +
+                         str(self.__rhs.getArray()))
 
     def init_mat(self):
         penalization = self.__penalization
-        p_boundaries = self.__penalization_boundaries
+        p_boundaries = self.__p_boundaries
         level = self.__grid_level
         self.__mat = PETSc.Mat().create(comm = self.__comm)
         # Local and global matrix's sizes.
@@ -304,7 +314,7 @@ class Laplacian2D(object):
             is_penalized = False
 
             if not level:
-                if penalization is not None:
+                if penalization:
                     if p_boundaries is not None:
                         center  = self.__octree.get_center(octant)[:2]
                         is_penalized = check_point_into_squares_2D(center,
@@ -328,7 +338,8 @@ class Laplacian2D(object):
                     if not ghosts[0]:
                         indices.append(neighs[0] + o_ranges[0])
                     else:
-                        indices.append(self.__octree.get_ghost_global_idx(neighs[0]))
+                        index = self.__octree.get_ghost_global_idx(neighs[0])
+                        indices.append(index)
                     values.append(1.0 / h2)
                     
 
@@ -374,6 +385,12 @@ class Laplacian2D(object):
                                                      comm = self.__comm)
             petsc_temp.copy(self.__inter_extra_array)
 
+        self.logger.info("Initialized intra_extra_array for comm \"" +
+                         str(self.__comm.Get_name())                 + 
+                         "\" and rank \""                            +
+                         str(self.__comm.Get_rank())                 +
+                         "\".")
+
 
     def init_rhs(self, numpy_array):
         penalization = self.__penalization
@@ -395,6 +412,15 @@ class Laplacian2D(object):
                                                  comm = self.__comm)
         petsc_temp.copy(self.__rhs)
 
+        self.logger.info("Initialized rhs for comm \"" +
+                         str(self.__comm.Get_name())   + 
+                         "\" and rank \""              +
+                         str(self.__comm.Get_rank())   +
+                         "\" of level \""              +
+                         str(self.__grid_level)        +
+                         "\":\n"                       +
+                         str(self.__rhs.getArray()))
+
     def init_sol(self):
         self.__solution = PETSc.Vec().create(comm = self.__comm)
         sizes = (self.__n, 
@@ -405,6 +431,11 @@ class Laplacian2D(object):
         self.__solution.set(0)
         # View the vector...
         #self.__solution.view()
+        self.logger.info("Initialized solution for comm \"" +
+                         str(self.__comm.Get_name())        + 
+                         "\" and rank \""                   +
+                         str(self.__comm.Get_rank())        +
+                         "\".")
     
     def solve(self):
         # Creating a "KSP" object.
@@ -438,9 +469,12 @@ class Laplacian2D(object):
                          # memory buffer wit the PETSc Vec, so NO copies are 
                          # involved.
                          str(self.__solution.getArray()))
+        # Resetting to zeros "self.__inter_extra_array".
         self.set_inter_extra_array()
 
     def update_values(self, intercomm_dictionary = {}):
+        # "self.__intra_extra_indices" and "self.__intra_extra_values" will be
+        # lists of lists.
         self.__intra_extra_indices = []
         self.__intra_extra_values = []
         local_nocts = self.__n
@@ -450,6 +484,9 @@ class Laplacian2D(object):
         ids_octree_contained = range(o_ranges[0], max_id_octree_contained)
         # Calling "allgather" to obtain data from the corresponding grid,
         # onto the intercommunicators created, not the intracommunicators.
+        # http://www.mcs.anl.gov/research/projects/mpi/mpi-standard/mpi-report-1.1/node114.htm#Node117
+        # http://mpitutorial.com/tutorials/mpi-broadcast-and-collective-communication/
+        # http://www.linux-mag.com/id/1412/
         for key, intercomm in intercomm_dictionary.items():
             self.__temp_data = intercomm.allgather(self.__temp_data)
 
@@ -459,12 +496,8 @@ class Laplacian2D(object):
             for key, center in dictionary.items():
                 # We are onto grids of the first level.
                 if level:
-                    global_idx = self.__octree.get_point_owner_idx(center) +\
-                                 o_ranges[0]
-                    #if global_idx in ids_octree_contained:
-                    #    print("center " + str(center) + 
-                    #          " owned by " + str(global_idx) +
-                    #          " has solution " + str(self.__solution.getValue(global_idx)))
+                    local_idx = self.__octree.get_point_owner_idx(center)
+                    global_idx = local_idx + o_ranges[0]
                 # We are onto the background grid.
                 else:
                     (x_center, y_center) = center
@@ -476,43 +509,64 @@ class Laplacian2D(object):
                         y_center = y_center - key[3]
                     if key[2] == 3:
                         y_center = y_center + key[3]
-
-                    global_idx = self.__octree.get_point_owner_idx((x_center, y_center)) + \
-                                 o_ranges[0]
-                    #if global_idx in ids_octree_contained:
-                    #    print("border " + str((x_center, y_center)) +
-                    #          " owned by " + str(global_idx) + 
-                    #          " has value " + str(self.__solution.getValue(global_idx)))
+                    # The function "get_point_owner_idx" wants only one argument
+                    # so we are passing it a tuple.
+                    local_idx = self.__octree.get_point_owner_idx((x_center, 
+                                                                   y_center))
+                    global_idx = local_idx + o_ranges[0]
                 if global_idx in ids_octree_contained:
                     #self.__intra_extra_indices.append(global_idx)
                     self.__intra_extra_indices.append(key[1])
-                    self.__intra_extra_values.append(self.__solution.getValue(global_idx))
-
-
+                    solution_value = self.__solution.getValue(global_idx)
+                    self.__intra_extra_values.append(solution_value)
+        # Updating data for each process into "self.__intra_extra_indices" and
+        # "self.__intra_extra_values", calling "allgather" to obtain data from
+        # the corresponding grid onto the intercommunicators created, not the
+        # intracommunicators.
         for key, intercomm in intercomm_dictionary.items():
             self.__intra_extra_indices = intercomm.allgather(self.__intra_extra_indices)
             self.__intra_extra_values = intercomm.allgather(self.__intra_extra_values)
 
-        #print (" Process global " + str(comm_w.Get_rank()) + "received indices " + str(self.__intra_extra_indices))
-        #print (" Process global " + str(comm_w.Get_rank()) + "received values " + str(self.__intra_extra_values))
-
         for index, values in enumerate(self.__intra_extra_indices):
-            #print(self.__intra_extra_indices)
-            #self.__inter_extra_array.setValues(self.__intra_extra_indices[index], 
-            #                                   self.__intra_extra_values[index], 
-            #                                   PETSc.InsertMode.ADD_VALUES)
-            for i, v in enumerate(values):
-                if v in ids_octree_contained:
-                    #print("proc glob " + str(comm_w.Get_rank()) + " contains index " + str(v))
+            for position, value in enumerate(values):
+                # Check if the global index belong to the process.
+                if value in ids_octree_contained:
+                    intra_extra_value = self.__intra_extra_values[index][position]
+                    insert_mode = PETSc.InsertMode.INSERT_VALUES
                     if not level:
-                        self.__inter_extra_array.setValue(v, self.__intra_extra_values[index][i], PETSc.InsertMode.ADD_VALUES)
+                        # Here "insert_mode" does not affect nothing.
+                        self.__inter_extra_array.setValue(value, 
+                                                          intra_extra_value,
+                                                          insert_mode)
                     else:
-                        self.__inter_extra_array.setValue(v, self.__intra_extra_values[index][i], PETSc.InsertMode.INSERT_VALUES)
+                        # One could think that here the parameter "insert_mode"
+                        # should be "ADD_VALUES" instead of "INSERT_VALUES",
+                        # because being on the grids of the first level,
+                        # boundary values are obatined summing values from the
+                        # background grid from each face of the octant of the 
+                        # upper grids. BUT, we used the "ADD_VALUES" insert mode
+                        # in the function "set_boundary_conditions", so here
+                        # we have to insert the values that later will be added
+                        # (if here we would have used "ADD_VALUES", at the end
+                        # we will have summed 4 times values for the octants at
+                        # the corner, instead of 2).
+                        self.__inter_extra_array.setValue(value,
+                                                          intra_extra_value,
+                                                          insert_mode)
 
             self.__inter_extra_array.assemblyBegin()
             self.__inter_extra_array.assemblyEnd()
-
+        # Resetting "self.__temp_data" to a dictionary because previously it 
+        # became a list of dictionaries.
         self.__temp_data = {}
+        self.logger.info("Updated  inter_extra_array for comm \"" +
+                         str(self.__comm.Get_name())              + 
+                         "\" and rank \""                         +
+                         str(self.__comm.Get_rank())              +
+                         "\" of level \""                         +
+                         str(self.__grid_level)                   +
+                         "\":\n"                                  +
+                         str(self.__inter_extra_array.getArray()))
 
 
     
@@ -579,7 +633,7 @@ def main():
     # Creating differents MPI intercommunicators.
     # http://www.linux-mag.com/id/1412/
     # http://mpi4py.scipy.org/svn/mpi4py/mpi4py/tags/0.4.0/mpi/MPI.py
-    # Choosing how many intercommunicators are present for each grid: for grid
+    # Choosing how many intercommunicators are present for each grid: for grids
     # of level "1" only one intercommunicator will be present, that is the one
     # to communicate with the background grid of level "0".
     # Instead, for level "0", we need "n_grids - 1" intercommunicators.
@@ -632,6 +686,7 @@ def main():
     comm_dictionary.update({"communicator" : comm_l})
     penalization = 1.0e16 if proc_grid == 0 else 0
     penalization_boundaries = None
+    # Here we enter if "proc_grid" is 0, so if we are in the background grid.
     if not proc_grid:
         penalization_boundaries = []
         for i in xrange(1, n_grids):
@@ -639,11 +694,12 @@ def main():
             boundary = [anchors[i][0], anchors[i][0] + edges[i],
                         anchors[i][1], anchors[i][1] + edges[i]]
             penalization_boundaries.append(boundary)
+    # If we are on the background grid, "grid_level" will be 0; instead, for
+    # other grids, "grid_level" will be 1 (we will have only two levels).
     grid_level = 0 if proc_grid == 0 else 1
     comm_dictionary.update({"penalization" : penalization})
     comm_dictionary.update({"penalization_boundaries" : penalization_boundaries})
     comm_dictionary.update({"grid_level" : grid_level})
-
 
     pablo = class_para_tree.Py_Class_Para_Tree_D2(an[0]             ,
                                                   an[1]             ,
@@ -674,20 +730,28 @@ def main():
     laplacian = Laplacian2D(comm_dictionary)
     exact_solution = ExactSolution2D(comm_dictionary)
     # Evaluating exact solution in the centers of the PABLO's cells.
-    exact_solution.evaluate_solution(centers[:, 0], centers[:, 1])
-    exact_solution.evaluate_second_derivative(centers[:, 0], centers[:, 1])
+    exact_solution.evaluate_solution(centers[:, 0], 
+                                     centers[:, 1])
+    exact_solution.evaluate_second_derivative(centers[:, 0], 
+                                              centers[:, 1])
     laplacian.set_inter_extra_array()
     laplacian.init_sol()
-    for i in xrange(0, 200):
+    for i in xrange(0, 350):
         laplacian.init_rhs(exact_solution.second_derivative)
         laplacian.init_mat()
         laplacian.set_boundary_conditions()
         laplacian.solve()
         laplacian.update_values(intercomm_dictionary)
         if comm_w.Get_rank() == 0:
-            norm_inf = numpy.linalg.norm(numpy.subtract(exact_solution.function,
-                                                        laplacian.solution.getArray()), numpy.inf)
-            print("iteration " + str(i) + " has norm infinite equal to " + str(norm_inf))
+            numpy_difference = numpy.subtract(exact_solution.function,
+                                              laplacian.solution.getArray())
+            norm_inf = numpy.linalg.norm(numpy_difference,
+                                         # Type of norm we want to evaluate.
+                                         numpy.inf)
+            print("iteration "                   + 
+                  str(i)                         + 
+                  " has norm infinite equal to " + 
+                  str(norm_inf))
     # Creating a numpy.array with two single numpy.array. Note that you 
     # could have done this also with two simple python's lists.
     data_to_save = numpy.array([exact_solution.function,
@@ -725,8 +789,6 @@ def main():
                 "\" and rank \""             +
                 str(comm_l.Get_rank())       +
                 "\".")
-
-    #print("Received in  global " + str(comm_w.Get_rank()) + " local " + str(comm_l.Get_rank()) + " " +  str(laplacian.temp_data))
 # ------------------------------------------------------------------------------
     
 if __name__ == "__main__":
