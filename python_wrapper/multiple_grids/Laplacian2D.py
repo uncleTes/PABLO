@@ -312,7 +312,6 @@ class Laplacian2D(object):
             indices.append(g_octant)
 
             is_penalized = False
-
             # Background grid.
             if not grid:
                 if penalization:
@@ -517,7 +516,6 @@ class Laplacian2D(object):
                                                                    y_center))
                     global_idx = local_idx + o_ranges[0]
                 if global_idx in ids_octree_contained:
-                    #self.__intra_extra_indices.append(global_idx)
                     self.__intra_extra_indices.append(key[1])
                     solution_value = self.__solution.getValue(global_idx)
                     self.__intra_extra_values.append(solution_value)
