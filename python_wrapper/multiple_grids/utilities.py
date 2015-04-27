@@ -125,9 +125,7 @@ def write_vtk_multi_block_data_set(kwargs = {}):
     vtkTree = ET.ElementTree(VTKFile)
     vtkTree.write(file_name)
 
-def simple_message_log(message, 
-                       log_file, 
-                       logger = None):
+def check_null_logger(logger, log_file):
     if logger is None:
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
@@ -135,6 +133,7 @@ def simple_message_log(message,
         formatter = logging.Formatter("%(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+    return logger
 
     logger.info(message.center(140, "-"))
     return logger
