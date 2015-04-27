@@ -185,7 +185,7 @@ class Laplacian2D(object):
         #   y_anchor, y_anchor + edge]...]
         self.__p_boundaries = kwargs.setdefault("penalization_boundaries",
                                                 None)
-        self.__grid_level = kwargs.setdefault("grid_level", 0)
+        self.__proc_grid = kwargs["proc_grid"]
 
         self.logger.info("Initialized class for comm \"" +
                          str(self.__comm.Get_name())     + 
@@ -208,7 +208,7 @@ class Laplacian2D(object):
     def set_boundary_conditions(self):
         penalization = self.__penalization
         p_boundaries = self.__p_boundaries
-        level = self.__grid_level
+        grid = self.__proc_grid
         local_nocts = self.__n
         nfaces = glob.nfaces
         o_ranges = self.__mat.getOwnershipRange()
@@ -226,7 +226,7 @@ class Laplacian2D(object):
                     center  = self.__octree.get_center(octant)[:2]
                     b_indices.append(g_octant)
                     # Background's grid.
-                    if not level:
+                    if not grid:
                         # We make this thing because not using a deepcopy
                         # to append "center" in "self.boundary_elements",
                         # it would be changed by the following lines of code.
@@ -252,7 +252,7 @@ class Laplacian2D(object):
                         # Can't use list as dictionary's keys.
                         # http://stackoverflow.com/questions/7257588/why-cant-i-use-a-list-as-a-dict-key-in-python
                         # https://wiki.python.org/moin/DictionaryKeys
-                        key = (level   , # Level of the grid (it will be one) 
+                        key = (grid    , # Grid (0 is for the background grid)
                                g_octant, # Global index of the octant
                                face    , # Boundary face
                                h)        # Edge's length
@@ -272,15 +272,15 @@ class Laplacian2D(object):
                          str(self.__comm.Get_name())           + 
                          "\" and rank \""                      +
                          str(self.__comm.Get_rank())           +
-                         "\" of level \""                      +
-                         str(self.__grid_level)                +
+                         "\" of grid \""                       +
+                         str(self.__proc_grid)                 +
                          "\":\n"                               +
                          str(self.__rhs.getArray()))
 
     def init_mat(self):
         penalization = self.__penalization
         p_boundaries = self.__p_boundaries
-        level = self.__grid_level
+        grid = self.__proc_grid
         self.__mat = PETSc.Mat().create(comm = self.__comm)
         # Local and global matrix's sizes.
         sizes = (self.__n, 
@@ -313,20 +313,17 @@ class Laplacian2D(object):
 
             is_penalized = False
 
-            if not level:
+            # Background grid.
+            if not grid:
                 if penalization:
                     center  = self.__octree.get_center(octant)[:2]
                     is_penalized = check_point_into_squares_2D(center      ,
                                                                p_boundaries,
                                                                self.logger,
                                                                log_file)
-                    if p_boundaries is not None:
-                        center  = self.__octree.get_center(octant)[:2]
-                        is_penalized = check_point_into_squares_2D(center,
-                                                                   p_boundaries)
-                        if is_penalized:
-                            key = (level, g_octant)
-                            self.__temp_data.update({key : center})
+                    if is_penalized:
+                        key = (grid, g_octant)
+                        self.__temp_data.update({key : center})
             
             values.append(((-4.0 / h2) - penalization) if is_penalized 
                            else (-4.0 / h2))
@@ -399,7 +396,7 @@ class Laplacian2D(object):
 
     def init_rhs(self, numpy_array):
         penalization = self.__penalization
-        level = self.__grid_level
+        grid = self.__proc_grid
         self.__rhs = PETSc.Vec().create(comm=self.__comm)
         sizes = (self.__n, 
                  self.__N)
@@ -407,8 +404,8 @@ class Laplacian2D(object):
         self.__rhs.setUp()
         numpy_rhs = numpy.subtract(numpy_array,
                                    numpy.multiply(penalization,
-                                   self.__inter_extra_array.getArray())) if not\
-                    level else \
+                                   self.__inter_extra_array.getArray())) if not \
+                    grid else \
                     numpy_array
         # The method "createWithArray()" put in common the memory used to create
         # the numpy vector with the PETSc's one.
@@ -421,8 +418,8 @@ class Laplacian2D(object):
                          str(self.__comm.Get_name())   + 
                          "\" and rank \""              +
                          str(self.__comm.Get_rank())   +
-                         "\" of level \""              +
-                         str(self.__grid_level)        +
+                         "\" of grid \""               +
+                         str(self.__proc_grid)         +
                          "\":\n"                       +
                          str(self.__rhs.getArray()))
 
@@ -484,7 +481,7 @@ class Laplacian2D(object):
         self.__intra_extra_values = []
         local_nocts = self.__n
         o_ranges = self.__mat.getOwnershipRange()
-        level = self.__grid_level
+        grid = self.__proc_grid
         max_id_octree_contained = o_ranges[0] + local_nocts
         ids_octree_contained = range(o_ranges[0], max_id_octree_contained)
         # Calling "allgather" to obtain data from the corresponding grid,
@@ -500,7 +497,7 @@ class Laplacian2D(object):
         for index, dictionary in enumerate(self.__temp_data):
             for key, center in dictionary.items():
                 # We are onto grids of the first level.
-                if level:
+                if grid:
                     local_idx = self.__octree.get_point_owner_idx(center)
                     global_idx = local_idx + o_ranges[0]
                 # We are onto the background grid.
@@ -538,7 +535,8 @@ class Laplacian2D(object):
                 if value in ids_octree_contained:
                     intra_extra_value = self.__intra_extra_values[index][position]
                     insert_mode = PETSc.InsertMode.INSERT_VALUES
-                    if not level:
+                    # Background grid
+                    if not grid:
                         # Here "insert_mode" does not affect nothing.
                         self.__inter_extra_array.setValue(value, 
                                                           intra_extra_value,
@@ -568,8 +566,8 @@ class Laplacian2D(object):
                          str(self.__comm.Get_name())              + 
                          "\" and rank \""                         +
                          str(self.__comm.Get_rank())              +
-                         "\" of level \""                         +
-                         str(self.__grid_level)                   +
+                         "\" of grid \""                          +
+                         str(self.__proc_grid)                    +
                          "\":\n"                                  +
                          str(self.__inter_extra_array.getArray()))
 
@@ -699,12 +697,9 @@ def main():
             boundary = [anchors[i][0], anchors[i][0] + edges[i],
                         anchors[i][1], anchors[i][1] + edges[i]]
             penalization_boundaries.append(boundary)
-    # If we are on the background grid, "grid_level" will be 0; instead, for
-    # other grids, "grid_level" will be 1 (we will have only two levels).
-    grid_level = 0 if proc_grid == 0 else 1
     comm_dictionary.update({"penalization" : penalization})
     comm_dictionary.update({"penalization_boundaries" : penalization_boundaries})
-    comm_dictionary.update({"grid_level" : grid_level})
+    comm_dictionary.update({"proc_grid" : proc_grid})
 
     pablo = class_para_tree.Py_Class_Para_Tree_D2(an[0]             ,
                                                   an[1]             ,
