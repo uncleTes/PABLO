@@ -315,6 +315,11 @@ class Laplacian2D(object):
 
             if not level:
                 if penalization:
+                    center  = self.__octree.get_center(octant)[:2]
+                    is_penalized = check_point_into_squares_2D(center      ,
+                                                               p_boundaries,
+                                                               self.logger,
+                                                               log_file)
                     if p_boundaries is not None:
                         center  = self.__octree.get_center(octant)[:2]
                         is_penalized = check_point_into_squares_2D(center,
