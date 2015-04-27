@@ -135,6 +135,10 @@ def check_null_logger(logger, log_file):
         logger.addHandler(handler)
     return logger
 
+def simple_message_log(message, 
+                       log_file, 
+                       logger = None):
+    logger = check_null_logger(logger, log_file)
     logger.info(message.center(140, "-"))
     return logger
 
@@ -194,15 +198,22 @@ def check_octree(octree,
 def check_point_into_squares_2D(point_to_check, 
                                 # [[x_anchor, x_anchor + edge, 
                                 #   y_anchor, y_anchor + edge]...]
-                                squares = []):
-    for i, square in enumerate(squares):
-        if ((point_to_check[0] < square[0]) or
-            (point_to_check[0] > square[1]) or
-            (point_to_check[1] < square[2]) or
-            (point_to_check[1] > square[3])):
-            return False
+                                squares,
+                                logger,
+                                log_file):
+    if isinstance(squares, list):
+        for i, square in enumerate(squares):
+            if ((point_to_check[0] < square[0]) or
+                (point_to_check[0] > square[1]) or
+                (point_to_check[1] < square[2]) or
+                (point_to_check[1] > square[3])):
+                return False
 
-    return True
+        return True
+    else:
+        logger = check_null_logger(logger, log_file)
+        logger.error("Second parameter must be a list")
+        return False
 
 
 # ------------------------------------------------------------------------------
