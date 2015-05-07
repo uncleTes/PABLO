@@ -171,7 +171,12 @@ class Laplacian2D(object):
                  kwargs = {}):
         # The "self.__temp_data" will contains temporary data of exchange
         # between grids of different levels.
-        self.__temp_data = {}
+        self.__temp_data_local = {}
+        self.__temp_data_global = []
+        self.__intra_extra_indices_global = []
+        self.__intra_extra_indices_local = []
+        self.__intra_extra_values_global = []
+        self.__intra_extra_values_local = []
         comm = kwargs["communicator"]
         octree = kwargs["octree"]
         edge = kwargs["edge"]
@@ -219,10 +224,11 @@ class Laplacian2D(object):
             g_octant = o_ranges[0] + octant
             b_indices, b_values = ([] for i in range(0, 2))
             py_oct = self.__octree.get_octant(octant)
-            is_penalized = False
+            is_boundary = False
 
             for face in xrange(0, nfaces):
                 if self.__octree.get_bound(py_oct, face):
+                    is_boundary = True
                     center  = self.__octree.get_center(octant)[:2]
                     b_indices.append(g_octant)
                     # Background's grid.
@@ -232,13 +238,13 @@ class Laplacian2D(object):
                         # it would be changed by the following lines of code.
                         (x_center, y_center) = center
                         if face == 0:
-                            x_center = center[0] - h
+                            x_center = x_center - h
                         if face == 1:
-                            x_center = center[0] + h
+                            x_center = x_center + h
                         if face == 2:
-                            y_center = center[1] - h
+                            y_center = y_center - h
                         if face == 3:
-                            y_center = center[1] + h
+                            y_center = y_center + h
 
                         boundary_value = ExactSolution2D.solution(x_center, y_center)
 
@@ -257,13 +263,20 @@ class Laplacian2D(object):
                                face    , # Boundary face
                                h)        # Edge's length
                         # We store the centers of the cells on the boundary.
-                        self.__temp_data.update({key : center})
-                        boundary_value = self.__inter_extra_array.getValue(g_octant)
-                        b_values.append((boundary_value * -1) / h2)
-
-            self.__rhs.setValues(b_indices, 
-                                 b_values, 
-                                 PETSc.InsertMode.ADD_VALUES)
+                        self.__temp_data_local.update({key : center})
+                        #boundary_value = self.__inter_extra_array.getValue(g_octant)
+                        #b_values.append((boundary_value * -1) / h2)
+            if is_boundary:
+                if not grid:
+                    self.__rhs.setValues(b_indices, 
+                                         b_values, 
+                                         PETSc.InsertMode.ADD_VALUES)
+                else:
+                    boundary_value = self.__inter_extra_array.getValue(g_octant)
+                    b_value = ((boundary_value * -1) / h2)
+                    self.__rhs.setValue(g_octant,
+                                        b_value,
+                                        PETSc.InsertMode.ADD_VALUES)
         # ATTENTION!! Non using these functions will give you an unassembled
         # vector PETSc.
         self.__rhs.assemblyBegin()
@@ -322,7 +335,7 @@ class Laplacian2D(object):
                                                                log_file)
                     if is_penalized:
                         key = (grid, g_octant)
-                        self.__temp_data.update({key : center})
+                        self.__temp_data_local.update({key : center})
             
             values.append(((-4.0 / h2) - penalization) if is_penalized 
                            else (-4.0 / h2))
@@ -476,8 +489,6 @@ class Laplacian2D(object):
     def update_values(self, intercomm_dictionary = {}):
         # "self.__intra_extra_indices" and "self.__intra_extra_values" will be
         # lists of lists.
-        self.__intra_extra_indices = []
-        self.__intra_extra_values = []
         local_nocts = self.__n
         o_ranges = self.__mat.getOwnershipRange()
         grid = self.__proc_grid
@@ -489,11 +500,11 @@ class Laplacian2D(object):
         # http://mpitutorial.com/tutorials/mpi-broadcast-and-collective-communication/
         # http://www.linux-mag.com/id/1412/
         for key, intercomm in intercomm_dictionary.items():
-            self.__temp_data = intercomm.allgather(self.__temp_data)
+            self.__temp_data_global.extend(intercomm.allgather(self.__temp_data_local))
 
         # "self.__temp_data" will be a list of same structures of data,
         # after the "allgather" call; these structures are dictionaries.
-        for index, dictionary in enumerate(self.__temp_data):
+        for index, dictionary in enumerate(self.__temp_data_global):
             for key, center in dictionary.items():
                 # We are onto grids of the first level.
                 if grid:
@@ -516,50 +527,61 @@ class Laplacian2D(object):
                                                                    y_center))
                     global_idx = local_idx + o_ranges[0]
                 if global_idx in ids_octree_contained:
-                    self.__intra_extra_indices.append(key[1])
+                    self.__intra_extra_indices_local.append((key[0], key[1]))
                     solution_value = self.__solution.getValue(global_idx)
-                    self.__intra_extra_values.append(solution_value)
+                    self.__intra_extra_values_local.append(solution_value)
         # Updating data for each process into "self.__intra_extra_indices" and
         # "self.__intra_extra_values", calling "allgather" to obtain data from
         # the corresponding grid onto the intercommunicators created, not the
         # intracommunicators.
         for key, intercomm in intercomm_dictionary.items():
-            self.__intra_extra_indices = intercomm.allgather(self.__intra_extra_indices)
-            self.__intra_extra_values = intercomm.allgather(self.__intra_extra_values)
+            self.__intra_extra_indices_global.extend(intercomm.allgather(self.__intra_extra_indices_local))
+            self.__intra_extra_values_global.extend(intercomm.allgather(self.__intra_extra_values_local))
 
-        for index, values in enumerate(self.__intra_extra_indices):
+        #print("comm_" + str(comm_w.Get_rank()) + " indices " + str(self.__intra_extra_indices_global))
+        #print("comm_" + str(comm_w.Get_rank()) + " values " + str(self.__intra_extra_values_global))
+
+        for index, values in enumerate(self.__intra_extra_indices_global):
             for position, value in enumerate(values):
                 # Check if the global index belong to the process.
-                if value in ids_octree_contained:
-                    intra_extra_value = self.__intra_extra_values[index][position]
-                    insert_mode = PETSc.InsertMode.INSERT_VALUES
-                    # Background grid
-                    if not grid:
-                        # Here "insert_mode" does not affect nothing.
-                        self.__inter_extra_array.setValue(value, 
-                                                          intra_extra_value,
-                                                          insert_mode)
-                    else:
-                        # One could think that here the parameter "insert_mode"
-                        # should be "ADD_VALUES" instead of "INSERT_VALUES",
-                        # because being on the grids of the first level,
-                        # boundary values are obatined summing values from the
-                        # background grid from each face of the octant of the 
-                        # upper grids. BUT, we used the "ADD_VALUES" insert mode
-                        # in the function "set_boundary_conditions", so here
-                        # we have to insert the values that later will be added
-                        # (if here we would have used "ADD_VALUES", at the end
-                        # we will have summed 4 times values for the octants at
-                        # the corner, instead of 2).
-                        self.__inter_extra_array.setValue(value,
-                                                          intra_extra_value,
-                                                          insert_mode)
+                if value[1] in ids_octree_contained:
+                    if value[0] == self.__proc_grid:
+                        intra_extra_value = self.__intra_extra_values_global[index][position]
+                        #insert_mode = PETSc.InsertMode.INSERT_VALUES
+                        # Background grid
+                        if not grid:
+                            insert_mode = PETSc.InsertMode.INSERT_VALUES
+                            # Here "insert_mode" does not affect nothing.
+                            self.__inter_extra_array.setValue(value[1], 
+                                                              intra_extra_value,
+                                                              insert_mode)
+                        else:
+                            insert_mode = PETSc.InsertMode.ADD_VALUES
+                            # One could think that here the parameter "insert_mode"
+                            # should be "ADD_VALUES" instead of "INSERT_VALUES",
+                            # because being on the grids of the first level,
+                            # boundary values are obatined summing values from the
+                            # background grid from each face of the octant of the 
+                            # upper grids. BUT, we used the "ADD_VALUES" insert mode
+                            # in the function "set_boundary_conditions", so here
+                            # we have to insert the values that later will be added
+                            # (if here we would have used "ADD_VALUES", at the end
+                            # we will have summed 4 times values for the octants at
+                            # the corner, instead of 2).
+                            self.__inter_extra_array.setValue(value[1],
+                                                              intra_extra_value,
+                                                              insert_mode)
 
-            self.__inter_extra_array.assemblyBegin()
-            self.__inter_extra_array.assemblyEnd()
+        self.__inter_extra_array.assemblyBegin()
+        self.__inter_extra_array.assemblyEnd()
         # Resetting "self.__temp_data" to a dictionary because previously it 
         # became a list of dictionaries.
-        self.__temp_data = {}
+        self.__temp_data_local = {}
+        self.__temp_data_global = []
+        self.__intra_extra_values_local = []
+        self.__intra_extra_indices_local = []
+        self.__intra_extra_values_global = []
+        self.__intra_extra_indices_global = []
         self.logger.info("Updated  inter_extra_array for comm \"" +
                          str(self.__comm.Get_name())              + 
                          "\" and rank \""                         +
@@ -600,8 +622,12 @@ class Laplacian2D(object):
         return self.__solution
 
     @property
-    def temp_data(self):
-        return self.__temp_data
+    def temp_data_local(self):
+        return self.__temp_data_local
+
+    @property
+    def temp_data_global(self):
+        return self.__temp_data_global
 
     @property
     def inter_extra_array(self):
