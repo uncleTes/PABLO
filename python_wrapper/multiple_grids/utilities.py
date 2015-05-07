@@ -203,13 +203,13 @@ def check_point_into_squares_2D(point_to_check,
                                 log_file):
     if isinstance(squares, list):
         for i, square in enumerate(squares):
-            if ((point_to_check[0] < square[0]) or
-                (point_to_check[0] > square[1]) or
-                (point_to_check[1] < square[2]) or
-                (point_to_check[1] > square[3])):
-                return False
+            if ((point_to_check[0] >= square[0]) and
+                (point_to_check[0] <= square[1]) and
+                (point_to_check[1] >= square[2]) and
+                (point_to_check[1] <= square[3])):
+                return True
 
-        return True
+        return False
     else:
         logger = check_null_logger(logger, log_file)
         logger.error("Second parameter must be a list")
