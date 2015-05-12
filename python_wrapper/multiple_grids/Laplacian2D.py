@@ -239,9 +239,20 @@ class Laplacian2D(object):
                     b_indices.append(g_octant)
                     # Background's grid.
                     if not grid:
-                        boundary_value = self.evaluate_boundary_condition(center,
-                                                                          face,
-                                                                          h)
+                        # We make this thing because not using a deepcopy
+                        # to append "center" in "self.boundary_elements",
+                        # it would be changed by the following lines of code.
+                        (x_center, y_center) = center
+                        if face == 0:
+                            x_center = x_center - h
+                        if face == 1:
+                            x_center = x_center + h
+                        if face == 2:
+                            y_center = y_center - h
+                        if face == 3:
+                            y_center = y_center + h
+
+                        boundary_value = self.evaluate_boundary_condition((x_center, y_center))
 
                         # Instead of using for each cicle the commented function
                         # "setValue()", we have decided to save two list containing
@@ -547,9 +558,7 @@ class Laplacian2D(object):
                     if not_boundary:
                         solution_value = self.__solution.getValue(global_idx)
                     else:
-                        solution_value = self.evaluate_boundary_condition(center,
-                                                                          key[2],
-                                                                          key[3])
+                        solution_value = self.evaluate_boundary_condition((x_center, y_center))
                     self.__intra_extra_values_local.append(solution_value)
         # Updating data for each process into "self.__intra_extra_indices_global"
         # and "self.__intra_extra_values_global", calling "allgather" to obtain 
