@@ -195,21 +195,44 @@ def check_octree(octree,
 
     return l_octree
 
+def check_point_into_square_2D(point_to_check,
+                               # [x_anchor, x_anchor + edge, 
+                               #  y_anchor, y_anchor + edge]
+                               square,
+                               logger,
+                               log_file):
+    if isinstance(square, list):
+        if ((point_to_check[0] >= square[0]) and
+            (point_to_check[0] <= square[1]) and
+            (point_to_check[1] >= square[2]) and
+            (point_to_check[1] <= square[3])):
+            return True
+
+        return False
+    else:
+        logger = check_null_logger(logger, log_file)
+        logger.error("Second parameter must be a list")
+        return False
+
+
+
 def check_point_into_squares_2D(point_to_check, 
                                 # [[x_anchor, x_anchor + edge, 
                                 #   y_anchor, y_anchor + edge]...]
                                 squares,
                                 logger,
                                 log_file):
+    square_check = False
     if isinstance(squares, list):
         for i, square in enumerate(squares):
-            if ((point_to_check[0] >= square[0]) and
-                (point_to_check[0] <= square[1]) and
-                (point_to_check[1] >= square[2]) and
-                (point_to_check[1] <= square[3])):
-                return True
+            square_check = check_point_into_square_2D(point_to_check,
+                                                      square,
+                                                      logger,
+                                                      log_file)
+            if square_check:
+                return square_check
 
-        return False
+        return square_check
     else:
         logger = check_null_logger(logger, log_file)
         logger.error("Second parameter must be a list")
