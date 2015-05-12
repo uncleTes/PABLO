@@ -206,24 +206,10 @@ class Laplacian2D(object):
                          "\".")
 
     def evaluate_boundary_condition(self,
-                                    cell_center,
-                                    face,
-                                    h):
-        # We make this thing because not using a deepcopy
-        # to append "center" in "self.boundary_elements",
-        # it would be changed by the following lines of code.
-        (x_center, y_center) = cell_center
-        if face == 0:
-            x_center = x_center - h
-        if face == 1:
-            x_center = x_center + h
-        if face == 2:
-            y_center = y_center - h
-        if face == 3:
-            y_center = y_center + h
+                                    cell_point):
 
-        boundary_value = ExactSolution2D.solution(x_center, 
-                                                  y_center)
+        boundary_value = ExactSolution2D.solution(cell_point[0], 
+                                                  cell_point[1])
 
         return boundary_value
 
