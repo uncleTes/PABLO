@@ -215,6 +215,50 @@ def check_point_into_squares_2D(point_to_check,
         logger.error("Second parameter must be a list")
         return False
 
+# http://en.wikipedia.org/wiki/Bilinear_interpolation
+#   Q12------------Q22
+#      |          |
+#      |          |
+#      |          |
+#      |          |
+#      |      x,y |
+#   Q11-----------Q12
+#   Q11 = point_values at x1 and y1
+#   Q12 = point_values at x1 and y2
+#   Q21 = point_values at x2 and y1
+#   Q22 = point_values at x2 and y2
+#   f(Q11) = value of the function in x1 and y1
+#   f(Q12) = value of the function in x1 and y2
+#   f(Q21) = value of the function in x2 and y1
+#   f(Q22) = value of the function in x2 and y2
+#   x,y = unknown_point ("unknown point" stand for a point for which it is 
+#         not known the value of the function f)
+def bilinear_interpolation(unknown_point, 
+                           points_coordinates,
+                           points_values):
+    x = points_coordinates[0]
+    y = points_coordinates[1]
+
+    addend_01 = (points_values[0]          * 
+                 (x[1] - unknown_point[0]) * 
+                 (y[1] - unknown_point[1]))
+
+    addend_02 = (points_values[2]          *
+                 (unknown_point[0] - x[0]) *
+                 (y[1] - unknown_point[1]))
+
+    addend_03 = (points_values[1]          *
+                 (x[1] - unknown_point[0]) *
+                 (unknown_point[1] - y[0]))
+
+    addend_04 = (points_values[3]          *
+                 (unknown_point[0] - x[0]) *
+                 (unknown_point[1] - y[0]))
+
+    multiplier = 1 / ((x[1] - x[0]) * (y[1] - y[0]))
+
+    return multiplier * (addend_01 + addend_02 + addend_03 + addend_04)
+
 
 # ------------------------------------------------------------------------------
 
