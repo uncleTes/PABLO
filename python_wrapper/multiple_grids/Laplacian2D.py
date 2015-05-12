@@ -304,6 +304,16 @@ class Laplacian2D(object):
                          "\":\n"                               +
                          str(self.__rhs.getArray()))
 
+    def get_global_ghosts(self):
+        local_ghost_nocts = self.octree.get_num_ghosts()
+        self.__global_ghosts = []
+
+        for g_octant in xrange(0, local_ghost_nocts):
+            self.__global_ghosts.append(self.__octree.get_ghost_global_idx(g_octant))
+
+        print(self.__global_ghosts)
+        print("\n\n")
+
     def init_mat(self):
         penalization = self.__penalization
         p_boundaries = self.__p_boundaries
