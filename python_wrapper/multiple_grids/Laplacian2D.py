@@ -410,17 +410,19 @@ class Laplacian2D(object):
                          str(mat_numpy))
 
     def set_inter_extra_array(self, numpy_array = None):
-        self.__inter_extra_array = PETSc.Vec().create(comm = self.__comm)
         sizes = (self.__n, 
                  self.__N)
-        self.__inter_extra_array.setSizes(sizes)
+        self.__inter_extra_array = PETSc.Vec().createGhost(self.__global_ghosts,
+                                                           size = sizes,
+                                                           comm = self.__comm)
         self.__inter_extra_array.setUp()
         if numpy_array is None:
             self.__inter_extra_array.set(0)
         else:
-            petsc_temp = PETSc.Vec().createWithArray(numpy_array,
-                                                     size = sizes,
-                                                     comm = self.__comm)
+            petsc_temp = PETSc.Vec().createGhostWithArray(self.__global_ghosts,
+                                                          numpy_array,
+                                                          size = sizes,
+                                                          comm = self.__comm)
             petsc_temp.copy(self.__inter_extra_array)
 
         self.logger.info("Initialized intra_extra_array for comm \"" +
@@ -433,10 +435,11 @@ class Laplacian2D(object):
     def init_rhs(self, numpy_array):
         penalization = self.__penalization
         grid = self.__proc_grid
-        self.__rhs = PETSc.Vec().create(comm=self.__comm)
         sizes = (self.__n, 
                  self.__N)
-        self.__rhs.setSizes(sizes)
+        self.__rhs = PETSc.Vec().createGhost(self.__global_ghosts,
+                                             size = sizes,
+                                             comm = self.__comm)
         self.__rhs.setUp()
         numpy_rhs = numpy.subtract(numpy_array,
                                    numpy.multiply(penalization,
@@ -460,10 +463,11 @@ class Laplacian2D(object):
                          str(self.__rhs.getArray()))
 
     def init_sol(self):
-        self.__solution = PETSc.Vec().create(comm = self.__comm)
         sizes = (self.__n, 
                  self.__N)
-        self.__solution.setSizes(sizes)
+        self.__solution = PETSc.Vec().createGhost(self.__global_ghosts,
+                                                  size = sizes,
+                                                  comm = self.__comm)
         self.__solution.setUp()
         # Set the solution to all zeros.
         self.__solution.set(0)
@@ -801,6 +805,7 @@ def main():
                                      centers[:, 1])
     exact_solution.evaluate_second_derivative(centers[:, 0], 
                                               centers[:, 1])
+    laplacian.get_global_ghosts()
     laplacian.set_inter_extra_array()
     laplacian.init_sol()
     for i in xrange(0, 500):
