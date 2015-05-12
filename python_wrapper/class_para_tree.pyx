@@ -271,6 +271,8 @@ cdef extern from "Class_Para_Tree.hpp":
 		# return ---> is octant new?
 		bool getIsNewC(uint32_t idx)
 
+		bool getIsGhost(uint32_t idx)
+
 		
 		bool getBalance(Class_Octant[T]* oct)
 		bool getBalance(uint32_t idx)
@@ -635,6 +637,9 @@ cdef class  Py_Class_Para_Tree_D2:
 
 	def get_is_new_c(self, uint32_t idx):
 		return self.thisptr.getIsNewC(idx)
+
+	def get_is_ghost(self, uint32_t idx):
+		return self.thisptr.getIsGhost(idx)
 	
 	def for_test_bubbles(self, int iteration, int nrefperiter, int nocts, int nnodes, int nb, BB):
 		cdef int c_nocts = nocts
