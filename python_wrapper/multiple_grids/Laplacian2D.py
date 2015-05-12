@@ -183,6 +183,8 @@ class Laplacian2D(object):
         #   y_anchor, y_anchor + edge]...]
         self.__p_boundaries = kwargs.setdefault("penalization_boundaries",
                                                 None)
+        self.__b_boundaries = kwargs.setdefault("background_boundaries",
+                                                None)
         self.__proc_grid = kwargs["proc_grid"]
 
         self.logger.info("Initialized class for comm \"" +
@@ -251,21 +253,9 @@ class Laplacian2D(object):
                     b_indices.append(g_octant)
                     # Background's grid.
                     if not grid:
-                        # We make this thing because not using a deepcopy
-                        # to append "center" in "self.boundary_elements",
-                        # it would be changed by the following lines of code.
-                        (x_center, y_center) = center
-                        if face == 0:
-                            x_center = x_center - h
-                        if face == 1:
-                            x_center = x_center + h
-                        if face == 2:
-                            y_center = y_center - h
-                        if face == 3:
-                            y_center = y_center + h
-
-                        boundary_value = ExactSolution2D.solution(x_center, 
-                                                                  y_center)
+                        boundary_value = self.evaluate_boundary_condition(center,
+                                                                          face,
+                                                                          h)
 
                         # Instead of using for each cicle the commented function
                         # "setValue()", we have decided to save two list containing
@@ -533,13 +523,14 @@ class Laplacian2D(object):
         # after the "allgather" call; these structures are dictionaries.
         for index, dictionary in enumerate(self.__temp_data_global):
             for key, center in dictionary.items():
+                (x_center, y_center) = center
+                not_boundary = True
                 # We are onto grids of the first level.
                 if grid:
                     local_idx = self.__octree.get_point_owner_idx(center)
                     global_idx = local_idx + o_ranges[0]
                 # We are onto the background grid.
                 else:
-                    (x_center, y_center) = center
                     if key[2] == 0:
                         x_center = x_center - key[3]
                     if key[2] == 1:
@@ -548,16 +539,31 @@ class Laplacian2D(object):
                         y_center = y_center - key[3]
                     if key[2] == 3:
                         y_center = y_center + key[3]
-                    # The function "get_point_owner_idx" wants only one argument
-                    # so we are passing it a tuple.
-                    local_idx = self.__octree.get_point_owner_idx((x_center, 
-                                                                   y_center))
-                    global_idx = local_idx + o_ranges[0]
+
+                    not_boundary = check_point_into_square_2D((x_center, y_center),
+                                                              self.__b_boundaries,
+                                                              self.logger,
+                                                              log_file)
+                    if not_boundary:
+                        # The function "get_point_owner_idx" wants only one argume:u
+                        # so we are passing it a tuple.
+                        local_idx = self.__octree.get_point_owner_idx((x_center, 
+                                                                       y_center))
+                        global_idx = local_idx + o_ranges[0]
+                    else:
+                        local_idx = self.__octree.get_point_owner_idx(center)
+                        global_idx = local_idx + o_ranges[0]
+
                 if global_idx in ids_octree_contained:
                     # Appending a tuple containing the grid number and
                     # the corresponding octant index.
                     self.__intra_extra_indices_local.append((key[0], key[1]))
-                    solution_value = self.__solution.getValue(global_idx)
+                    if not_boundary:
+                        solution_value = self.__solution.getValue(global_idx)
+                    else:
+                        solution_value = self.evaluate_boundary_condition(center,
+                                                                          key[2],
+                                                                          key[3])
                     self.__intra_extra_values_local.append(solution_value)
         # Updating data for each process into "self.__intra_extra_indices_global"
         # and "self.__intra_extra_values_global", calling "allgather" to obtain 
@@ -741,6 +747,9 @@ def main():
     comm_dictionary.update({"edge" : ed})
     comm_dictionary.update({"communicator" : comm_l})
     penalization = 1.0e16 if proc_grid == 0 else 0
+    background_boundaries = [anchors[0][0], anchors[0][0] + edges[0],
+                             anchors[0][1], anchors[0][1] + edges[0]]
+    comm_dictionary.update({"background_boundaries" : background_boundaries})
     penalization_boundaries = None
     # Here we enter if "proc_grid" is 0, so if we are in the background grid.
     if not proc_grid:
