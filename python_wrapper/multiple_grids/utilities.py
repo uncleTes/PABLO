@@ -216,18 +216,18 @@ def check_point_into_square_2D(point_to_check,
                                square,
                                logger,
                                log_file):
+    check = False
+
     if isinstance(square, list):
         if ((point_to_check[0] >= square[0]) and
             (point_to_check[0] <= square[1]) and
             (point_to_check[1] >= square[2]) and
             (point_to_check[1] <= square[3])):
-            return True
-
-        return False
+            check = True
     else:
         logger = check_null_logger(logger, log_file)
-        logger.error("Second parameter must be a list")
-        return False
+        logger.error("Second parameter must be a list.")
+    return check
 
 
 
