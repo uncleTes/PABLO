@@ -21,3 +21,7 @@ python_wrapper/opt_IO_impl/build/*
 python_wrapper/opt_IO_impl/*.so
 python_wrapper/opt_IO_impl/*.cpp
 python_wrapper/opt_IO_impl/*.h
+python_wrapper/multiple_grids/*.dat
+python_wrapper/multiple_grids/*.txt
+python_wrapper/multiple_grids/*.gp
+python_wrapper/multiple_grids/*.swp
