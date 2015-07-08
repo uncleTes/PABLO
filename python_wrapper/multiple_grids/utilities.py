@@ -250,8 +250,11 @@ def check_point_into_squares_2D(point_to_check,
         return square_check
     else:
         logger = check_null_logger(logger, log_file)
-        logger.error("Second parameter must be a list")
+        logger.error("Second parameter must be a list of lists.")
         return False
+
+    # Can't eliminate rows 250 and 254 with the following one??
+    # return square_check
 
 # http://en.wikipedia.org/wiki/Bilinear_interpolation
 #   Q12------------Q22
