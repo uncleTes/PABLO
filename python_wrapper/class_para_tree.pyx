@@ -216,6 +216,8 @@ cdef extern from "Class_Para_Tree.hpp":
 
 		uint64_t getGhostGlobalIdx(uint32_t idx)
 
+		uint64_t getGlobalIdx(uint32_t idx)
+
 		# Get an octant as pointer to the target octant:
 		# param[in] idx ---> local index of target octant.
 		# return ---> pointer to target octant.
@@ -550,6 +552,9 @@ cdef class  Py_Class_Para_Tree_D2:
 
 	def get_ghost_global_idx(self, uint32_t idx):
 		return self.thisptr.getGhostGlobalIdx(idx)
+
+	def get_global_idx(self, uint32_t idx):
+		return self.thisptr.getGlobalIdx(idx)
 
 	def get_point_owner_logical(self, u32vector& point):
 		cdef Class_Octant[D2]* octant
