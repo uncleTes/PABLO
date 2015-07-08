@@ -263,7 +263,7 @@ def check_point_into_squares_2D(point_to_check,
 #      |          |
 #      |          |
 #      |      x,y |
-#   Q11-----------Q12
+#   Q11-----------Q21
 #   Q11 = point_values at x1 and y1
 #   Q12 = point_values at x1 and y2
 #   Q21 = point_values at x2 and y1
@@ -277,26 +277,24 @@ def check_point_into_squares_2D(point_to_check,
 def bilinear_interpolation(unknown_point, 
                            points_coordinates,
                            points_values):
-    x = points_coordinates[0]
-    y = points_coordinates[1]
-
     addend_01 = (points_values[0]          * 
-                 (x[1] - unknown_point[0]) * 
-                 (y[1] - unknown_point[1]))
+                 (points_coordinates[3][0] - unknown_point[0]) * 
+                 (points_coordinates[3][1] - unknown_point[1]))
 
-    addend_02 = (points_values[2]          *
-                 (unknown_point[0] - x[0]) *
-                 (y[1] - unknown_point[1]))
+    addend_02 = (points_values[1]          *
+                 (unknown_point[0] - points_coordinates[0][0]) *
+                 (points_coordinates[3][1] - unknown_point[1]))
 
-    addend_03 = (points_values[1]          *
-                 (x[1] - unknown_point[0]) *
-                 (unknown_point[1] - y[0]))
+    addend_03 = (points_values[2]          *
+                 (points_coordinates[3][0] - unknown_point[0]) *
+                 (unknown_point[1] - points_coordinates[0][1]))
 
     addend_04 = (points_values[3]          *
-                 (unknown_point[0] - x[0]) *
-                 (unknown_point[1] - y[0]))
+                 (unknown_point[0] - points_coordinates[0][0]) *
+                 (unknown_point[1] - points_coordinates[0][1]))
 
-    multiplier = 1 / ((x[1] - x[0]) * (y[1] - y[0]))
+    multiplier = 1 / ((points_coordinates[3][0] - points_coordinates[0][0]) * 
+                      (points_coordinates[3][1] - points_coordinates[0][1]))
 
     return multiplier * (addend_01 + addend_02 + addend_03 + addend_04)
 
