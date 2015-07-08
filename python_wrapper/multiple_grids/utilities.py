@@ -135,6 +135,21 @@ def check_null_logger(logger, log_file):
         logger.addHandler(handler)
     return logger
 
+def check_point_position_from_another(point_to_check,
+                                      other_point):
+    if ((point_to_check[0] - other_point[0] <= 0) and
+        (point_to_check[1] - other_point[1] >= 0)):
+        return "nordovest"
+    if ((point_to_check[0] - other_point[0] > 0) and
+        (point_to_check[1] - other_point[1] >= 0)):
+        return "nordest"
+    if ((point_to_check[0] - other_point[0] <= 0) and
+        (point_to_check[1] - other_point[1] < 0)):
+        return "sudovest"
+    if ((point_to_check[0] - other_point[0] > 0) and
+        (point_to_check[1] - other_point[1] < 0)):
+        return "sudest"
+
 def simple_message_log(message, 
                        log_file, 
                        logger = None):
