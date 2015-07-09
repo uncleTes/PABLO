@@ -61,26 +61,40 @@ rank_w = comm_w.Get_rank()
 class ExactSolution2D(object):
 
     # Exact solution = sin((x - 0.5)^2 + (y - 0.5)^2).
+    #@staticmethod
+    #def solution(x, 
+    #             y):
+    #    return numpy.sin(numpy.power(x - 0.5, 2) + 
+    #                     numpy.power(y - 0.5, 2))
+
+    # Exact solution = (x - 0.5)^2 + (y - 0.5)^2 - (0.125)^2
     @staticmethod
-    def solution(x, 
+    def solution(x,
                  y):
-        return numpy.sin(numpy.power(x - 0.5, 2) + 
-                         numpy.power(y - 0.5, 2))
-    
+        return (numpy.power(x - 0.5, 2) + 
+                numpy.power(y - 0.5, 2) -
+                numpy.power(0.125, 2))
+
     # Second derivative = 4 * cos((x - 0.5)^2 + (y - 0.5)^2) - 
     #                     4 * sin((x - 0.5)^2 + (y - 0.5)^2) *
     #                     ((x - 0.5)^2 + (y - 0.5)^2).
+    #@staticmethod
+    #def second_derivative_solution(x,
+    #                               y):
+    #    return (numpy.multiply(numpy.cos(numpy.power(x - 0.5, 2)       + 
+    #                                     numpy.power(y - 0.5, 2)),
+    #                           4)                                      -
+    #            numpy.multiply(numpy.sin(numpy.power(x - 0.5, 2)       + 
+    #                                     numpy.power(y - 0.5, 2)), 
+    #                           numpy.multiply(numpy.power(x - 0.5, 2)  + 
+    #                                          numpy.power(y - 0.5, 2),
+    #                                          4)))
+    
+    # Second derivative = 4.0
     @staticmethod
-    def second_derivative_solution(x,
+    def second_derivative_solution(x, 
                                    y):
-        return (numpy.multiply(numpy.cos(numpy.power(x - 0.5, 2)       + 
-                                         numpy.power(y - 0.5, 2)),
-                               4)                                      -
-                numpy.multiply(numpy.sin(numpy.power(x - 0.5, 2)       + 
-                                         numpy.power(y - 0.5, 2)), 
-                               numpy.multiply(numpy.power(x - 0.5, 2)  + 
-                                              numpy.power(y - 0.5, 2),
-                                              4)))
+        return 4.0 + (x * 0.0) + (y * 0.0)
 
     def __init__(self, 
                  kwargs = {}):
