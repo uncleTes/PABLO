@@ -1156,12 +1156,12 @@ def main():
     n_nodes = pablo.get_num_nodes()
     
     centers = numpy.empty([n_octs, 2])
-    
+
     for i in xrange(0, n_octs):
         g_idx = pablo.get_global_idx(i)
         # Getting fields 0 and 1 of "pablo.get_center(i)".
         centers[i, :] = pablo.get_center(i)[:2]
-   
+
     comm_dictionary.update({"octree" : pablo})
     laplacian = Laplacian2D(comm_dictionary)
     exact_solution = ExactSolution2D(comm_dictionary)
@@ -1184,8 +1184,19 @@ def main():
 
         if comm_w.Get_rank() == 1:
             h= laplacian.h
+
+            heaviside = numpy.zeros(len(centers))
+            for index, value in enumerate(centers):
+                if check_point_into_circle(value,
+                                           (0.5, 0.5),
+                                           0.125):
+                    heaviside[index] = 0
+                else:
+                    heaviside[index] = 1
+
             numpy_difference = numpy.subtract(exact_solution.function,
-                                              laplacian.solution.getArray())
+                                              laplacian.solution.getArray()) * \
+                               heaviside
             norm_inf = numpy.linalg.norm(numpy_difference,
                                          # Type of norm we want to evaluate.
                                          numpy.inf)
