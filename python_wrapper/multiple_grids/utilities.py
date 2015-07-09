@@ -6,6 +6,7 @@ import logging
 import os
 from mpi4py import MPI
 import class_para_tree
+import math
 # ------------------------------------------------------------------------------
 
 # ----------------------------------FUNCTIONS-----------------------------------
@@ -209,6 +210,20 @@ def check_octree(octree,
                      "Setted \"self.octree\" to None.")
 
     return l_octree
+
+def check_point_into_circle(point_to_check,
+                            circle_center,
+                            circle_radius):
+    check = False
+
+    distance2 = math.pow((point_to_check[0] - circle_center[0]) , 2) + \
+                math.pow((point_to_check[1] - circle_center[1]) , 2)
+    distance = math.sqrt(distance2)
+
+    if distance <= circle_radius:
+        check = True
+
+    return check
 
 def check_point_into_square_2D(point_to_check,
                                # [x_anchor, x_anchor + edge, 
