@@ -465,7 +465,7 @@ class Laplacian2D(object):
                 # contains the effective boundary to check for penalization
                 # using an overlapping region for the grids, used into DD.
                 penalization_boundaries = []
-                overlap = 0 * h
+                overlap = 16 * h
                 # Reducing penalization boundaries using the overlap.
                 for boundary in f_boundaries:
                     penalization_boundary = []
@@ -1197,6 +1197,7 @@ def main():
             numpy_difference = numpy.subtract(exact_solution.function,
                                               laplacian.solution.getArray()) * \
                                heaviside
+
             norm_inf = numpy.linalg.norm(numpy_difference,
                                          # Type of norm we want to evaluate.
                                          numpy.inf)
