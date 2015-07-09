@@ -491,7 +491,15 @@ class Laplacian2D(object):
                                                log_file): #and not is_penalized:
                     sol_value = self.__solution.getValue(g_octant)
                     self.__residual_local.update({tuple(center) : sol_value})
-            
+            # Here we are, upper grids.
+            else:
+                circle_center = (0.5, 0.5)
+                circle_radius = 0.125
+                center = self.__octree.get_center(octant)[:2]
+                is_penalized = check_point_into_circle(center       ,
+                                                       circle_center,
+                                                       circle_radius)
+
             values.append(((-4.0 / h2) - penalization) if is_penalized 
                            else (-4.0 / h2))
             py_oct = self.__octree.get_octant(octant)
