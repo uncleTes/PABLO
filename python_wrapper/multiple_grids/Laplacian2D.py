@@ -598,7 +598,21 @@ class Laplacian2D(object):
                     # the corresponding octant index.
                     self.__intra_extra_indices_local.append((key[0], key[1]))
                     if not_boundary:
-                        solution_value = self.__solution.getValue(global_idx)
+                        # INTERPOLATION HERE !!!
+                        center_cell_container = self.__octree.get_center(local_idx)[:2]
+                        location = check_point_position_from_another((x_center,
+                                                                      y_center),
+                                                                     center_cell_container)
+                        neigh_centers, neigh_values = ([] for i in range(0, 2))
+                        #print("process " + str(comm_w.Get_rank()) + " has location = " + str(location) + " for local cell " + str(local_idx))
+                        (neigh_centers, neigh_values) = self.find_right_neighbours(location,
+                                                                                   local_idx,
+                                                                                   o_ranges[0])
+                        solution_value = bilinear_interpolation((x_center, 
+                                                                 y_center),
+                                                                neigh_centers,
+                                                                neigh_values)
+                        #solution_value = self.__solution.getValue(global_idx)
                     else:
                         solution_value = self.evaluate_boundary_condition((x_center, y_center))
                     self.__intra_extra_values_local.append(solution_value)
