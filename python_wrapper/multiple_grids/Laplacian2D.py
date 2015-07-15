@@ -12,6 +12,7 @@ import copy
 import time
 import ConfigParser
 import class_global
+import class_octant
 # ------------------------------------------------------------------------------
 
 glob = class_global.Py_Class_Global_D2()
