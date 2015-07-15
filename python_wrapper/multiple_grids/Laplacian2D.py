@@ -308,10 +308,9 @@ class Laplacian2D(object):
         self.__global_ghosts = []
 
         for g_octant in xrange(0, local_ghost_nocts):
-            self.__global_ghosts.append(self.__octree.get_ghost_global_idx(g_octant))
-
-        print(self.__global_ghosts)
-        print("\n\n")
+            gg_idx = self.__octree.get_ghost_global_idx(g_octant)
+            #print("PROC " + str(comm_w.Get_rank()) + " has global ghost idx = " + str(gg_idx))
+            self.__global_ghosts.append(gg_idx)
 
     def init_mat(self):
         penalization = self.__penalization
@@ -532,6 +531,10 @@ class Laplacian2D(object):
         # How many iterations are done.
         it_number = ksp.getIterationNumber()
 
+        #res_norm = ksp.getResidualNorm()
+
+        #print("res norm = " + str(res_norm))
+
         self.logger.info("Evaluated solution for comm \"" +
                          str(self.__comm.Get_name())      +
                          "\" and rank \""                 + 
@@ -572,8 +575,8 @@ class Laplacian2D(object):
                 not_boundary = True
                 # We are onto grids of the first level.
                 if grid:
-                    local_idx = self.__octree.get_point_owner_idx(center)
-                    global_idx = local_idx + o_ranges[0]
+                    local_idx = self.__octree.get_point_owner_idx((x_center,
+                                                                   y_center))
                 # We are onto the background grid.
                 else:
                     if key[2] == 0:
@@ -590,14 +593,14 @@ class Laplacian2D(object):
                                                               self.logger,
                                                               log_file)
                     if not_boundary:
-                        # The function "get_point_owner_idx" wants only one argume:u
+                        # The function "get_point_owner_idx" wants only one argument
                         # so we are passing it a tuple.
-                        local_idx = self.__octree.get_point_owner_idx((x_center, 
+                        local_idx = self.__octree.get_point_owner_idx((x_center,
                                                                        y_center))
-                        global_idx = local_idx + o_ranges[0]
                     else:
                         local_idx = self.__octree.get_point_owner_idx(center)
-                        global_idx = local_idx + o_ranges[0]
+
+                global_idx = local_idx + o_ranges[0]
 
                 if global_idx in ids_octree_contained:
                     # Appending a tuple containing the grid number and
@@ -621,11 +624,12 @@ class Laplacian2D(object):
                         #solution_value = self.__solution.getValue(global_idx)
                     else:
                         solution_value = self.evaluate_boundary_condition((x_center, y_center))
+
                     self.__intra_extra_values_local.append(solution_value)
         # Updating data for each process into "self.__intra_extra_indices_global"
         # and "self.__intra_extra_values_global", calling "allgather" to obtain 
         # data from the corresponding grid onto the intercommunicators created, 
-        #not the intracommunicators.
+        # not the intracommunicators.
         for key, intercomm in intercomm_dictionary.items():
             self.__intra_extra_indices_global.extend(intercomm.allgather(self.__intra_extra_indices_local))
             self.__intra_extra_values_global.extend(intercomm.allgather(self.__intra_extra_values_local))
@@ -964,6 +968,8 @@ def main():
     centers = numpy.empty([n_octs, 2])
     
     for i in xrange(0, n_octs):
+        g_idx = pablo.get_global_idx(i)
+        #print("PROC " + str(comm_w.Get_rank()) + " has global idx = " + str(g_idx))
         # Getting fields 0 and 1 of "pablo.get_center(i)".
         centers[i, :] = pablo.get_center(i)[:2]
    
