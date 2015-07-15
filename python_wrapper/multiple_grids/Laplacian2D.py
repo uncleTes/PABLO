@@ -207,12 +207,10 @@ class Laplacian2D(object):
 
     def evaluate_boundary_condition(self,
                                     cell_point):
-
         boundary_value = ExactSolution2D.solution(cell_point[0], 
                                                   cell_point[1])
 
         return boundary_value
-
 
     def set_boundary_conditions(self):
         penalization = self.__penalization
@@ -350,11 +348,24 @@ class Laplacian2D(object):
 
             is_penalized = False
             # Background grid.
+
             if not grid:
                 if penalization:
+                    boundaries_to_check = []
+                    extension = 2 * h
+
+                    for boundary in p_boundaries:
+                        boundary_to_check = []
+                        for index, point in enumerate(boundary):
+                            if (index % 2 ) == 0:
+                                boundary_to_check.append(point + extension)
+                            else:
+                                boundary_to_check.append(point - extension)
+                        boundaries_to_check.append(boundary_to_check)
                     center  = self.__octree.get_center(octant)[:2]
                     is_penalized = check_point_into_squares_2D(center      ,
-                                                               p_boundaries,
+                                                               #p_boundaries,
+                                                               boundaries_to_check,
                                                                self.logger,
                                                                log_file)
                     if is_penalized:
