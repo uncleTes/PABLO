@@ -510,16 +510,22 @@ class Laplacian2D(object):
     def solve(self):
         # Creating a "KSP" object.
         ksp = PETSc.KSP()
+        pc = PETSc.PC()
         ksp.create(self.__comm)
         # Using conjugate gradient's method.
-        ksp.setType("cg")
+        #ksp.setType("SOR")
         ksp.setOperators(self.__mat,
                          self.__mat)
+
+        pc = ksp.getPC()
         # Setting tolerances.
-        ksp.setTolerances(rtol = 1.e-50, 
-                          atol = 1.e-50, 
+        tol = 1.e-50
+        ksp.setTolerances(rtol = tol, 
+                          atol = tol, 
                           divtol = PETSc.DEFAULT, # Let's PETSc use DEAFULT
                           max_it = PETSc.DEFAULT) # Let's PETSc use DEAFULT
+        ksp.setFromOptions()
+        pc.setFromOptions()
         # Solve the system.
         ksp.solve(self.__rhs, 
                   self.__solution)
