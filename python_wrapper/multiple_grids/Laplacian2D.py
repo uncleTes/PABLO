@@ -664,7 +664,126 @@ class Laplacian2D(object):
         # The "self.__intra_extra_indices_local" will contains values of the 
         # exchanged data between grids of different levels.
         self.__intra_extra_values_global = []
-    
+
+    def find_right_neighbours(self, 
+                              location, 
+                              current_octant,
+                              start_octant):
+        py_octant = self.__octree.get_octant(current_octant)
+        # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Vec/VecGhostUpdateBegin.html
+        #self.__solution.ghostUpdate(PETSc.InsertMode.ADD,
+        #                            PETSc.ScatterMode.REVERSE)
+        self.__solution.ghostUpdate(PETSc.InsertMode.INSERT,
+                                    PETSc.ScatterMode.FORWARD)
+        with self.__solution.localForm() as lf:
+            local_solution = lf.getArray()
+            local_solution_copy = numpy.copy(local_solution)
+            #print("local_solution = " + str(local_solution))
+            ordered_point = {}
+            cell_centers = []
+            cell_values = []
+            if location == "nordovest":
+                # Number of node, (codim, number of face/node).
+                ordered_point.update({0 : (1, 0)})
+                ordered_point.update({1 : None})
+                ordered_point.update({2 : (2, 2)})
+                ordered_point.update({3 : (1, 3)})
+            elif location == "nordest":
+                ordered_point.update({0 : None})
+                ordered_point.update({1 : (1, 1)})
+                ordered_point.update({2 : (1, 3)})
+                ordered_point.update({3 : (2, 3)})
+            elif location == "sudovest":
+                ordered_point.update({0 : (2, 0)})
+                ordered_point.update({1 : (1, 2)})
+                ordered_point.update({2 : (1, 0)})
+                ordered_point.update({3 : None})
+            elif location == "sudest":
+                ordered_point.update({0 : (1, 2)})
+                ordered_point.update({1 : (2, 1)})
+                ordered_point.update({2 : None})
+                ordered_point.update({3 : (1, 1)})
+
+
+            for q_point in sorted(ordered_point.keys()):
+                cell = ordered_point[q_point]
+                if cell is None:
+                    cell_centers.append(self.__octree.get_center(current_octant)[:2])
+                    #cell_values.append(lf.getValue(current_octant + start_octant))
+                    cell_values.append(local_solution_copy[current_octant])
+                else:
+                    neighs, ghosts = ([] for i in range(0, 2))
+                    (neighs, ghosts) = self.__octree.find_neighbours(current_octant,
+                                                                     cell[1],
+                                                                     cell[0],
+                                                                     neighs,
+                                                                     ghosts)
+                    if len(ghosts) is not 0:
+                        if not ghosts[0]:
+                            cell_center = self.__octree.get_center(neighs[0])[:2]
+                            cell_centers.append(cell_center)
+                            index = neighs[0] + start_octant
+                            cell_value = local_solution_copy[neighs[0]]
+                            cell_values.append(cell_value)
+                            #print(" processor = " + str(comm_w.Get_rank()) + " local_octant = " + str(current_octant) + " index = " + str(index) + " has value = " + str(cell_value) + " with center = " + str(cell_center))
+                        else:
+                            #print("NONGO")
+                            index = self.__octree.get_ghost_global_idx(neighs[0])
+                            ghost_index = self.__global_ghosts.index(index)
+                            py_ghost_oct = self.__octree.get_ghost_octant(neighs[0])
+                            cell_center = self.__octree.get_center(py_ghost_oct, True)[:2]
+                            cell_value = local_solution_copy[ghost_index + self.__n]
+                            cell_centers.append(cell_center)
+                            # http://lists.mcs.anl.gov/pipermail/petsc-users/2012-February/012423.html
+                            # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Vec/VecGhostGetLocalForm.html#VecGhostGetLocalForm
+                            #print(" processor = " + str(comm_w.Get_rank()) + " local_octant = " + str(current_octant) + " ghost index = " + str(index) + " has value = " + str(cell_value) + " with center = " + str(cell_center))
+                            cell_values.append(cell_value)
+
+                        #cell_values.append(lf.getValue(index))
+        
+        #print("cell    _centers octant " + str(current_octant)  + " = " + str(cell_centers))
+        #print("cell    _values  octant " + str(current_octant)  + " = " + str(cell_values))
+                    else:
+                        border_center = self.__octree.get_center(current_octant)[:2]
+                        h = self.__edge / numpy.sqrt(self.__N)
+                        # We have face neighbours on the boundaries
+                        if cell[0] == 1:
+                            if cell[1] == 0:
+                                center = (border_center[0] - h, border_center[1])
+                                value = self.evaluate_boundary_condition(center)
+                            elif cell[1] == 1:
+                                center = (border_center[0] + h, border_center[1])
+                                value = self.evaluate_boundary_condition(center)
+                            elif cell[1] == 2:
+                                center = (border_center[0], border_center[1] - h)
+                                value = self.evaluate_boundary_condition(center)
+                            elif cell[1] == 3:
+                                center = (border_center[0], border_center[1] + h)
+                                value = self.evaluate_boundary_condition(center)
+
+                            cell_centers.append(center)
+                            cell_values.append(value)
+                        # We have edge neighbours on the boundaries
+                        elif cell[0] == 2:
+                            if cell[1] == 0:
+                                center = (border_center[0] - h, border_center[1] - h)
+                                value = self.evaluate_boundary_condition(center)
+                            elif cell[1] == 1:
+                                center = (border_center[0] + h, border_center[1] - h)
+                                value = self.evaluate_boundary_condition(center)
+                            elif cell[1] == 2:
+                                center = (border_center[0] - h, border_center[1] + h)
+                                value = self.evaluate_boundary_condition(center)
+                            elif cell[1] == 3:
+                                center = (border_center[0] + h, border_center[1] + h)
+                                value = self.evaluate_boundary_condition(center)
+
+                            cell_centers.append(center)
+                            cell_values.append(value)
+
+
+        return (cell_centers, cell_values)
+
     @property
     def comm(self):
         return self.__comm
