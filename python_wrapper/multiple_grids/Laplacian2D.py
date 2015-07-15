@@ -474,6 +474,22 @@ class Laplacian2D(object):
                          "\":\n"                       +
                          str(self.__rhs.getArray()))
 
+    def init_residual(self):
+        sizes = (self.__n,
+                 self.__N)
+        self.__residual = PETSc.Vec().createGhost(self.__global_ghosts,
+                                                  size = sizes,
+                                                  comm = self.__comm)
+        self.__residual.setUp()
+        self.__residual.set(0)
+
+    def evaluate_residual(self):
+        self.__rhs.scale(-1)
+        self.__mat.multAdd(self.__solution,
+                           self.__rhs,
+                           self.__residual)
+        self.__rhs.scale(-1)
+
     def init_sol(self):
         sizes = (self.__n, 
                  self.__N)
@@ -688,6 +704,9 @@ class Laplacian2D(object):
     @property
     def inter_extra_array(self):
         return self.__inter_extra_array
+    @property
+    def residual(self):
+        return self.__residual
 # ------------------------------------------------------------------------------
 
 # -------------------------------------MAIN-------------------------------------
@@ -820,22 +839,37 @@ def main():
     laplacian.get_global_ghosts()
     laplacian.set_inter_extra_array()
     laplacian.init_sol()
-    for i in xrange(0, 500):
+    laplacian.init_residual()
+    minimum = 1000
+    for i in xrange(0, 100):
         laplacian.init_rhs(exact_solution.second_derivative)
         laplacian.init_mat()
         laplacian.set_boundary_conditions()
         laplacian.solve()
         laplacian.update_values(intercomm_dictionary)
-        if comm_w.Get_rank() == 0:
+
+        if comm_w.Get_rank() == 1:
+            #laplacian.evaluate_residual()
+            numpy_residual = laplacian.residual.getArray()
             numpy_difference = numpy.subtract(exact_solution.function,
                                               laplacian.solution.getArray())
             norm_inf = numpy.linalg.norm(numpy_difference,
                                          # Type of norm we want to evaluate.
                                          numpy.inf)
+            res_inf = numpy.linalg.norm(numpy_residual,
+                                        numpy.inf)
             print("iteration "                   + 
                   str(i)                         + 
                   " has norm infinite equal to " + 
-                  str(norm_inf))
+                  str(norm_inf))#                  +
+                  #" and residual equal to "      +
+                  #str(res_inf))
+
+            if norm_inf < minimum:
+                minimum = norm_inf
+    
+    if comm_w.Get_rank() == 1:
+        print("minimum = " + str(minimum))
     # Creating a numpy.array with two single numpy.array. Note that you 
     # could have done this also with two simple python's lists.
     data_to_save = numpy.array([exact_solution.function,
