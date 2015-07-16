@@ -15,7 +15,7 @@ import ConfigParser
 import class_global
 import class_octant
 # ------------------------------------------------------------------------------
-
+looping = True
 glob = class_global.Py_Class_Global_D2()
 config_file = "./PABLO.ini"
 log_file = "./Laplacian2D.log"
@@ -23,7 +23,6 @@ log_file = "./Laplacian2D.log"
 config = ConfigParser.ConfigParser()
 files_list = config.read(config_file)
 # The previous "ConfigParser.read()" returns a list of file correctly read.
-
 if len(files_list) == 0:
     print("Unable to read configuration file \"" + str(config_file) + "\".")
     print("Program exited.")
@@ -1158,6 +1157,28 @@ def main():
         pablo.adapt_global_refine()
     
     pablo.load_balance()
+    #pablo.update_connectivity()
+    #pablo.update_ghosts_connectivity()
+    
+    n_octs = pablo.get_num_octants()
+    n_nodes = pablo.get_num_nodes()
+    
+    centers = numpy.empty([n_octs, 2])
+
+    for i in xrange(0, n_octs):
+        g_idx = pablo.get_global_idx(i)
+        # Getting fields 0 and 1 of "pablo.get_center(i)".
+        centers[i, :] = pablo.get_center(i)[:2]
+
+        if comm_w.Get_rank() == 1:
+            if check_point_into_circle(centers[i, :],
+                                       (0.5, 0.5),
+                                       0.125):
+                #print("bongo")
+                pablo.set_marker_from_index(i, 1)
+
+    pablo.adapt()
+    pablo.load_balance()
     pablo.update_connectivity()
     pablo.update_ghosts_connectivity()
     
@@ -1244,6 +1265,8 @@ def main():
                 looping = False
                 
             comm_w.send(looping, dest = 0, tag = 0)
+            
+
             if not init_res_setted:
                 init_res_L2 = res_L2
                 init_res_inf = res_inf
