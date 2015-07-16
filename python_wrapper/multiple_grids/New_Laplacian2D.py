@@ -21,13 +21,15 @@ config_file = "./PABLO.ini"
 log_file = "./Laplacian2D.log"
 # Initialize the parser for the configuration file and read it.
 config = ConfigParser.ConfigParser()
-# "ConfigParser.read()" returns a list of file correctly read.
 files_list = config.read(config_file)
+# The previous "ConfigParser.read()" returns a list of file correctly read.
 
 if len(files_list) == 0:
     print("Unable to read configuration file \"" + str(config_file) + "\".")
+    print("Program exited.")
     sys.exit(1)
-    
+# If some options or sections are not present, then the corresponding exception
+# is catched, printed and the program exits.
 try:
     n_grids = config.getint("PABLO", 
                             "NumberOfGrids")
@@ -50,8 +52,9 @@ try:
 except (ConfigParser.NoOptionError, 
         ConfigParser.NoSectionError):
     sys.exc_info()[1]
+    print("Program exited.")
     sys.exit(1)
-
+# List of names for the MPI intercommunicators.
 comm_names = ["comm_" + str(j) for j in range(n_grids)]
 # Initialize MPI.
 comm_w = MPI.COMM_WORLD
@@ -103,7 +106,6 @@ class ExactSolution2D(object):
 
         self.logger = set_class_logger(self, 
                                        log_file)
-
         # Mangling with the prefix "__".
         # http://stackoverflow.com/questions/1641219/does-python-have-private-variables-in-classes
         self.__comm = check_mpi_intracomm(comm, 
@@ -127,6 +129,8 @@ class ExactSolution2D(object):
     def evaluate_solution(self, 
                           x   , 
                           y):
+        # "Try-catch" block to assert that vectors "x" and "y" have the same
+        # size.
         try:
             assert len(x) == len(y)
             sol = ExactSolution2D.solution(x, 
@@ -137,18 +141,19 @@ class ExactSolution2D(object):
                              str(self.__comm.Get_rank())            +
                              "\":\n"                                + 
                              str(sol))
-        except AssertionError:
-            self.logger.error("Different size for coordinates' vectors.",
-                              exc_info = True)
-            sol = numpy.empty([len(x), len(y)])
-            self.logger.info("Set exact solution as empty matrix for comm \"" +
-                             str(self.__comm.Get_name())                      +
-                             "\" and rank \""                                 + 
-                             str(self.__comm.Get_rank())                      +
-                             "\".") 
-        # A numpy vector is given to "self.__sol".
-        finally:
             self.__sol = sol
+        except AssertionError:
+            self.logger.error("Different size for coordinates' vectors " + 
+                              "evaluating exact solution.",
+                              exc_info = True)
+            self.logger.error("Program exited setting exact solution for " + 
+                              "comm \""                                    +
+                             str(self.__comm.Get_name())                   +
+                             "\" and rank \""                              + 
+                             str(self.__comm.Get_rank())                   +
+                             "\".") 
+            print("Program exited.")
+            sys.exit(1)
 
     def evaluate_second_derivative(self, 
                                    x   ,
@@ -163,17 +168,20 @@ class ExactSolution2D(object):
                              str(self.__comm.Get_rank())               +
                              "\":\n"                                   + 
                              str(s_der))
-        except AssertionError:
-            self.logger.error("Different size for coordinates' vectors.",
-                              exc_info = True)
-            s_der = numpy.empty([len(x), len(y)])
-            self.logger.info("Set second_derivative as empty matrix for comm \"" +
-                             str(self.__comm.Get_name())                         +
-                             "\" and rank \""                                    + 
-                             str(self.__comm.Get_rank())                         +
-                             "\".") 
-        finally:
             self.__s_der = s_der
+        except AssertionError:
+            self.logger.error("Different size for coordinates' vectors " + 
+                              "evaluating second derivative.",
+                              exc_info = True)
+            self.logger.error("Program exited setting second derivative for " + 
+                              "comm \""                                       +
+                             str(self.__comm.Get_name())                      +
+                             "\" and rank \""                                 + 
+                             str(self.__comm.Get_rank())                      +
+                             "\".") 
+            print("Program exited.")
+            sys.exit(1)
+
     # Here four read only properties. class "ExactSolution2D" derives from
     # class "object", so it is a new class type which launch an "AttributeError"
     # exception if someone try to change these properties, not being the setters
@@ -241,6 +249,7 @@ class Laplacian2D(object):
             self.logger.warning("Penalization or bakground boundaries or "    +
                                 "both are not initialized. Please check the " +
                                 "config file. Exiting from the program.")
+            print("Program exited.")
             sys.exit(1)
         # The grid of the current process.
         self.__proc_grid = kwargs["proc_grid"]
@@ -461,8 +470,8 @@ class Laplacian2D(object):
             if grid == 0:
                 # Penalization is different from 0.
                 #if penalization:
-                # "penalization_boundaries" is a new vector of vector which 
-                # contains the effective boundary to check for penalization
+                # "penalization_boundaries" is a new vector of vectors which 
+                # contains the effective boundaries to check for penalization
                 # using an overlapping region for the grids, used into DD.
                 penalization_boundaries = []
                 overlap = 16 * h
@@ -647,8 +656,6 @@ class Laplacian2D(object):
         ksp = PETSc.KSP()
         pc = PETSc.PC()
         ksp.create(self.__comm)
-        # Using conjugate gradient's method.
-        #ksp.setType("SOR")
         ksp.setOperators(self.__mat,
                          self.__mat)
 
