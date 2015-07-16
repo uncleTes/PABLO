@@ -1046,6 +1046,7 @@ class Laplacian2D(object):
 
 # -------------------------------------MAIN-------------------------------------
 def main():
+    global looping
     proc_grid = rank_w % n_grids 
     group_w = comm_w.Get_group()
     procs_w = comm_w.Get_size()
@@ -1181,8 +1182,13 @@ def main():
     laplacian.init_global_ghosts()
     laplacian.set_inter_extra_array()
     laplacian.init_sol()
-    minimum = 1000
-    for i in xrange(0, 60):
+    init_res_L2 = 0.0
+    init_res_inf = 0.0
+    min_res_L2 = 1000
+    min_res_inf = 1000
+    init_res_setted = False
+    n_iter = 0
+    while looping:
         laplacian.init_residual()
         laplacian.init_rhs(exact_solution.second_derivative)
         laplacian.init_mat()
@@ -1227,11 +1233,31 @@ def main():
                   " and residual norm l2 equal to "       +
                   str(res_L2))
 
-            if norm_inf < minimum:
-                minimum = norm_inf
-    
+            if res_L2 < min_res_L2:
+                min_res_L2 = res_L2
+
+            if res_inf < min_res_inf:
+                min_res_inf = res_inf
+
+            if ((res_L2 * 50 < init_res_L2) or
+                (n_iter >= 20)):
+                looping = False
+                
+            comm_w.send(looping, dest = 0, tag = 0)
+            if not init_res_setted:
+                init_res_L2 = res_L2
+                init_res_inf = res_inf
+                init_res_setted = True
+
+
+        if comm_w.Get_rank() == 0:
+            looping = comm_w.recv(source = 1, tag = 0)
+
+        n_iter += 1
+
     if comm_w.Get_rank() == 1:
-        print("minimum = " + str(minimum))
+        print("Inf residual minumum = " + str(min_res_inf))
+        print("L2 residual minumum = " + str(min_res_L2))
     # Creating a numpy.array with two single numpy.array. Note that you 
     # could have done this also with two simple python's lists.
     data_to_save = numpy.array([exact_solution.function,
