@@ -275,9 +275,9 @@ class Laplacian2D(object):
                          str(self.__comm.Get_rank())     + 
                          "\".")
     
-    def evaluate_boundary_condition(self,
-                                    center,
-                                    face):
+    def right_boundary_center(self,
+                              center,
+                              face):
         # We make this thing because not using a deepcopy to append "center" 
         # in "self.boundary_elements", it would be changed by the following 
         # lines of code.
@@ -291,6 +291,14 @@ class Laplacian2D(object):
             y_center = y_center - h
         if face == 3:
             y_center = y_center + h
+
+        return (x_center, y_center)
+    
+    def evaluate_boundary_condition(self,
+                                    center,
+                                    face):
+        (x_center, y_center) = self.right_boundary_center(center,
+                                                          face)
         boundary_value = ExactSolution2D.solution(x_center, 
                                                   y_center)
         return boundary_value
@@ -326,15 +334,8 @@ class Laplacian2D(object):
                         boundary_value = self.evaluate_boundary_condition(center,
                                                                           face)
                         if overlapping:
-                            (x_center, y_center) = center
-                            if face == 0:
-                                x_center = x_center - h
-                            if face == 1:
-                                x_center = x_center + h
-                            if face == 2:
-                                y_center = y_center - h
-                            if face == 3:
-                                y_center = y_center + h
+                            (x_center, y_center) = self.right_boundary_center(center,
+                                                                              face)
                             # Check on the current extra border octant of the 
                             # background grid if is overlapped by foreground 
                             # grids.
