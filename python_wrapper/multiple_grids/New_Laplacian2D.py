@@ -1208,7 +1208,7 @@ def main():
     min_res_L2 = 1000
     min_res_inf = 1000
     init_res_setted = False
-    n_iter = 0
+    n_iter = 1
     while looping:
         laplacian.init_residual()
         laplacian.init_rhs(exact_solution.second_derivative)
@@ -1244,7 +1244,7 @@ def main():
                                        2) * h
             #print(laplacian.residual.getArray())
             print("iteration "                            + 
-                  str(i)                                  + 
+                  str(n_iter)                             + 
                   " has norm infinite equal to "          + 
                   str(norm_inf)                           +
                   " and has norm l2 equal to "            + 
