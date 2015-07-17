@@ -1171,9 +1171,12 @@ def main():
         centers[i, :] = pablo.get_center(i)[:2]
 
         if comm_w.Get_rank() == 1:
-            if check_point_into_circle(centers[i, :],
-                                       (0.5, 0.5),
-                                       0.125):
+            if (check_point_into_circle(centers[i, :],
+                                        (0.5, 0.5),
+                                        0.125) and not
+                check_point_into_circle(centers[i, :],
+                                        (0.5, 0.5),
+                                        0.120)):
                 #print("bongo")
                 pablo.set_marker_from_index(i, 1)
 
