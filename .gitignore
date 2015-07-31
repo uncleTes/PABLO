@@ -25,3 +25,5 @@ python_wrapper/multiple_grids/*.dat
 python_wrapper/multiple_grids/*.txt
 python_wrapper/multiple_grids/*.gp
 python_wrapper/multiple_grids/*.swp
+python_wrapper/multiple_grids/block_matrices/doc/*
+python_wrapper/multiple_grids/block_matrices/log/*
