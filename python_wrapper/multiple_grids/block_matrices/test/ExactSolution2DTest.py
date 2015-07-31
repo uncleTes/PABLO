@@ -101,7 +101,7 @@ class ExactSolution2DTest(unittest.TestCase):
 
         with open(log_file, "r") as of:
             for line in of:
-                if "for comm \"None\" and rank \"None\"" in line:
+                if "\"MPI Abort\" called during initialization " in line:
                     check_c_n = True
 
         self.assertEqual(check_c_n, True)
