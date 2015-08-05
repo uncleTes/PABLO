@@ -21,10 +21,6 @@ class ExactSolution2DTest(unittest.TestCase):
     # Deriving from \"unittest.TestCase\", this class can overload this 
     # method to prepare the environment before each test contained in the class.
     def setUp(self):
-        if os.path.exists(log_file):
-            with open(log_file, "w"):
-                pass
-
         # Initialize MPI.
         self.comm = MPI.COMM_WORLD
         self.comm_dictionary = {}
@@ -116,4 +112,7 @@ class ExactSolution2DTest(unittest.TestCase):
 
 if __name__ == "__main__":
     # http://stackoverflow.com/questions/82831/check-whether-a-file-exists-using-python
+    if os.path.exists(log_file):
+        with open(log_file, "w") as of:
+            pass
     unittest.main(exit = False)
