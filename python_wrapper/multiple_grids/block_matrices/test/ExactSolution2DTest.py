@@ -115,4 +115,6 @@ if __name__ == "__main__":
     if os.path.exists(log_file):
         with open(log_file, "w") as of:
             pass
-    unittest.main(exit = False)
+    #unittest.main(exit = False)
+    suite = unittest.TestLoader().loadTestsFromTestCase(ExactSolution2DTest)
+    unittest.TextTestRunner().run(suite)
