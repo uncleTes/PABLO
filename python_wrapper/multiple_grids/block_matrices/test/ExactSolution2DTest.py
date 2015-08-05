@@ -59,20 +59,20 @@ class ExactSolution2DTest(unittest.TestCase):
         self.comm_dictionary.update({"octree" : self.pablo})
 
     # Testing number of processes inside the communicator.
-    #def test_comm_size(self):
-    #    """Method which controls that the number of processes of the 
-    #       attributes \"self.comm\" is the same of the one returned by
-    #       the attribute \"comm\" of the class \"ExactSolution2D\". """
-    #    exact_solution = ExactSolution2D.ExactSolution2D(self.comm_dictionary)
+    def test_comm_size(self):
+        """Method which controls that the number of processes of the 
+           attributes \"self.comm\" is the same of the one returned by
+           the attribute \"comm\" of the class \"ExactSolution2D\". """
+        exact_solution = ExactSolution2D.ExactSolution2D(self.comm_dictionary)
 
-    #    n_procs = self.comm.Get_size()
-    #    # For the method "assertEqual", REMEMBER to add first the "self", 
-    #    # because it is a method inherited from class "unittest.TestCase".
-    #    # http://stackoverflow.com/questions/17779526/python-nameerror-global-name-assertequal-is-not-defined
-    #    self.assertEqual(exact_solution.comm.Get_size(), n_procs)
+        n_procs = self.comm.Get_size()
+        # For the method "assertEqual", REMEMBER to add first the "self", 
+        # because it is a method inherited from class "unittest.TestCase".
+        # http://stackoverflow.com/questions/17779526/python-nameerror-global-name-assertequal-is-not-defined
+        self.assertEqual(exact_solution.comm.Get_size(), n_procs)
 
-    ## Testing right behaviour of the code if the "world communicator" key is
-    ## None.
+    # Testing right behaviour of the code if the "world communicator" key is
+    # None.
     def test_comm_w_null(self):
         """Method which controls that, being the \"world communicator\" None,
            the program launches a \"sys.exit(1)\" and that on the log file, 
