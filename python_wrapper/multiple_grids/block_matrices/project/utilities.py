@@ -177,7 +177,6 @@ def set_class_logger(obj,
 def check_mpi_intracomm(comm  , 
                         logger,
                         type = "local"):
-    
     if isinstance(comm, MPI.Intracomm):
         l_comm = comm
         logger.info("Setted "                                   +
@@ -333,17 +332,19 @@ class Logger(object):
                  name, 
                  log_file):
         self.__logger = logging.getLogger(name)
-        self.__logger.setLevel(logging.DEBUG)
-        self.__handler = logging.FileHandler(log_file)
+        # http://stackoverflow.com/questions/15870380/python-custom-logging-across-all-modules
+        if not self.__logger.handlers:
+            self.__logger.setLevel(logging.DEBUG)
+            self.__handler = logging.FileHandler(log_file)
 
-        self.__formatter = logging.Formatter("%(name)15s - "    + 
-                                             "%(asctime)s - "   +
-                                             "%(funcName)8s - " +
-                                             "%(levelname)s - " +
-                                             "%(message)s")
-        self.__handler.setFormatter(self.__formatter)
-        self.__logger.addHandler(self.__handler)
-        self.__logger.propagate = False
+            self.__formatter = logging.Formatter("%(name)15s - "    + 
+                                                 "%(asctime)s - "   +
+                                                 "%(funcName)8s - " +
+                                                 "%(levelname)s - " +
+                                                 "%(message)s")
+            self.__handler.setFormatter(self.__formatter)
+            self.__logger.addHandler(self.__handler)
+            self.__logger.propagate = False
 
     @property
     def logger(self):
