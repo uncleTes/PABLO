@@ -88,7 +88,7 @@ class BaseClass2D(object):
         log_msg = msg                                                    + \
                   "for local comm \""                                    + \
                   str(self._comm.Get_name() if self._comm else None)     + \
-                  " and world comm \""                                   + \
+                  "\" and world comm \""                                   + \
                   str(self._comm_w.Get_name() if self._comm_w else None) + \
                   "\" and rank \""                                       + \
                   str(self._comm.Get_rank() if self._comm else None)     + \
