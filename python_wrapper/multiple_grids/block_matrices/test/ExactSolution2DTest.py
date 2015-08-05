@@ -53,7 +53,7 @@ class ExactSolution2DTest(unittest.TestCase):
         self.comm_dictionary.update({"world communicator" : self.comm})
         self.comm_dictionary.update({"communicator" : self.comm})
         self.comm_dictionary.update({"octree" : self.pablo})
-
+    
     # Testing number of processes inside the communicator.
     def test_comm_size(self):
         """Method which controls that the number of processes of the 
@@ -76,7 +76,7 @@ class ExactSolution2DTest(unittest.TestCase):
         self.comm_dictionary["world communicator"] = None
         # Check sys exit.
         check_s_e = False
-
+        
         try:
             exact_solution = ExactSolution2D.ExactSolution2D(self.comm_dictionary)
         # "sys.exit()" produce a "SystemExit" exception, so we can catch it.
@@ -84,6 +84,7 @@ class ExactSolution2DTest(unittest.TestCase):
             check_s_e = True
         finally:
             self.assertEqual(check_s_e, True)
+
     # If you want to see the \"MPI Abort\", comment the following decorator.
     # We used it because we knew the test would have exited before finishing.
     @unittest.skip("Being the world communicator different from None, \"MPI "\
@@ -102,13 +103,13 @@ class ExactSolution2DTest(unittest.TestCase):
 
         self.assertEqual(check_c_n, True)
 
-
     # Deriving from \"unittest.TestCase\", this class can overload this 
     # method to clear the environment after each test contained in the class.
     def tearDown(self):
         del self.pablo
         del self.centers
         del self.comm
+        del self.comm_dictionary
 
 if __name__ == "__main__":
     # http://stackoverflow.com/questions/82831/check-whether-a-file-exists-using-python
