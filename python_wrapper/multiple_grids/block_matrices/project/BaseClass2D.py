@@ -4,6 +4,9 @@ from mpi4py import MPI
 import sys
 
 class BaseClass2D(object):
+    # To see python behaviour with default parameters for mutable objects, see
+    # http://stackoverflow.com/questions/11381968/unit-testing-objects-in-python-object-is-not-over-written-in-setup
+    # http://effbot.org/zone/default-values.htm
     def __init__(self, 
                  kwargs = {}):
         """Initialization method for the BaseClass2D class.
@@ -11,7 +14,8 @@ class BaseClass2D(object):
                kwargs (dictionary) : it must contains the following keys:
                                      - \"communicator\";
                                      - \"octree\";
-                                     - \"world communicator\".
+                                     - \"world communicator\";
+                                     - \"log file\".
                                      
             Raises:
                 AssertionError : if one of the attributes \"_comm\", \"_comm_w\"
@@ -19,6 +23,7 @@ class BaseClass2D(object):
                                  exception is raised and catched, launching an 
                                  \"MPI Abort\" on the _comm_w (if is not None, 
                                  otherwise will be called a \"sys.exit(1)\"."""
+
         comm = kwargs["communicator"]
         octree = kwargs["octree"]
         comm_w = kwargs["world communicator"]
@@ -26,7 +31,8 @@ class BaseClass2D(object):
 
         self.logger = utilities.set_class_logger(self, 
                                                  log_file)
-        # Mangling with the prefix "__".
+        # Mangling with the prefix \"__\" to have \"private\" attributes. Use 
+        # \"_\" instead to have \"protected\" ones.
         # http://stackoverflow.com/questions/1641219/does-python-have-private-variables-in-classes
         self._comm = utilities.check_mpi_intracomm(comm, 
                                                    self.logger,
@@ -85,6 +91,7 @@ class BaseClass2D(object):
                level (string) : indicator of the level at which you want to
                                 write the msg.
                extra_msg (string, default = "") : extra informations."""
+
         log_msg = msg                                                    + \
                   "for local comm \""                                    + \
                   str(self._comm.Get_name() if self._comm else None)     + \

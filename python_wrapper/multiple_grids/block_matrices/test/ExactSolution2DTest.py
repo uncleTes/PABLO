@@ -47,7 +47,7 @@ class ExactSolution2DTest(unittest.TestCase):
 
         for i in xrange(0, n_octs):
             g_idx = self.pablo.get_global_idx(i)
-            # Getting fields 0 and 1 of "pablo.get_center(i)".
+            # Getting fields 0 and 1 of \"pablo.get_center(i)\".
             self.centers[i, :] = self.pablo.get_center(i)[:2]
 
         self.comm_dictionary.update({"world communicator" : self.comm})
@@ -59,27 +59,30 @@ class ExactSolution2DTest(unittest.TestCase):
         """Method which controls that the number of processes of the 
            attributes \"self.comm\" is the same of the one returned by
            the attribute \"comm\" of the class \"ExactSolution2D\". """
+
         exact_solution = ExactSolution2D.ExactSolution2D(self.comm_dictionary)
 
         n_procs = self.comm.Get_size()
-        # For the method "assertEqual", REMEMBER to add first the "self", 
-        # because it is a method inherited from class "unittest.TestCase".
+        # For the method \"assertEqual\", REMEMBER to add first the \"self\", 
+        # because it is a method inherited from class \"unittest.TestCase\".
         # http://stackoverflow.com/questions/17779526/python-nameerror-global-name-assertequal-is-not-defined
         self.assertEqual(exact_solution.comm.Get_size(), n_procs)
 
-    # Testing right behaviour of the code if the "world communicator" key is
+    # Testing right behaviour of the code if the \"world communicator\" key is
     # None.
     def test_comm_w_null(self):
         """Method which controls that, being the \"world communicator\" None,
            the program launches a \"sys.exit(1)\" and that on the log file, 
            this behaviour will be reported."""
+
         self.comm_dictionary["world communicator"] = None
         # Check sys exit.
         check_s_e = False
         
         try:
-            exact_solution = ExactSolution2D.ExactSolution2D(self.comm_dictionary)
-        # "sys.exit()" produce a "SystemExit" exception, so we can catch it.
+            exact_solution = \
+                        ExactSolution2D.ExactSolution2D(self.comm_dictionary)
+        # \"sys.exit()\" produce a \"SystemExit\" exception, so we can catch it.
         except SystemExit:
             check_s_e = True
         finally:
@@ -95,7 +98,8 @@ class ExactSolution2DTest(unittest.TestCase):
         check_c_n = False
 
         exact_solution = ExactSolution2D.ExactSolution2D(self.comm_dictionary)
-
+        # The \"with\" statement prevent file to not remain opened (it closes
+        # them).
         with open(log_file, "r") as of:
             for line in of:
                 if "\"MPI Abort\" called during initialization " in line:

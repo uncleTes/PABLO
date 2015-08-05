@@ -29,6 +29,7 @@ class ExactSolution2D(BaseClass2D.BaseClass2D):
                
            Returns:
                a numpy vector with the solution."""
+
         return numpy.sin(numpy.power(x - 0.5, 2) + 
                          numpy.power(y - 0.5, 2))
 
@@ -49,6 +50,7 @@ class ExactSolution2D(BaseClass2D.BaseClass2D):
            
            Returns:
                a numpy vector with the solution second derivative."""
+
         return (numpy.multiply(numpy.cos(numpy.power(x - 0.5, 2)       + 
                                          numpy.power(y - 0.5, 2)),
                                4)                                      -
@@ -80,8 +82,9 @@ class ExactSolution2D(BaseClass2D.BaseClass2D):
 
            Returns:
                a numpy vector with the solution."""
-        # "Try-catch" block to assert that vectors \"x\" and \"y\" have the same
-        # size.
+
+        # \"Try-catch\" block to assert that vectors \"x\" and \"y\" have the
+        # same size.
         try:
             assert len(x) == len(y)
             sol = ExactSolution2D.solution(x, 
