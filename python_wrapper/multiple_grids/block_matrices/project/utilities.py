@@ -235,12 +235,12 @@ def check_point_into_circle(point_to_check,
 
     return check
 
-def check_point_into_square_2D(point_to_check,
-                               # [x_anchor, x_anchor + edge, 
-                               #  y_anchor, y_anchor + edge]
-                               square,
-                               logger,
-                               log_file):
+def check_into_square(point_to_check,
+                      # [x_anchor, x_anchor + edge, 
+                      #  y_anchor, y_anchor + edge]
+                      square        ,
+                      logger        ,
+                      log_file):
     check = False
 
     if isinstance(square, list):
