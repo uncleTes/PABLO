@@ -280,3 +280,17 @@ class Laplacian2D(object):
         self.log_msg(msg   ,
                      "info",
                      extra_msg)
+
+    # Init global ghosts.
+    def init_g_g(self):
+        # Number of local ghosts (if present).
+        g_n_oct = self._octree.get_num_ghosts()
+        self._global_ghosts = []
+
+        for g_octant in xrange(0, g_n_oct):
+            # Getting global index for ghost octant.
+            gg_idx = self._octree.get_ghost_global_idx(g_octant)
+            # Saving all global indeces for the ghost octants, for each single
+            # process. This is useful for PETSc.
+            self._global_ghosts.append(gg_idx)
+   
