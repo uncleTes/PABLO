@@ -254,29 +254,26 @@ def check_into_square(point_to_check,
         logger.error("Second parameter must be a list.")
     return check
 
+def check_into_squares(point_to_check, 
+                       # [[x_anchor, x_anchor + edge, 
+                       #   y_anchor, y_anchor + edge]...]
+                       squares       ,
+                       logger        ,
+                       log_file):
+    check = False
 
-
-def check_point_into_squares_2D(point_to_check, 
-                                # [[x_anchor, x_anchor + edge, 
-                                #   y_anchor, y_anchor + edge]...]
-                                squares,
-                                logger,
-                                log_file):
-    square_check = False
     if isinstance(squares, list):
         for i, square in enumerate(squares):
-            square_check = check_point_into_square_2D(point_to_check,
-                                                      square,
-                                                      logger,
-                                                      log_file)
-            if square_check:
-                return square_check
-
-        return square_check
+            check = check_into_square(point_to_check,
+                                      square        ,
+                                      logger        ,
+                                      log_file)
+            if check:
+                return check
     else:
         logger = check_null_logger(logger, log_file)
         logger.error("Second parameter must be a list of lists.")
-        return False
+    return check
 
     # Can't eliminate rows 250 and 254 with the following one??
     # return square_check
