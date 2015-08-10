@@ -1,7 +1,26 @@
 import numbers
 import math
 
-class Laplacian2D(object):    
+class Laplacian2D(object):   
+    """Class which evaluates the laplacian onto a 2D grid.
+    
+    Attributes:
+        _comm (MPI.Intracomm) : intracommunicator which identify the
+                                process where evaluate the laplacian.
+        _octree (class_para_tree.Py_Class_Para_Tree_D2) : PABLO's ParaTree.
+        _comm_w (MPI.Intracomm) : global intracommunicator.
+        _pen (float or int) : penalization value.
+        _over_l (boolean) : flag inndicating if we are in an overlapped or 
+                            full immersed case.
+        _f_bound (list of lists) : foreground boundaries (boundaries of the
+                                   grids over the background ones).
+        _b_bound (list of numbers) : background boundaries.
+        _proc_g (int) : grid for which the current process is doing all the 
+                        work.
+        _N_oct (int) : total number of octants in the communicator.
+        _n_oct (int) : local number of octants in the process.
+        _edge (number) : length of the edge of the grid."""
+
     def __init__(self, 
                  kwargs = {}):
         # http://stackoverflow.com/questions/19205916/how-to-call-base-classs-init-method-from-the-child-class
