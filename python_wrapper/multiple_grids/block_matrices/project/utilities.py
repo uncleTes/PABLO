@@ -126,7 +126,8 @@ def write_vtk_multi_block_data_set(kwargs = {}):
     vtkTree = ET.ElementTree(VTKFile)
     vtkTree.write(file_name)
 
-def check_null_logger(logger, log_file):
+def check_null_logger(logger, 
+                      log_file):
     if logger is None:
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
@@ -250,7 +251,8 @@ def check_into_square(point_to_check,
             (point_to_check[1] <= square[3])):
             check = True
     else:
-        logger = check_null_logger(logger, log_file)
+        logger = check_null_logger(logger, 
+                                   log_file)
         logger.error("Second parameter must be a list.")
     return check
 
@@ -271,7 +273,8 @@ def check_into_squares(point_to_check,
             if check:
                 return check
     else:
-        logger = check_null_logger(logger, log_file)
+        logger = check_null_logger(logger, 
+                                   log_file)
         logger.error("Second parameter must be a list of lists.")
     return check
 
