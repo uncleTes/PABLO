@@ -9,7 +9,8 @@ class BaseClass2D(object):
     # http://effbot.org/zone/default-values.htm
     def __init__(self, 
                  kwargs = {}):
-        """Initialization method for the BaseClass2D class.
+        """Initialization method for the \"BaseClass2D\" class.
+
            Arguments:
                kwargs (dictionary) : it must contains the following keys:
                                      - \"communicator\";
