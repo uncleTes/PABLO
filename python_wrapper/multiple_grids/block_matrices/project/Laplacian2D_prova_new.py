@@ -313,3 +313,116 @@ class Laplacian2D(object):
 
         return p_bound
    
+    # Init matrix.
+    def init_mat(self,
+                 # Overlap octants' number.
+                 o_n_oct):
+        penalization = self._penalization
+        grid = self._proc_g
+        self._mat = PETSc.Mat().create(comm = self._comm)
+        # Local and global matrix's sizes.
+        n_oct = self._n_oct
+        N_oct = self._N_oct
+        sizes = (n_oct, 
+                 N_oct)
+        self._mat.setSizes((sizes, 
+                            sizes))
+        # Setting type of matrix directly. Using method \"setFromOptions()\"
+        # the user can choose what kind of matrix build at runtime.
+        #self.__mat.setFromOptions()
+        self._mat.setType(PETSc.Mat.Type.AIJ)
+        # !!!TODO!!!
+        # For better performances, instead of \"setUp()\" use 
+        # \"setPreallocationCSR()\".
+        # The AIJ format is also called the Yale sparse matrix format or
+        # compressed row storage (CSR).
+        # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatMPIAIJSetPreallocation.html
+        #self._mat.setPreallocationCSR((5, 4))
+        self._mat.setUp()
+        # Getting ranges of the matrix owned by the current process.
+        o_ranges = self._mat.getOwnershipRange()
+        h = self._h
+        h2 = h * h
+        nfaces = glob.nfaces
+        is_background = False
+        overlap = o_n_oct * h
+        p_bound = []
+        if not grid:
+            is_background = True
+            p_bound = self.apply_overlap(overlap)
+
+        for octant in xrange(0, n_oct):
+            indices, values = ([] for i in range(0, 2))
+            neighs, ghosts = ([] for i in range(0, 2))
+            g_octant = o_ranges[0] + octant
+            indices.append(g_octant)
+            center  = self._octree.get_center(octant)[:2]
+            # Check to know if a quad(oc)tree on the background is penalized.
+            is_penalized = False
+            # Background grid.
+            if is_background:
+                is_penalized = check_into_squares(center     ,
+                                                  p_bound    ,
+                                                  self.logger,
+                                                  log_file)
+                if is_penalized:
+                    key = (grid, g_octant)
+                    self.__temp_data_local.update({key : center})
+                # Residual evaluation...
+                if check_into_squares(center     ,
+                                      f_bound    ,
+                                      self.logger,
+                                      log_file): #and not is_penalized:
+                    sol_value = self._solution.getValue(g_octant)
+                    self.__residual_local.update({tuple(center) : sol_value})
+            # Here we are, upper grids.
+            else:
+                circle_center = (0.5, 0.5)
+                circle_radius = 0.125
+                is_penalized = check_into_circle(center       ,
+                                                 circle_center,
+                                                 circle_radius)
+
+            values.append(((-4.0 / h2) - penalization) if is_penalized 
+                           else (-4.0 / h2))
+            py_oct = self._octree.get_octant(octant)
+
+            for face in xrange(0, nfaces):
+                if not self._octree.get_bound(py_oct, 
+                                               face):
+                    (neighs, ghosts) = self._octree.find_neighbours(octant, 
+                                                                    face  , 
+                                                                    1     , 
+                                                                    neighs, 
+                                                                    ghosts)
+                    if not ghosts[0]:
+                        indices.append(neighs[0] + o_ranges[0])
+                    else:
+                        index = self.__octree.get_ghost_global_idx(neighs[0])
+                        indices.append(index)
+                    values.append(1.0 / h2)
+                    
+            self.__mat.setValues(g_octant, 
+                                 indices, 
+                                 values)
+
+        # ATTENTION!! Non using these functions will give you an unassembled
+        # matrix PETSc.
+        self.__mat.assemblyBegin()
+        self.__mat.assemblyEnd()
+        # ATTENTION!! Involves copy.
+        mat_numpy = self.__mat.getValuesCSR()
+        # View the matrix...(please note that it will be printed on the
+        # screen).
+        #self.__mat.view()
+        self.logger.info("Initialized matrix for comm \"" +
+                         str(self.__comm.Get_name())      + 
+                         "\" and rank \""                 +
+                         str(self.__comm.Get_rank())      +
+                         "\" with sizes \""               +
+                         str(self.__mat.getSizes())       +
+                         "\" and type \""                 +
+                         str(self.__mat.getType())        +
+                         "\":\n"                          +
+                         # http://lists.mcs.anl.gov/pipermail/petsc-users/2012-May/013379.html
+                         str(mat_numpy))
