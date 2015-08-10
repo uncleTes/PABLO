@@ -93,13 +93,13 @@ class BaseClass2D(object):
                extra_msg (string, default = "") : extra informations."""
 
         log_msg = msg                                                    + \
-                  "for local comm \""                                    + \
+                  " for local comm \""                                   + \
                   str(self._comm.Get_name() if self._comm else None)     + \
-                  "\" and world comm \""                                   + \
+                  "\" and world comm \""                                 + \
                   str(self._comm_w.Get_name() if self._comm_w else None) + \
                   "\" and rank \""                                       + \
                   str(self._comm.Get_rank() if self._comm else None)     + \
-                  extra_msg                                              + \
+                  "\" " + extra_msg                                      + \
                   "\"."
         if level == "info":
             self.logger.info(log_msg)
