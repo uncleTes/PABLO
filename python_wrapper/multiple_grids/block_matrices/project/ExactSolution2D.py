@@ -23,7 +23,7 @@ class ExactSolution2D(BaseClass2D.BaseClass2D):
         """Static method which returns the solution:  
            sin((x - 0.5)^2 + (y - 0.5)^2).
            
-           Args:
+           Arguments:
                x (number or list[numbers]) : abscissa coordinate.
                y (number or list[numbers]) : ordinate coordinate.
                
@@ -44,7 +44,7 @@ class ExactSolution2D(BaseClass2D.BaseClass2D):
            4 * sin((x - 0.5)^2 + (y - 0.5)^2) *
            ((x - 0.5)^2 + (y - 0.5)^2).
            
-           Args:
+           Arguments:
                x (number or list[numbers]) : abscissa coordinate.
                y (number or list[numbers]) : ordinate coordinate.
            
@@ -70,7 +70,7 @@ class ExactSolution2D(BaseClass2D.BaseClass2D):
            user is useful; one has to change only the method \"solution\" to 
            mantain independence.
            
-           Args:
+           Arguments:
                x (number or list[numbers]) : abscissa coordinate.
                y (number or list[numbers]) : ordinate coordinate.
 
@@ -111,7 +111,7 @@ class ExactSolution2D(BaseClass2D.BaseClass2D):
            for the user is useful; one has to change only the method \"s_s_der\"
            to mantain independence.
            
-           Args:
+           Arguments:
                x (number or list[numbers]) : abscissa coordinate.
                y (number or list[numbers]) : ordinate coordinate.
 
