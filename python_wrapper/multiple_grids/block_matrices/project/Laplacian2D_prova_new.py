@@ -203,7 +203,7 @@ class Laplacian2D(object):
         penalization = self._pen
         b_bound = self._b_bound
         grid = self._proc_g
-        local_nocts = self._n_oct
+        n_oct = self._n_oct
         nfaces = glob.nfaces
         # \"getOwnershipRange()\" gives us the local ranges of the matrix owned
         # by the current process.
@@ -217,7 +217,7 @@ class Laplacian2D(object):
 
         b_indices, b_values = ([] for i in range(0, 2))# Boundary indices/values
         b_centers, b_faces = ([] for i in range(0, 2)) # Boundary centers/faces
-        for octant in xrange(0, local_nocts):
+        for octant in xrange(0, n_oct):
             # Global index of the current local octant \"octant\".
             g_octant = o_ranges[0] + octant
             py_oct = self._octree.get_octant(octant)
