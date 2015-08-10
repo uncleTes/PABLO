@@ -9,7 +9,7 @@ class ExactSolution2D(BaseClass2D.BaseClass2D):
        
        Attributes:
            _comm (MPI.Intracomm) : intracommunicator which identify the
-                                    processe where evaluate the exact solution.
+                                    process where evaluate the exact solution.
            _octree (class_para_tree.Py_Class_Para_Tree_D2) : PABLO's ParaTree.
            _comm_w (MPI.Intracomm) : global intracommunicator.
            _sol (numpy array) : evaluated solution.
