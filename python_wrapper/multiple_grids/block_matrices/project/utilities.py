@@ -222,9 +222,9 @@ def check_octree(octree,
 
     return l_octree
 
-def check_point_into_circle(point_to_check,
-                            circle_center,
-                            circle_radius):
+def check_into_circle(point_to_check,
+                      circle_center,
+                      circle_radius):
     check = False
 
     distance2 = math.pow((point_to_check[0] - circle_center[0]) , 2) + \
