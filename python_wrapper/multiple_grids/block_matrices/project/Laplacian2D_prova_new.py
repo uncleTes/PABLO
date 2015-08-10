@@ -23,6 +23,18 @@ class Laplacian2D(object):
 
     def __init__(self, 
                  kwargs = {}):
+        """Initialization method for the \"Laplacian2D\" class.
+
+        Arguments:
+            kwargs (dictionary) : it must contains the following keys (in 
+                                  addition to the ones of \"BaseClass2D\"):
+                                  - \"edge\".
+                                     
+            Raises:
+                AssertionError : if \"edge" is not greater than 0.0, then the 
+                                 exception is raised and catched, launching an 
+                                 \"MPI Abort\", launched also if attributes 
+                                 \"f_bound\" or \"b_bound\" are \"None\"."""
         # http://stackoverflow.com/questions/19205916/how-to-call-base-classs-init-method-from-the-child-class
         super(Laplacian2D, self).__init__(kwargs)
         self.set_intercomm_structures()
