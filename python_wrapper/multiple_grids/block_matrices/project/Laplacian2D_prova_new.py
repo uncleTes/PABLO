@@ -275,11 +275,8 @@ class Laplacian2D(object):
         # vector PETSc.
         self.__rhs.assemblyBegin()
         self.__rhs.assemblyEnd()
-        self.logger.info("Set boundary conditions for comm \"" +
-                         str(self.__comm.Get_name())           + 
-                         "\" and rank \""                      +
-                         str(self.__comm.Get_rank())           +
-                         "\" of grid \""                       +
-                         str(self.__proc_grid)                 +
-                         "\":\n"                               +
-                         str(self.__rhs.getArray()))
+        msg = "Set boundary conditions"
+        extra_msg = "of grid \"" + str(self._proc_g) + "\""
+        self.log_msg(msg   ,
+                     "info",
+                     extra_msg)
