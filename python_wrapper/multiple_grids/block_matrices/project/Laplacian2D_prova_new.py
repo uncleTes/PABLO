@@ -293,4 +293,23 @@ class Laplacian2D(object):
             # Saving all global indeces for the ghost octants, for each single
             # process. This is useful for PETSc.
             self._global_ghosts.append(gg_idx)
+
+    def apply_overlap(self,
+                      overlap):
+        f_bound = self._f_bound
+        # \"p_bound\" is a new vector of vectors which contains the 
+        # effective boundaries to check for penalization using an 
+        # overlapping region for the grids, used into D.D.
+        # Penalization boundaries.
+        p_bound = []
+        # Reducing penalization boundaries using the overlap.
+        for boundary in f_bound:
+            # Temporary boundary
+            t_bound = []
+            for index, point in enumerate(boundary):
+                t_bound.append(point + overlap) if (index % 2) == 0 else \
+                t_bound.append(point - overlap)
+            p_bound.append(t_bound)
+
+        return p_bound
    
