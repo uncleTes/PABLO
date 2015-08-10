@@ -10,7 +10,7 @@ class BaseClass2D(object):
     def __init__(self, 
                  kwargs = {}):
         """Initialization method for the BaseClass2D class.
-           Args:
+           Arguments:
                kwargs (dictionary) : it must contains the following keys:
                                      - \"communicator\";
                                      - \"octree\";
@@ -72,7 +72,6 @@ class BaseClass2D(object):
             self.log_msg(msg,
                          "info" if initialized else "error")
                          
-    
     def __del__(self):
         msg = "Called destructor "
         self.log_msg(msg,
