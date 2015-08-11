@@ -417,6 +417,14 @@ class Laplacian2D(object):
                      "info",
                      extra_msg)
 
+    # Initialize extra arrays.
+    def init_e_arrays(self,
+                      array = None):
+        self.e_array = self.init_array("extra array",
+                                       array)
+        self._e_array_gb = self.init_array("extra array ghost boundary",
+                                           array)
+
     def init_array(self       ,
                    # Array name.
                    a_name = "",
