@@ -474,3 +474,6 @@ class Laplacian2D(object):
         self._rhs = self.init_array("right hand side",
                                     numpy_rhs)
     
+    def init_sol(self):
+        self._sol = self.init_array("solution")
+    
