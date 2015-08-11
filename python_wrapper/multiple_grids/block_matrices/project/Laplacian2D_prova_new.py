@@ -408,21 +408,11 @@ class Laplacian2D(object):
 
         # ATTENTION!! Non using these functions will give you an unassembled
         # matrix PETSc.
-        self.__mat.assemblyBegin()
-        self.__mat.assemblyEnd()
-        # ATTENTION!! Involves copy.
-        mat_numpy = self.__mat.getValuesCSR()
-        # View the matrix...(please note that it will be printed on the
-        # screen).
-        #self.__mat.view()
-        self.logger.info("Initialized matrix for comm \"" +
-                         str(self.__comm.Get_name())      + 
-                         "\" and rank \""                 +
-                         str(self.__comm.Get_rank())      +
-                         "\" with sizes \""               +
-                         str(self.__mat.getSizes())       +
-                         "\" and type \""                 +
-                         str(self.__mat.getType())        +
-                         "\":\n"                          +
-                         # http://lists.mcs.anl.gov/pipermail/petsc-users/2012-May/013379.html
-                         str(mat_numpy))
+        self._mat.assemblyBegin()
+        self._mat.assemblyEnd()
+        msg = "Initialized matrix"
+        extra_msg = "with sizes \"" + str(self.__mat.getSizes()) + \
+                    "\" and type \"" + str(self.__mat.getType()) + "\""
+        self.log_msg(msg   ,
+                     "info",
+                     extra_msg)
