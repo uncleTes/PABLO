@@ -480,3 +480,32 @@ class Laplacian2D(object):
     def init_residual(self):
         self._res = self.init_array("residual")
     
+    def solve(self):
+        # Creating a "KSP" object.
+        ksp = PETSc.KSP()
+        pc = PETSc.PC()
+        ksp.create(self._comm)
+        ksp.setOperators(self._mat,
+                         self._mat)
+
+        pc = ksp.getPC()
+        # Setting tolerances.
+        tol = 1.e-50
+        ksp.setTolerances(rtol = tol            , 
+                          atol = tol            , 
+                          divtol = PETSc.DEFAULT, # Let's PETSc use DEAFULT
+                          max_it = PETSc.DEFAULT) # Let's PETSc use DEAFULT
+        ksp.setFromOptions()
+        pc.setFromOptions()
+        # Solve the system.
+        ksp.solve(self._rhs, 
+                  self._solution)
+        # How many iterations are done.
+        it_number = ksp.getIterationNumber()
+
+        msg = "Evaluated solution"
+        extra_msg = "Using \"" + str(it_number) + "\" iterations."
+        self.log_msg(msg   ,
+                     "info",
+                     extra_msg)
+        self.set_inter_extra_array()
