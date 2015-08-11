@@ -477,3 +477,6 @@ class Laplacian2D(object):
     def init_sol(self):
         self._sol = self.init_array("solution")
     
+    def init_residual(self):
+        self._res = self.init_array("residual")
+    
