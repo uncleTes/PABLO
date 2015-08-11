@@ -100,7 +100,7 @@ class BaseClass2D(object):
                   "\" and rank \""                                       + \
                   str(self._comm.Get_rank() if self._comm else None)     + \
                   "\" " + extra_msg                                      + \
-                  "\"."
+                  "."
         if level == "info":
             self.logger.info(log_msg)
         elif level == "error":
