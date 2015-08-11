@@ -352,10 +352,10 @@ class Laplacian2D(object):
             p_bound = self.apply_overlap(overlap)
 
         for octant in xrange(0, n_oct):
-            indices, values = ([] for i in range(0, 2))
+            indices, values = ([] for i in range(0, 2))# Indices/values
             neighs, ghosts = ([] for i in range(0, 2))
             g_octant = o_ranges[0] + octant
-            indices.append(g_octant)
+            py_oct = self._octree.get_octant(octant)
             center  = self._octree.get_center(octant)[:2]
             # Check to know if a quad(oc)tree on the background is penalized.
             is_penalized = False
@@ -383,28 +383,28 @@ class Laplacian2D(object):
                                                  circle_center,
                                                  circle_radius)
 
+            indices.append(g_octant)
             values.append(((-4.0 / h2) - penalization) if is_penalized 
                            else (-4.0 / h2))
-            py_oct = self._octree.get_octant(octant)
 
             for face in xrange(0, nfaces):
                 if not self._octree.get_bound(py_oct, 
-                                               face):
+                                              face):
                     (neighs, ghosts) = self._octree.find_neighbours(octant, 
                                                                     face  , 
                                                                     1     , 
                                                                     neighs, 
                                                                     ghosts)
                     if not ghosts[0]:
-                        indices.append(neighs[0] + o_ranges[0])
+                        index = neighs[0] + o_ranges[0]
                     else:
-                        index = self.__octree.get_ghost_global_idx(neighs[0])
-                        indices.append(index)
+                        index = self._octree.get_ghost_global_idx(neighs[0])
+                    indices.append(index)
                     values.append(1.0 / h2)
                     
-            self.__mat.setValues(g_octant, 
-                                 indices, 
-                                 values)
+            self._mat.setValues(g_octant, # Rows
+                                indices,  # Columns
+                                values)   # Values to be inserted
 
         # ATTENTION!! Non using these functions will give you an unassembled
         # matrix PETSc.
