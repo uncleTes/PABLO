@@ -416,3 +416,46 @@ class Laplacian2D(object):
         self.log_msg(msg   ,
                      "info",
                      extra_msg)
+
+    def init_array(self       ,
+                   # Array name.
+                   a_name = "",
+                   array = None):
+        pen = self._pen
+        grid = self._proc_g
+        n_oct = self._n_oct
+        N_oct = self._N_oct
+        sizes = (n_oct, 
+                 N_oct)
+        # Global ghosts.
+        g_ghosts = self._global_ghosts
+        # Temporary array.
+        t_array = PETSc.Vec().createGhost(g_ghosts    ,
+                                          size = sizes,
+                                          comm = self._comm)
+        t_array.setUp()
+
+        if array is None:
+            t_array.set(0)
+        else:
+            try:
+                assert isinstance(array, numpy.ndarray)
+                # Temporary PETSc vector.
+                t_petsc = PETSc.Vec().createGhostWithArray(g_ghosts    ,
+                                                           array       ,
+                                                           size = sizes,
+                                                           comm = self._comm)
+                t_petsc.copy(t_array)
+            except AssertionError:
+                msg = "\"MPI Abort\" called during array's initialization"
+                extra_msg = "Parameter \"array\" not an instance of " + \
+                            "\"numpy.ndarray\"."
+                self.log_msg(msg    ,
+                             "error",
+                             extra_msg)
+                self._comm_w.Abort(1)
+        msg = "Initialized \"" + str(a_name) + "\""
+        self.log_msg(msg,
+                     "info")
+        return t_array
+    
