@@ -459,3 +459,18 @@ class Laplacian2D(object):
                      "info")
         return t_array
     
+    def init_rhs(self, 
+                 numpy_array):
+        grid = self._proc_g
+        is_background = False
+        if not grid:
+            is_background = True
+
+        numpy_rhs = numpy.subtract(numpy_array, 
+                                   numpy.multiply(penalization,
+                                                  self._inter_extra_array.getArray())) if \
+                    is_background else \
+                    numpy_array
+        self._rhs = self.init_array("right hand side",
+                                    numpy_rhs)
+    
