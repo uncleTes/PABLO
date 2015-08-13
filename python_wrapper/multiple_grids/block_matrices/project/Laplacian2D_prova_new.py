@@ -517,3 +517,25 @@ class Laplacian2D(object):
                      "info",
                      extra_msg)
         self.init_e_arrays()
+    
+    def set_intercomm_structures(self):
+        # Setting "self.__temp_data_local" to a dictionary because after 
+        # the "allgather" operations it will became a list of dictionaries.
+        # The "self.__temp_data_local" will contains local data to be exchanged
+        # between grids of different levels.
+        self.__temp_data_local = {}
+        # The "self.__temp_data_global" will contains exchanged data between 
+        # grids of different levels.
+        self.__temp_data_global = []
+        # The "self.__intra_extra_indices_local" will contains indices of the 
+        # local data to be exchanged between grids of different levels.
+        self.__intra_extra_indices_local = []
+        # The "self.__intra_extra_indices_global" will contains indices of the 
+        # excahnged data between grids of different levels.
+        self.__intra_extra_indices_global = []
+        # The "self.__intra_extra_values_local" will contains values of the 
+        # local data to be exchanged between grids of different levels.
+        self.__intra_extra_values_local = []
+        # The "self.__intra_extra_indices_local" will contains values of the 
+        # exchanged data between grids of different levels.
+        self.__intra_extra_values_global = []
