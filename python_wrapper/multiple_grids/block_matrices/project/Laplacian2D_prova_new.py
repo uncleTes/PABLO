@@ -516,4 +516,4 @@ class Laplacian2D(object):
         self.log_msg(msg   ,
                      "info",
                      extra_msg)
-        self.set_inter_extra_array()
+        self.init_e_arrays()
