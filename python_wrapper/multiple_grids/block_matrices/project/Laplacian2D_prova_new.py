@@ -539,3 +539,159 @@ class Laplacian2D(object):
         # The "self.__intra_extra_indices_local" will contains values of the 
         # exchanged data between grids of different levels.
         self.__intra_extra_values_global = []
+    
+    def update_values(self, 
+                      intercomm_dictionary = {}):
+        n_oct = self._n_oct
+        o_ranges = self._mat.getOwnershipRange()
+        b_bound = self._b_bound
+        grid = self._proc_g
+        max_id_octree_contained = o_ranges[0] + local_nocts
+        ids_octree_contained = range(o_ranges[0], max_id_octree_contained)
+        # Calling "allgather" to obtain data from the corresponding grid,
+        # onto the intercommunicators created, not the intracommunicators.
+        # http://www.mcs.anl.gov/research/projects/mpi/mpi-standard/mpi-report-1.1/node114.htm#Node117
+        # http://mpitutorial.com/tutorials/mpi-broadcast-and-collective-communication/
+        # http://www.linux-mag.com/id/1412/
+        for key, intercomm in intercomm_dictionary.items():
+            # Extending a list with the lists obtained by the other processes
+            # of the corresponding intercommunicator.
+            self.__temp_data_global.extend(intercomm.allgather(self.__temp_data_local))
+            self.__residual_global.extend(intercomm.allgather(self.__residual_local))
+        # Residual evaluation... 
+        for index, dictionary in enumerate(self.__residual_global):
+            for center, solution_value in dictionary.items():
+                local_idx = self.__octree.get_point_owner_idx(center)
+                global_idx = local_idx + o_ranges[0]
+
+                if global_idx in ids_octree_contained:
+                    center_cell_container = self.__octree.get_center(local_idx)[:2]
+                    location = check_point_position_from_another(center,
+                                                                 center_cell_container)
+                    neigh_centers, neigh_values = ([] for i in range(0, 2))
+                    (neigh_centers, neigh_values) = self.find_right_neighbours(location,
+                                                                               local_idx,
+                                                                               o_ranges[0])
+                    bilinear_value = bilinear_interpolation(center,
+                                                            neigh_centers,
+                                                            neigh_values)
+                    insert_mode = PETSc.InsertMode.INSERT_VALUES
+                    value = bilinear_value - solution_value
+                    self.__residual.setValue(global_idx, 
+                                             value     ,
+                                             insert_mode)
+        self.__residual.assemblyBegin()
+        self.__residual.assemblyEnd()
+
+        # "self.__temp_data_global" will be a list of same structures of data,
+        # after the "allgather" call; these structures are dictionaries.
+        for index, dictionary in enumerate(self.__temp_data_global):
+            for key, center in dictionary.items():
+                (x_center, y_center) = center
+                into_background = True
+                ghost_boundary = False
+                if len(key) == 3:
+                    ghost_boundary = True
+                # We are onto grids of the first level.
+                if grid:
+                    local_idx = self.__octree.get_point_owner_idx((x_center,
+                                                                   y_center))
+                # We are onto the background grid.
+                else:
+                    if key[2] == 0:
+                        x_center = x_center - key[3]
+                    if key[2] == 1:
+                        x_center = x_center + key[3]
+                    if key[2] == 2:
+                        y_center = y_center - key[3]
+                    if key[2] == 3:
+                        y_center = y_center + key[3]
+
+                    into_background = check_point_into_square_2D((x_center, 
+                                                                  y_center)  ,
+                                                                 b_boundaries,
+                                                                 self.logger ,
+                                                                 log_file)
+                    if into_background:
+                        # The function "get_point_owner_idx" wants only one argument
+                        # so we are passing it a tuple.
+                        local_idx = self.__octree.get_point_owner_idx((x_center,
+                                                                       y_center))
+                    # Is this "else" useful? For me no.
+                    else:
+                        local_idx = self.__octree.get_point_owner_idx(center)
+
+                global_idx = local_idx + o_ranges[0]
+
+                if global_idx in ids_octree_contained:
+                    # Appending a tuple containing the grid number and
+                    # the corresponding octant index.
+                    if ghost_boundary:
+                        self.__intra_extra_indices_local.append((key[0], key[1], key[2]))
+                    else:
+                        self.__intra_extra_indices_local.append((key[0], key[1]))
+                    if into_background:
+                        center_cell_container = self.__octree.get_center(local_idx)[:2]
+                        location = check_point_position_from_another((x_center,
+                                                                      y_center),
+                                                                     center_cell_container)
+                        neigh_centers, neigh_values = ([] for i in range(0, 2))
+                        (neigh_centers, neigh_values) = self.find_right_neighbours(location ,
+                                                                                   local_idx,
+                                                                                   o_ranges[0])
+                        solution_value = bilinear_interpolation((x_center, 
+                                                                 y_center)   ,
+                                                                neigh_centers,
+                                                                neigh_values)
+                    else:
+                        solution_value = ExactSolution2D.solution(x_center, 
+                                                                  y_center)
+
+                    self.__intra_extra_values_local.append(solution_value)
+        # Updating data for each process into "self.__intra_extra_indices_global"
+        # and "self.__intra_extra_values_global", calling "allgather" to obtain 
+        # data from the corresponding grid onto the intercommunicators created, 
+        # not the intracommunicators.
+        for key, intercomm in intercomm_dictionary.items():
+            self.__intra_extra_indices_global.extend(intercomm.allgather(self.__intra_extra_indices_local))
+            self.__intra_extra_values_global.extend(intercomm.allgather(self.__intra_extra_values_local))
+
+        for index, values in enumerate(self.__intra_extra_indices_global):
+            for position, value in enumerate(values):
+                # Check if the global index belong to the process.
+                if value[1] in ids_octree_contained:
+                    # Check if we are onto the right grid.
+                    if value[0] == self.__proc_grid:
+                        intra_extra_value = self.__intra_extra_values_global[index][position]
+                        # Background grid.
+                        if grid == 0:
+                            insert_mode = PETSc.InsertMode.INSERT_VALUES
+                            # Here "insert_mode" does not affect nothing.
+                            if len(value) == 3:
+                                self.__inter_extra_array_ghost_boundary.setValue(value[1],
+                                                                                 intra_extra_value,
+                                                                                 insert_mode)
+                            else:
+                                self.__inter_extra_array.setValue(value[1]         , 
+                                                                  intra_extra_value,
+                                                                  insert_mode)
+                        else:
+                            insert_mode = PETSc.InsertMode.ADD_VALUES
+                            self.__inter_extra_array.setValue(value[1]         ,
+                                                              intra_extra_value,
+                                                              insert_mode)
+
+        self.__inter_extra_array.assemblyBegin()
+        self.__inter_extra_array.assemblyEnd()
+        self.__inter_extra_array_ghost_boundary.assemblyBegin()
+        self.__inter_extra_array_ghost_boundary.assemblyEnd()
+        # Resetting structures used for the "allgather" functions.
+        self.set_intercomm_structures()
+        self.logger.info("Updated  inter_extra_array for comm \"" +
+                         str(self.__comm.Get_name())              + 
+                         "\" and rank \""                         +
+                         str(self.__comm.Get_rank())              +
+                         "\" of grid \""                          +
+                         str(self.__proc_grid)                    +
+                         "\":\n"                                  +
+                         str(self.__inter_extra_array.getArray()))
