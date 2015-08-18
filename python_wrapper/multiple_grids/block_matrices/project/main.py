@@ -15,6 +15,13 @@ import ConfigParser
 import class_global
 import class_octant
 # ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+# http://stackoverflow.com/questions/1319615/proper-way-to-declare-custom-exceptions-in-modern-python
+class ParsingFileException(Exception):
+    """Raised when something with the config file is wrong."""
+# ------------------------------------------------------------------------------
+
 looping = True
 glob = class_global.Py_Class_Global_D2()
 config_file = "./PABLO.ini"
