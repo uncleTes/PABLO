@@ -261,6 +261,16 @@ def create_intercomms(n_grids      ,
                     "\".")
 # ------------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
+def set_octree(comm_l):
+    pablo_log_file = "../log/" + comm_name + ".log"
+    pablo = class_para_tree.Py_Class_Para_Tree_D2(an[0]         ,
+                                                  an[1]         ,
+                                                  an[2]         ,
+                                                  ed            ,
+                                                  pablo_log_file, # Logfile
+                                                  comm_l)         # Comm
+
     pablo = class_para_tree.Py_Class_Para_Tree_D2(an[0]             ,
                                                   an[1]             ,
                                                   an[2]             ,
@@ -269,6 +279,7 @@ def create_intercomms(n_grids      ,
                                                   comm_l)             # Comm
     
     pablo.set_balance(0, True)
+
     
     for iteration in xrange(1, refinement_levels):
         pablo.adapt_global_refine()
@@ -301,17 +312,22 @@ def create_intercomms(n_grids      ,
     pablo.load_balance()
     pablo.update_connectivity()
     pablo.update_ghosts_connectivity()
+
     
     n_octs = pablo.get_num_octants()
     n_nodes = pablo.get_num_nodes()
     
     centers = numpy.empty([n_octs, 2])
 
+    centers = numpy.empty([n_octs, 2])
+    
     for i in xrange(0, n_octs):
         g_idx = pablo.get_global_idx(i)
         # Getting fields 0 and 1 of "pablo.get_center(i)".
         centers[i, :] = pablo.get_center(i)[:2]
 
+    return pablo, centers
+# ------------------------------------------------------------------------------
     comm_dictionary.update({"octree" : pablo})
     laplacian = Laplacian2D(comm_dictionary)
     exact_solution = ExactSolution2D(comm_dictionary)
