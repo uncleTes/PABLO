@@ -388,32 +388,25 @@ def main():
 if __name__ == "__main__":
 
     if rank_w == 0:
-        log = simple_message_log("STARTED LOG", 
-                                 log_file)
-        simple_message_log("NUMBER OF GRIDS: " + # Message
-                           str(n_grids)        +
-                           "."     ,
-                           log_file,             # Log file's name
-                           log)                  # logger
-        
-        simple_message_log("ANCHORS: "  + 
-                           str(anchors) +
-                           "."     ,
-                           log_file,
-                           log)
-        
-        simple_message_log("EDGES: "  + 
-                           str(edges) +
-                           "."     ,
-                           log_file,
-                           log)
-        
-        simple_message_log("REFINEMENT LEVELS: "  + 
-                           str(refinements) +
-                           "."     ,
-                           log_file,
-                           log)
-
+        msg = "STARTED LOG"
+        logger = utilities.log_msg(msg, 
+                                   log_file)
+        msg = "NUMBER OF GRIDS: " + str(n_grids) + "."
+        utilities.log_msg(msg     ,
+                          log_file,
+                          logger)
+        msg = "ANCHORS: " + str(anchors) + "." 
+        utilities.log_msg(msg     ,
+                          log_file,
+                          logger)
+        msg = "EDGES: " + str(edges) + "."        
+        utilities.log_msg(msg     ,
+                          log_file,
+                          logger)
+        msg = "REFINEMENT LEVELS: " + str(refinements) + "."        
+        utilities.log_msg(msg     ,
+                          log_file,
+                          logger)
 
     t_start = time.time()
 
@@ -424,7 +417,8 @@ if __name__ == "__main__":
 
     if rank_w == 0:
         file_name = "multiple_PABLO.vtm"
-        files_vtu = find_files_in_dir(".vtu", "./")
+        files_vtu = utilities.find_files_in_dir(".vtu", 
+                                                "../data/")
     
         info_dictionary = {}
         info_dictionary.update({"vtu_files" : files_vtu})
@@ -435,16 +429,16 @@ if __name__ == "__main__":
         write_vtk_multi_block_data_set(info_dictionary)
     
         t_end = time.time()
-        simple_message_log("EXECUTION TIME: "   +
-                           str(t_end - t_start) +
-                           " secs.", 
-                           log_file,
-                           log)
-        simple_message_log("ENDED LOG", 
-                           log_file   ,
-                           log)
 
-        data_to_render = ["exact", "evaluated"]
+        msg = "EXECUTION TIME: " + str(t_end - t_start) + " secs."
+        utilities.log_msg(msg     ,
+                          log_file,
+                          logger)
+        msg = "ENDED LOG"
+        utilities.log_msg(msg     ,
+                          log_file,
+                          logger)
 
+        #data_to_render = ["exact", "evaluated"]
         #rendering_multi_block_data(file_name, 
         #                           data_to_render)
