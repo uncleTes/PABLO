@@ -546,8 +546,10 @@ class Laplacian2D(object):
         o_ranges = self._mat.getOwnershipRange()
         b_bound = self._b_bound
         grid = self._proc_g
-        max_id_octree_contained = o_ranges[0] + local_nocts
-        ids_octree_contained = range(o_ranges[0], max_id_octree_contained)
+        # Upper bound octree's id contained.
+        up_id_octree = o_ranges[0] + n_oct
+        # Octree's ids contained.
+        ids_octree = range(o_ranges[0], up_id_octree)
         # Calling "allgather" to obtain data from the corresponding grid,
         # onto the intercommunicators created, not the intracommunicators.
         # http://www.mcs.anl.gov/research/projects/mpi/mpi-standard/mpi-report-1.1/node114.htm#Node117
