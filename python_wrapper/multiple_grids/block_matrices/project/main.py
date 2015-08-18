@@ -54,11 +54,27 @@ try:
 
     b_penalization = config.getfloat("PROBLEM", "BackgroundPenalization")
     f_penalization = config.getfloat("PROBLEM", "ForegroundPenalization")
+
+    assert (len(anchors) == n_grids)
+    assert (len(edges) == n_grids)
+    assert (len(refinements) == n_grids)
+    # The form \"not anchors\" give us the possibility to check if \"anchors\"
+    # is neither \"None\" or empty.
+    # http://stackoverflow.com/questions/53513/best-way-to-check-if-a-list-is-empty
+    if ((not anchors) or
+        (not edges)   or
+        (not refinements)):
+        raise ParsingFileException
+
     overlapping = config.getboolean("PROBLEM", "Overlapping")
-except (ConfigParser.NoOptionError, 
-        ConfigParser.NoSectionError):
+except (ConfigParser.NoOptionError , 
+        ConfigParser.NoSectionError,
+        ParsingFileException       ,
+        AssertionError):
     sys.exc_info()[1]
-    print("Program exited.")
+    print("Program exited. Problems with config file \"" + 
+          str(config_file)                               + 
+          "\"")
     sys.exit(1)
 # List of names for the MPI intercommunicators.
 comm_names = ["comm_" + str(j) for j in range(n_grids)]
