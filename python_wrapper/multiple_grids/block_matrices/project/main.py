@@ -20,7 +20,6 @@ class ParsingFileException(Exception):
     """Raised when something with the config file is wrong."""
 # ------------------------------------------------------------------------------
 
-looping = True
 glob = class_global.Py_Class_Global_D2()
 config_file = "../config/PABLO.ini"
 log_file = "../log/Laplacian2D.log"
@@ -82,75 +81,6 @@ rank_w = comm_w.Get_rank()
 # ------------------------------------------------------------------------------
 def set_comm_dict(n_grids,
                   proc_grid):
-# -------------------------------------MAIN-------------------------------------
-def main():
-    global looping
-    proc_grid = rank_w % n_grids 
-    group_w = comm_w.Get_group()
-    procs_w = comm_w.Get_size()
-    procs_w_list = range(0, procs_w)
-    procs_l_lists = chunk_list(procs_w_list,
-                               n_grids)
-    group_l = group_w.Incl(procs_l_lists[proc_grid])
-    # Creating differents MPI intracommunicators.
-    comm_l = comm_w.Create(group_l)
-    # Current intracommunicator's name.
-    comm_name = comm_names[proc_grid]
-    comm_l.Set_name(comm_name)
-    
-    logger = Logger(__name__, 
-                    log_file).logger
-    logger.info("Started function for comm \"" + 
-                str(comm_l.Get_name())         + 
-                "\" and rank \""               +
-                str(comm_l.Get_rank())         +
-                "\".")
-    # Creating differents MPI intercommunicators.
-    # http://www.linux-mag.com/id/1412/
-    # http://mpi4py.scipy.org/svn/mpi4py/mpi4py/tags/0.4.0/mpi/MPI.py
-    # Choosing how many intercommunicators are present for each grid: for grids
-    # of level "1" only one intercommunicator will be present, that is the one
-    # to communicate with the background grid of level "0".
-    # Instead, for level "0", we need "n_grids - 1" intercommunicators.
-    intercomm_dictionary = {}
-
-    if procs_w > 1:
-        n_intercomm = (n_grids - 1) if proc_grid == 0 else 1
-        # Dictionary to save intercommunicator objects.
-        for i in xrange(n_intercomm):
-            # If we are onto the grid "0" (that is, the one at level "0", or of
-            # background) we need to iterate from grid "1" to the end. Otherwise,
-            # we need only the grid "0".
-            list_index = i + 1 if proc_grid == 0 else i
-            # The tag is the grid index (which is also the index of the group of
-            # processors).
-            communication_tag = list_index if proc_grid == 0 else proc_grid
-                                                  # Local leader (each 
-                                                  # intracommunicator has "0" as  
-                                                  # leader).
-            intercomm_l = comm_l.Create_intercomm(0                           ,
-                                                  # Peer communicator in common 
-                                                  # between intracommunicators.
-                                                  comm_w                      ,
-                                                  # Remote leader (in the 
-                                                  # MPI_COMM_WORLD it wil be the
-                                                  # first of each group).
-                                                  procs_l_lists[list_index][0],
-                                                  # "Safe" tag for communication 
-                                                  # between the two process 
-                                                  # leaders in the MPI_COMM_WORLD 
-                                                  # context.
-                                                  communication_tag)
-            logger.info("Created intercomm for comm \"" + 
-                        str(comm_l.Get_name())          +
-                        "\" and rank \""                +
-                        str(comm_l.Get_rank())          +
-                        "\" with comm \""               +
-                        "comm_" + str(list_index)       +
-                        "\".")
-
-            intercomm_dictionary.update({list_index : intercomm_l})
-
     refinement_levels = refinements[proc_grid]
     # Anchor node for PABLO.
     an = anchors[proc_grid]
@@ -162,7 +92,6 @@ def main():
     comm_dictionary.update({"communicator" : comm_l})
     comm_dictionary.update({"world communicator" : comm_w})
     penalization = f_pen if proc_grid else b_pen
-    penalization = b_penalization if proc_grid == 0 else f_penalization
     background_boundaries = [anchors[0][0], anchors[0][0] + edges[0],
                              anchors[0][1], anchors[0][1] + edges[0]]
     comm_dictionary.update({"background_boundaries" : background_boundaries})
@@ -172,14 +101,9 @@ def main():
     # boundaries except for the ones of the current process. Otherwise, if
     # we are on the background grid, we save all the foreground grids.
     if proc_grid:
-    # If we are on the foreground grids we save all the foreground boundaries 
-    # except for the ones of the current process. Otherwise, if we are on the
-    # background grid, we save all the foreground grids.
-    if proc_grid != 0:
         f_list.remove(proc_grid)
     # If there is no foreground grid, \"foreground_boundaries\" will be 
     # empty.
-    # If there is no foreground grid, "foreground_boundaries" will be empty.
     if len(f_list) >= 1:
         for i in f_list:
             boundary = [anchors[i][0], anchors[i][0] + edges[i],
@@ -189,7 +113,6 @@ def main():
     comm_dictionary.update({"penalization" : penalization})
     comm_dictionary.update({"foreground_boundaries" : 
                             foreground_boundaries})
-    comm_dictionary.update({"foreground_boundaries" : foreground_boundaries})
     comm_dictionary.update({"proc_grid" : proc_grid})
     comm_dictionary.update({"overlapping" : overlapping})
 
@@ -271,58 +194,21 @@ def set_octree(comm_l):
                                                   pablo_log_file, # Logfile
                                                   comm_l)         # Comm
 
-    pablo = class_para_tree.Py_Class_Para_Tree_D2(an[0]             ,
-                                                  an[1]             ,
-                                                  an[2]             ,
-                                                  ed                ,
-                                                  comm_name + ".log", # Logfile
-                                                  comm_l)             # Comm
-    
     pablo.set_balance(0, True)
 
-    
     for iteration in xrange(1, refinement_levels):
         pablo.adapt_global_refine()
-    
-    pablo.load_balance()
-    #pablo.update_connectivity()
-    #pablo.update_ghosts_connectivity()
-    
-    n_octs = pablo.get_num_octants()
-    n_nodes = pablo.get_num_nodes()
-    
-    centers = numpy.empty([n_octs, 2])
 
-    for i in xrange(0, n_octs):
-        g_idx = pablo.get_global_idx(i)
-        # Getting fields 0 and 1 of "pablo.get_center(i)".
-        centers[i, :] = pablo.get_center(i)[:2]
-
-        if comm_w.Get_rank() == 1:
-            if (check_point_into_circle(centers[i, :],
-                                        (0.5, 0.5),
-                                        0.125) and not
-                check_point_into_circle(centers[i, :],
-                                        (0.5, 0.5),
-                                        0.120)):
-                #print("bongo")
-                pablo.set_marker_from_index(i, 1)
-
-    pablo.adapt()
     pablo.load_balance()
     pablo.update_connectivity()
     pablo.update_ghosts_connectivity()
 
-    
     n_octs = pablo.get_num_octants()
     n_nodes = pablo.get_num_nodes()
-    
-    centers = numpy.empty([n_octs, 2])
 
     centers = numpy.empty([n_octs, 2])
     
     for i in xrange(0, n_octs):
-        g_idx = pablo.get_global_idx(i)
         # Getting fields 0 and 1 of "pablo.get_center(i)".
         centers[i, :] = pablo.get_center(i)[:2]
 
@@ -333,7 +219,6 @@ def set_octree(comm_l):
 def compute(comm_dictionary     ,
             intercomm_dictionary,
             centers):
-    comm_dictionary.update({"octree" : pablo})
     laplacian = Laplacian2D(comm_dictionary)
     exact_solution = ExactSolution2D(comm_dictionary)
     # Evaluating exact solution in the centers of the PABLO's cells.
@@ -342,10 +227,6 @@ def compute(comm_dictionary     ,
     # Evaluating second derivative of the exact solution,
     exact_solution.e_s_der(centers[:, 0], 
                            centers[:, 1])
-    exact_solution.evaluate_solution(centers[:, 0], 
-                                     centers[:, 1])
-    exact_solution.evaluate_second_derivative(centers[:, 0], 
-                                              centers[:, 1])
     laplacian.init_global_ghosts()
     laplacian.set_inter_extra_array()
     laplacian.init_sol()
@@ -360,18 +241,12 @@ def compute(comm_dictionary     ,
     # Setted initial residuals.
     set_in_res = False
     # Iteration number.
-    init_res_L2 = 0.0
-    init_res_inf = 0.0
-    min_res_L2 = 1000
-    min_res_inf = 1000
-    init_res_setted = False
     n_iter = 1
     looping = True
     
     while looping:
         laplacian.init_residual()
         laplacian.init_rhs(exact_solution.s_der)
-        laplacian.init_rhs(exact_solution.second_derivative)
         laplacian.init_mat()
         laplacian.set_boundary_conditions()
         laplacian.solve()
@@ -382,42 +257,17 @@ def compute(comm_dictionary     ,
 
             sol_diff = numpy.subtract(exact_solution.sol,
                                       laplacian.solution.getArray())
-            heaviside = numpy.zeros(len(centers))
-            for index, value in enumerate(centers):
-                if check_point_into_circle(value,
-                                           (0.5, 0.5),
-                                           0.125):
-                    heaviside[index] = 0
-                else:
-                    heaviside[index] = 1
-
-            numpy_difference = numpy.subtract(exact_solution.function,
-                                              laplacian.solution.getArray()) * \
-                               heaviside
 
             norm_inf = numpy.linalg.norm(sol_diff,
-            norm_inf = numpy.linalg.norm(numpy_difference,
                                          # Type of norm we want to evaluate.
                                          numpy.inf)
             norm_L2 = numpy.linalg.norm(sol_diff,
-            norm_L2 = numpy.linalg.norm(numpy_difference,
                                         2) * h
             res_inf = numpy.linalg.norm(laplacian.residual.getArray(),
                                         numpy.inf)
             res_L2 = numpy.linalg.norm(laplacian.residual.getArray(),
                                        2) * h
 
-            #print(laplacian.residual.getArray())
-            print("iteration "                            + 
-                  str(n_iter)                             + 
-                  " has norm infinite equal to "          + 
-                  str(norm_inf)                           +
-                  " and has norm l2 equal to "            + 
-                  str(norm_L2)                            +
-                  " and residual norm infinite equal to " + 
-                  str(res_inf)                            +
-                  " and residual norm l2 equal to "       +
-                  str(res_L2))
             msg = "iteration " + str(n_iter) + " has norm infinite equal to " +\
                   str(norm_inf) + " and has norm l2 equal to " + str(norm_L2) +\
                   " and residual norm infinite equal to " + str(res_inf) +     \
@@ -435,41 +285,78 @@ def compute(comm_dictionary     ,
                 looping = False
                 # Sending to all the processes the message to stop computations.
                 comm_w.Bcast([looping, 1, MPI.BOOL], root = 1)
-                
-            comm_w.send(looping, dest = 0, tag = 0)
             
 
             if not set_in_res:
                 in_res_L2 = res_L2
                 in_res_inf = res_inf
                 set_in_res = True
-            if not init_res_setted:
-                init_res_L2 = res_L2
-                init_res_inf = res_inf
-                init_res_setted = True
-
-
-        if comm_w.Get_rank() == 0:
-            looping = comm_w.recv(source = 1, tag = 0)
 
         n_iter += 1
     
-
     if comm_w.Get_rank() == 1:
         print("Inf residual minumum = " + str(min_res_inf))
         print("L2 residual minumum = " + str(min_res_L2))
     # Creating a numpy array with two single numpy arrays. Note that you 
-    # Creating a numpy.array with two single numpy.array. Note that you 
     # could have done this also with two simple python's lists.
     data_to_save = numpy.array([exact_solution.sol,
-    data_to_save = numpy.array([exact_solution.function,
                                 laplacian.solution.getArray()])
 
     return data_to_save
 # ------------------------------------------------------------------------------
+
+# -------------------------------------MAIN-------------------------------------
+def main():
+    proc_grid = rank_w % n_grids 
+    group_w = comm_w.Get_group()
+    procs_w = comm_w.Get_size()
+    procs_w_list = range(0, procs_w)
+    procs_l_lists = utilities.chunk_list(procs_w_list,
+                                         n_grids)
+    group_l = group_w.Incl(procs_l_lists[proc_grid])
+    # Creating differents MPI intracommunicators.
+    comm_l = comm_w.Create(group_l)
+    # Current intracommunicator's name.
+    comm_name = comm_names[proc_grid]
+    comm_l.Set_name(comm_name)
+
+    msg = "Started function for local comm \"" + str(comm_l.Get_name())      + \
+          "\" and world comm \"" + str(comm_w.Get_name()) + "\" and rank \"" + \
+          str(comm_l.Get_rank()) + "\"."
+    
+    logger = Logger(__name__, 
+                    log_file).logger
+    logger.info(msg)
+    
+    # Creating differents MPI intercommunicators.
+    # http://www.linux-mag.com/id/1412/
+    # http://mpi4py.scipy.org/svn/mpi4py/mpi4py/tags/0.4.0/mpi/MPI.py
+    intercomm_dictionary = {}
+
+    if procs_w > 1:
+        n_intercomms = n_grids - 1
+        create_intercomms(n_intercomms ,
+                          proc_grid    ,
+                          comm_l       ,
+                          procs_l_lists,
+                          logger       ,
+                          intercomm_dictionary)
+
+    comm_dictionary = set_comm_dict(n_grids,
+                                    proc_grid)
+
+    pablo, centers = set_octree(comm_l)
+
+    comm_dictionary.update({"octree" : pablo})
+
+    data_to_save = compute(comm_dictionary     ,
+                           intercomm_dictionary,
+                           centers)
+
+
     vtk = my_class_vtk_02.Py_Class_VTK(data_to_save            , # Data
                                        pablo                   , # Octree
-                                       "./"                    , # Dir
+                                       "../data/"              , # Dir
                                        "laplacian_" + comm_name, # Name
                                        "ascii"                 , # Type
                                        n_octs                  , # Ncells
@@ -491,13 +378,11 @@ def compute(comm_dictionary     ,
     # Call parallelization and writing onto file.
     vtk.print_vtk()
 
-    data = {}
+    msg = "Ended function for local comm \"" + str(comm_l.Get_name())        + \
+          "\" and world comm \"" + str(comm_w.Get_name()) + "\" and rank \"" + \
+          str(comm_l.Get_rank()) + "\"."
 
-    logger.info("Ended function for comm \"" + 
-                str(comm_l.Get_name())       + 
-                "\" and rank \""             +
-                str(comm_l.Get_rank())       +
-                "\".")
+    logger.info(msg)
 # ------------------------------------------------------------------------------
     
 if __name__ == "__main__":
