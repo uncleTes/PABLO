@@ -328,10 +328,20 @@ def set_octree(comm_l):
 
     return pablo, centers
 # ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+def compute(comm_dictionary     ,
+            intercomm_dictionary,
+            centers):
     comm_dictionary.update({"octree" : pablo})
     laplacian = Laplacian2D(comm_dictionary)
     exact_solution = ExactSolution2D(comm_dictionary)
     # Evaluating exact solution in the centers of the PABLO's cells.
+    exact_solution.e_sol(centers[:, 0], 
+                         centers[:, 1])
+    # Evaluating second derivative of the exact solution,
+    exact_solution.e_s_der(centers[:, 0], 
+                           centers[:, 1])
     exact_solution.evaluate_solution(centers[:, 0], 
                                      centers[:, 1])
     exact_solution.evaluate_second_derivative(centers[:, 0], 
@@ -339,14 +349,28 @@ def set_octree(comm_l):
     laplacian.init_global_ghosts()
     laplacian.set_inter_extra_array()
     laplacian.init_sol()
+    # Initial residual L2.
+    in_res_L2 = 0.0
+    # Initial residual inf.
+    in_res_inf = 0.0
+    # Min residual L2.
+    min_res_L2 = 1.0e15
+    # Min residual inf.
+    min_res_inf = 1.0e15
+    # Setted initial residuals.
+    set_in_res = False
+    # Iteration number.
     init_res_L2 = 0.0
     init_res_inf = 0.0
     min_res_L2 = 1000
     min_res_inf = 1000
     init_res_setted = False
     n_iter = 1
+    looping = True
+    
     while looping:
         laplacian.init_residual()
+        laplacian.init_rhs(exact_solution.s_der)
         laplacian.init_rhs(exact_solution.second_derivative)
         laplacian.init_mat()
         laplacian.set_boundary_conditions()
@@ -356,6 +380,8 @@ def set_octree(comm_l):
         if comm_w.Get_rank() == 1:
             h= laplacian.h
 
+            sol_diff = numpy.subtract(exact_solution.sol,
+                                      laplacian.solution.getArray())
             heaviside = numpy.zeros(len(centers))
             for index, value in enumerate(centers):
                 if check_point_into_circle(value,
@@ -369,15 +395,18 @@ def set_octree(comm_l):
                                               laplacian.solution.getArray()) * \
                                heaviside
 
+            norm_inf = numpy.linalg.norm(sol_diff,
             norm_inf = numpy.linalg.norm(numpy_difference,
                                          # Type of norm we want to evaluate.
                                          numpy.inf)
+            norm_L2 = numpy.linalg.norm(sol_diff,
             norm_L2 = numpy.linalg.norm(numpy_difference,
                                         2) * h
             res_inf = numpy.linalg.norm(laplacian.residual.getArray(),
                                         numpy.inf)
             res_L2 = numpy.linalg.norm(laplacian.residual.getArray(),
                                        2) * h
+
             #print(laplacian.residual.getArray())
             print("iteration "                            + 
                   str(n_iter)                             + 
@@ -389,6 +418,11 @@ def set_octree(comm_l):
                   str(res_inf)                            +
                   " and residual norm l2 equal to "       +
                   str(res_L2))
+            msg = "iteration " + str(n_iter) + " has norm infinite equal to " +\
+                  str(norm_inf) + " and has norm l2 equal to " + str(norm_L2) +\
+                  " and residual norm infinite equal to " + str(res_inf) +     \
+                  " and residual norm l2 equal to " + str(res_L2)
+            print(msg)
 
             if res_L2 < min_res_L2:
                 min_res_L2 = res_L2
@@ -399,10 +433,16 @@ def set_octree(comm_l):
             if ((res_L2 * 50 < init_res_L2) or
                 (n_iter >= 20)):
                 looping = False
+                # Sending to all the processes the message to stop computations.
+                comm_w.Bcast([looping, 1, MPI.BOOL], root = 1)
                 
             comm_w.send(looping, dest = 0, tag = 0)
             
 
+            if not set_in_res:
+                in_res_L2 = res_L2
+                in_res_inf = res_inf
+                set_in_res = True
             if not init_res_setted:
                 init_res_L2 = res_L2
                 init_res_inf = res_inf
@@ -413,15 +453,20 @@ def set_octree(comm_l):
             looping = comm_w.recv(source = 1, tag = 0)
 
         n_iter += 1
+    
 
     if comm_w.Get_rank() == 1:
         print("Inf residual minumum = " + str(min_res_inf))
         print("L2 residual minumum = " + str(min_res_L2))
+    # Creating a numpy array with two single numpy arrays. Note that you 
     # Creating a numpy.array with two single numpy.array. Note that you 
     # could have done this also with two simple python's lists.
+    data_to_save = numpy.array([exact_solution.sol,
     data_to_save = numpy.array([exact_solution.function,
                                 laplacian.solution.getArray()])
 
+    return data_to_save
+# ------------------------------------------------------------------------------
     vtk = my_class_vtk_02.Py_Class_VTK(data_to_save            , # Data
                                        pablo                   , # Octree
                                        "./"                    , # Dir
