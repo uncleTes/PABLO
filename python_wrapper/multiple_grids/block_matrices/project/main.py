@@ -1,5 +1,3 @@
-# http://www.mcs.anl.gov/petsc/petsc-3.5/src/ksp/ksp/examples/tutorials/ex2.c.html
-
 # ------------------------------------IMPORT------------------------------------
 import utilities
 import my_class_vtk_02
@@ -24,8 +22,8 @@ class ParsingFileException(Exception):
 
 looping = True
 glob = class_global.Py_Class_Global_D2()
-config_file = "./PABLO.ini"
-log_file = "./Laplacian2D.log"
+config_file = "../config/PABLO.ini"
+log_file = "../log/Laplacian2D.log"
 # Initialize the parser for the configuration file and read it.
 config = ConfigParser.ConfigParser()
 files_list = config.read(config_file)
@@ -51,8 +49,6 @@ try:
 
     refinements = utilities.get_list_from_string(config.get("PABLO", "Refinements"), 
                                                  ", ")
-    b_penalization = config.getfloat("PROBLEM", "BackgroundPenalization")
-    f_penalization = config.getfloat("PROBLEM", "ForegroundPenalization")
 
     assert (len(anchors) == n_grids)
     assert (len(edges) == n_grids)
@@ -65,6 +61,8 @@ try:
         (not refinements)):
         raise ParsingFileException
 
+    b_pen = config.getfloat("PROBLEM", "BackgroundPenalization")
+    f_pen = config.getfloat("PROBLEM", "ForegroundPenalization")
     overlapping = config.getboolean("PROBLEM", "Overlapping")
 except (ConfigParser.NoOptionError , 
         ConfigParser.NoSectionError,
