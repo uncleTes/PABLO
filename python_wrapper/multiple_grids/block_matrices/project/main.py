@@ -79,6 +79,9 @@ comm_names = ["comm_" + str(j) for j in range(n_grids)]
 comm_w = MPI.COMM_WORLD
 rank_w = comm_w.Get_rank()
 
+# ------------------------------------------------------------------------------
+def set_comm_dict(n_grids,
+                  proc_grid):
 # -------------------------------------MAIN-------------------------------------
 def main():
     global looping
@@ -157,17 +160,25 @@ def main():
     comm_dictionary = {}
     comm_dictionary.update({"edge" : ed})
     comm_dictionary.update({"communicator" : comm_l})
+    comm_dictionary.update({"world communicator" : comm_w})
+    penalization = f_pen if proc_grid else b_pen
     penalization = b_penalization if proc_grid == 0 else f_penalization
     background_boundaries = [anchors[0][0], anchors[0][0] + edges[0],
                              anchors[0][1], anchors[0][1] + edges[0]]
     comm_dictionary.update({"background_boundaries" : background_boundaries})
     foreground_boundaries = []
     f_list = range(1, n_grids)
+    # If we are on the foreground grids we save all the foreground 
+    # boundaries except for the ones of the current process. Otherwise, if
+    # we are on the background grid, we save all the foreground grids.
+    if proc_grid:
     # If we are on the foreground grids we save all the foreground boundaries 
     # except for the ones of the current process. Otherwise, if we are on the
     # background grid, we save all the foreground grids.
     if proc_grid != 0:
         f_list.remove(proc_grid)
+    # If there is no foreground grid, \"foreground_boundaries\" will be 
+    # empty.
     # If there is no foreground grid, "foreground_boundaries" will be empty.
     if len(f_list) >= 1:
         for i in f_list:
@@ -176,10 +187,14 @@ def main():
             foreground_boundaries.append(boundary)
 
     comm_dictionary.update({"penalization" : penalization})
+    comm_dictionary.update({"foreground_boundaries" : 
+                            foreground_boundaries})
     comm_dictionary.update({"foreground_boundaries" : foreground_boundaries})
     comm_dictionary.update({"proc_grid" : proc_grid})
     comm_dictionary.update({"overlapping" : overlapping})
 
+    return comm_dictionary
+# ------------------------------------------------------------------------------
     pablo = class_para_tree.Py_Class_Para_Tree_D2(an[0]             ,
                                                   an[1]             ,
                                                   an[2]             ,
