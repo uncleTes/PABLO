@@ -26,15 +26,26 @@ def get_list_from_string(string  ,
         print("Parameter " + str(string) + " is not  an instance of " +
               "\"basestring\"")
         return None
-                          splitter_for_lists, 
-                          splitter_for_list, 
-                          integer = False):
 
-    return [get_list_from_string(string_chunk, 
-                                 splitter_for_list, 
-                                 integer) 
-            for string_chunk in string.split(splitter_for_lists)
-           ]
+# Suppose you have the string str = \"0, 1, 0; 1.5, 2, 3\", calling this
+# function as \"get_lists_from_string(str, "; ", ", "False)\" will return the
+# list [[0.0, 1.0, 0.0], [1.5, 2, 3]].
+def get_lists_from_string(string            , 
+                          splitter_for_lists, 
+                          splitter_for_list , 
+                          integer = False):
+    try:
+        assert isinstance(string,
+                          basestring)
+        return [get_list_from_string(string_chunk     , 
+                                     splitter_for_list, 
+                                     integer) 
+                for string_chunk in string.split(splitter_for_lists)
+               ]    
+    except AssertionError:
+        print("Parameter " + str(string) + " is not  an instance of " +
+              "\"basestring\"")
+        return None
 
 # MutliBlockData are read and displayed using paraview from python.
 # https://www.mail-archive.com/search?l=paraview@paraview.org&q=subject:%22%5BParaview%5D+Python+Script%3A+%22Rescale+to+Data+Range%22%22&o=newest&f=1
