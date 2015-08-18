@@ -1,7 +1,7 @@
 # http://www.mcs.anl.gov/petsc/petsc-3.5/src/ksp/ksp/examples/tutorials/ex2.c.html
 
 # ------------------------------------IMPORT------------------------------------
-from utilities import *
+import utilities
 import my_class_vtk_02
 import sys
 # https://pythonhosted.org/petsc4py/apiref/petsc4py-module.html
@@ -40,18 +40,17 @@ try:
     n_grids = config.getint("PABLO", 
                             "NumberOfGrids")
 
-    anchors = get_lists_from_string(config.get("PABLO", "Anchors"), 
-                                    "; "                          , 
-                                    ", "                          ,
-                                    False)
+    anchors = utilities.get_lists_from_string(config.get("PABLO", "Anchors"), 
+                                              "; "                          , 
+                                              ", "                          ,
+                                              False)
 
-    edges = get_list_from_string(config.get("PABLO", "Edges"), 
-                                 ", "                        , 
-                                 False)
+    edges = utilities.get_list_from_string(config.get("PABLO", "Edges"), 
+                                           ", "                        , 
+                                           False)
 
-    refinements = get_list_from_string(config.get("PABLO", "Refinements"), 
-                                       ", ") 
-
+    refinements = utilities.get_list_from_string(config.get("PABLO", "Refinements"), 
+                                                 ", ")
     b_penalization = config.getfloat("PROBLEM", "BackgroundPenalization")
     f_penalization = config.getfloat("PROBLEM", "ForegroundPenalization")
 
