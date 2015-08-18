@@ -89,9 +89,9 @@ class Laplacian2D(object):
         self._h = self._edge / numpy.sqrt(self._N_oct)
    
     # Returns the center of the face neighbour.
-    def neighbour_centers(self  ,
-                         centers,
-                         faces):
+    def neighbour_centers(self   ,
+                          centers,
+                          faces):
         """Function which returns the centers of neighbours, depending on 
            for which face we are interested into.
            
