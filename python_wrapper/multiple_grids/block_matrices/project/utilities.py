@@ -164,9 +164,9 @@ def check_point_position_from_another(point_to_check,
         (point_to_check[1] - other_point[1] < 0)):
         return "sudest"
 
-def simple_message_log(message, 
-                       log_file, 
-                       logger = None):
+def log_msg(message , 
+            log_file, 
+            logger = None):
     logger = check_null_logger(logger, log_file)
     logger.info(message.center(140, "-"))
     return logger
