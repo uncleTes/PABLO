@@ -10,21 +10,22 @@ import math
 # ------------------------------------------------------------------------------
 
 # ----------------------------------FUNCTIONS-----------------------------------
-# Suppose you have the string str = "0, 1, 0", calling this function as
-# "get_list_from_string(str, ", ", False)" will return the list 
+# Suppose you have the string str = \"0, 1, 0\", calling this function as
+# \"get_list_from_string(str, ", ", False)\" will return the list 
 # [0.0, 1.0, 0.0].
 #http://stackoverflow.com/questions/19334374/python-converting-a-string-of-numbers-into-a-list-of-int
-def get_list_from_string(string, 
+def get_list_from_string(string  , 
                          splitter, 
                          integer = True):
-
-    return [int(number) if integer else float(number) 
-            for number in string.split(splitter)]
-
-# Suppose you have the string str = "0, 1, 0; 1.5, 2, 3", calling this function
-# as "get_lists_from_string(str, "; ", ", "False)" will return the list 
-# [[0.0, 1.0, 0.0], [1.5, 2, 3]].
-def get_lists_from_string(string, 
+    try:
+        assert isinstance(string,
+                          basestring)
+        return [int(number) if integer else float(number) 
+                for number in string.split(splitter)]
+    except AssertionError:
+        print("Parameter " + str(string) + " is not  an instance of " +
+              "\"basestring\"")
+        return None
                           splitter_for_lists, 
                           splitter_for_list, 
                           integer = False):
