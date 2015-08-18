@@ -195,6 +195,72 @@ def main():
 
     return comm_dictionary
 # ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+def create_intercomms(n_grids      ,
+                      proc_grid    ,
+                      comm_l       ,
+                      procs_l_lists,
+                      logger       ,
+                      intercomm_dict = {}):
+    n_intercomms = n_grids - 1
+    grids_to_connect = range(0, n_grids)
+    grids_to_connect.remove(proc_grid)
+
+    for grid in grids_to_connect:
+        # Remote grid.
+        r_grid = str(grid)
+        # Local grid.
+        l_grid = str(proc_grid)
+        # List index.
+        l_index = None
+
+        if (l_grid == 0):
+            l_index  = l_grid + r_grid
+        else:
+            if (r_grid == 0):
+                l_index = r_grid + l_grid
+            else:
+                if (l_grid % 2 == 1):
+                    l_index = r_grid + l_grid
+                    if ((r_grid % 2 == 1) and
+                        (r_grid > l_grid)):
+                            l_index = l_grid + r_grid
+                else:
+                    l_index = l_grid + r_grid
+                    if ((r_grid % 2 == 0) and
+                        (r_grid > l_grid)):
+                        l_index = r_grid +  l_grid
+        
+        l_index = int(l_index)
+                                            # Local leader (each 
+                                            # intracommunicator has \"0\" as  
+                                            # leader).
+        intercomm = comm_l.Create_intercomm(0                        ,
+                                            # Peer communicator in common 
+                                            # between intracommunicators.
+                                            comm_w                   ,
+                                            # Remote leader (in the 
+                                            # MPI_COMM_WORLD it wil be the
+                                            # first of each group).
+                                            procs_l_lists[r_index][0],
+                                            # \"Safe\" tag for communication 
+                                            # between the two process 
+                                            # leaders in the MPI_COMM_WORLD 
+                                            # context.
+                                            l_index)
+        intercomm_dict.update({l_index : intercomm})
+        logger.info("Created intercomm for comm \"" + 
+                    str(comm_l.Get_name())          +
+                    "\" and world comm \""          +
+                    str(comm_w.Get_name())          +
+                    "\" and rank \""                +
+                    str(comm_l.Get_rank())          +
+                    "\" with comm \""               +
+                    "comm_" + str(l_index)          +
+                    "\".")
+# ------------------------------------------------------------------------------
+
     pablo = class_para_tree.Py_Class_Para_Tree_D2(an[0]             ,
                                                   an[1]             ,
                                                   an[2]             ,
