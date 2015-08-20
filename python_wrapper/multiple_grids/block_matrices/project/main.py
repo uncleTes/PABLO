@@ -137,56 +137,65 @@ def create_intercomms(n_grids      ,
 
     for grid in grids_to_connect:
         # Remote grid.
-        r_grid = str(grid)
+        r_grid = grid
         # Local grid.
-        l_grid = str(proc_grid)
+        l_grid = proc_grid
         # List index.
         l_index = None
 
         if (l_grid == 0):
-            l_index  = l_grid + r_grid
+            l_index  = str(l_grid) + str(r_grid)
         else:
             if (r_grid == 0):
-                l_index = r_grid + l_grid
+                l_index = str(r_grid) + str(l_grid)
             else:
                 if (l_grid % 2 == 1):
-                    l_index = r_grid + l_grid
+                    l_index = str(r_grid) + str(l_grid)
                     if ((r_grid % 2 == 1) and
                         (r_grid > l_grid)):
-                            l_index = l_grid + r_grid
+                            l_index = str(l_grid) + str(r_grid)
                 else:
-                    l_index = l_grid + r_grid
+                    l_index = str(l_grid) + str(r_grid)
                     if ((r_grid % 2 == 0) and
                         (r_grid > l_grid)):
-                        l_index = r_grid +  l_grid
+                        l_index = str(r_grid) + str(l_grid)
         
         l_index = int(l_index)
+        # Remote peer communicator.
+        r_peer_comm = procs_l_lists[r_grid][0]
+        # Local peer communicator.
+        l_peer_comm = 0
+        # http://www.mpi-forum.org/docs/mpi-2.2/mpi22-report/node145.htm
                                             # Local leader (each 
                                             # intracommunicator has \"0\" as  
                                             # leader).
-        intercomm = comm_l.Create_intercomm(0                        ,
+        intercomm = comm_l.Create_intercomm(l_peer_comm,
                                             # Peer communicator in common 
                                             # between intracommunicators.
-                                            comm_w                   ,
+                                            comm_w     ,
                                             # Remote leader (in the 
-                                            # MPI_COMM_WORLD it wil be the
+                                            # MPI_COMM_WORLD it will be the
                                             # first of each group).
-                                            procs_l_lists[r_index][0],
+                                            r_peer_comm,
                                             # \"Safe\" tag for communication 
                                             # between the two process 
                                             # leaders in the MPI_COMM_WORLD 
                                             # context.
                                             l_index)
+        
         intercomm_dict.update({l_index : intercomm})
-        logger.info("Created intercomm for comm \"" + 
-                    str(comm_l.Get_name())          +
-                    "\" and world comm \""          +
-                    str(comm_w.Get_name())          +
-                    "\" and rank \""                +
-                    str(comm_l.Get_rank())          +
-                    "\" with comm \""               +
-                    "comm_" + str(l_index)          +
-                    "\".")
+        msg = "Created intercomm \""         + \
+              "comm_" + str(l_index)         + \
+              "\" for local comm \""         + \
+              str(comm_l.Get_name())         + \
+              "\" and peer communicator \""  + \
+              str(l_peer_comm)               + \
+              "\" with remote comm \""       + \
+              "comm_" + str(r_grid)          + \
+              "\" and peer communicator \""  + \
+              str(r_peer_comm)               + \
+              "\"."
+        logger.info(msg)
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
