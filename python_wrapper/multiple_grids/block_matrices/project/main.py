@@ -326,6 +326,25 @@ def compute(comm_dictionary     ,
     return data_to_save
 # ------------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
+def stub_compute(comm_dictionary     ,
+                 intercomm_dictionary,
+                 centers):
+    exact_solution = ExactSolution2D.ExactSolution2D(comm_dictionary)
+    # Evaluating exact solution in the centers of the PABLO's cells.
+    exact_solution.e_sol(centers[:, 0], 
+                         centers[:, 1])
+    # Evaluating second derivative of the exact solution,
+    exact_solution.e_s_der(centers[:, 0], 
+                           centers[:, 1])
+
+    data_to_save = numpy.array([exact_solution.sol,
+                                exact_solution.s_der])
+
+    return data_to_save
+
+# ------------------------------------------------------------------------------
+
 # -------------------------------------MAIN-------------------------------------
 def main():
     proc_grid = rank_w % n_grids 
@@ -370,8 +389,11 @@ def main():
 
     comm_dictionary.update({"octree" : pablo})
 
-    data_to_save = compute(comm_dictionary     ,
-                           intercomm_dictionary,
+    #data_to_save = compute(comm_dictionary     ,
+    #                       intercomm_dictionary,
+    #                       centers)
+    data_to_save = stub_compute(comm_dictionary     ,
+                                intercomm_dictionary,
                            centers)
 
 
