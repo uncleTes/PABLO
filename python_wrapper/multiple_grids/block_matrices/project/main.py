@@ -364,8 +364,8 @@ def main():
           "\" and world comm \"" + str(comm_w.Get_name()) + "\" and rank \"" + \
           str(comm_l.Get_rank()) + "\"."
     
-    logger = Logger(__name__, 
-                    log_file).logger
+    logger = utilities.Logger(__name__, 
+                              log_file).logger
     logger.info(msg)
     
     # Creating differents MPI intercommunicators.
@@ -374,8 +374,7 @@ def main():
     intercomm_dictionary = {}
 
     if procs_w > 1:
-        n_intercomms = n_grids - 1
-        create_intercomms(n_intercomms ,
+        create_intercomms(n_grids ,
                           proc_grid    ,
                           comm_l       ,
                           procs_l_lists,
@@ -383,9 +382,11 @@ def main():
                           intercomm_dictionary)
 
     comm_dictionary = set_comm_dict(n_grids,
-                                    proc_grid)
+                                    proc_grid,
+                                    comm_l)
 
-    pablo, centers = set_octree(comm_l)
+    pablo, centers = set_octree(comm_l,
+                                proc_grid)
 
     comm_dictionary.update({"octree" : pablo})
 
@@ -396,6 +397,8 @@ def main():
                                 intercomm_dictionary,
                            centers)
 
+    n_octs = pablo.get_num_octants()
+    n_nodes = pablo.get_num_nodes()
 
     vtk = my_class_vtk_02.Py_Class_VTK(data_to_save            , # Data
                                        pablo                   , # Octree
