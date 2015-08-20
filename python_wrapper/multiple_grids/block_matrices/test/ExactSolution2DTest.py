@@ -7,7 +7,7 @@ import os
 import project.ExactSolution2D as ExactSolution2D
 import class_para_tree
 
-log_file = "./log/test.log"
+log_file = "./log/ExactSolution2DTest.log"
 
 class ExactSolution2DTest(unittest.TestCase):
     """Class which test some behaviours of the class \"ExactSolution2D\".
