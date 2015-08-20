@@ -199,8 +199,15 @@ def create_intercomms(n_grids      ,
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
-def set_octree(comm_l):
-    pablo_log_file = "../log/" + comm_name + ".log"
+def set_octree(comm_l,
+               proc_grid):
+    comm_name = comm_l.Get_name()
+    refinement_levels = refinements[proc_grid]
+    # Anchor node for PABLO.
+    an = anchors[proc_grid]
+    # Edge's length for PABLO.
+    ed = edges[proc_grid]
+    pablo_log_file = "./log/" + comm_name + ".log"
     pablo = class_para_tree.Py_Class_Para_Tree_D2(an[0]         ,
                                                   an[1]         ,
                                                   an[2]         ,
