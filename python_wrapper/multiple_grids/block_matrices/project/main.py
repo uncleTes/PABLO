@@ -82,8 +82,9 @@ comm_w = MPI.COMM_WORLD
 rank_w = comm_w.Get_rank()
 
 # ------------------------------------------------------------------------------
-def set_comm_dict(n_grids,
-                  proc_grid):
+def set_comm_dict(n_grids  ,
+                  proc_grid,
+                  comm_l):
     refinement_levels = refinements[proc_grid]
     # Anchor node for PABLO.
     an = anchors[proc_grid]
@@ -118,6 +119,7 @@ def set_comm_dict(n_grids,
                             foreground_boundaries})
     comm_dictionary.update({"proc_grid" : proc_grid})
     comm_dictionary.update({"overlapping" : overlapping})
+    comm_dictionary.update({"log file" : log_file})
 
     return comm_dictionary
 # ------------------------------------------------------------------------------
