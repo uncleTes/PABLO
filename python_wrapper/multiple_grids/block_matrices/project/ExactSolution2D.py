@@ -1,6 +1,6 @@
-from utilities import *
 import sys
 import BaseClass2D
+import numpy
 
 class ExactSolution2D(BaseClass2D.BaseClass2D):
     # http://sphinxcontrib-napoleon.readthedocs.org/en/latest/example_google.html
