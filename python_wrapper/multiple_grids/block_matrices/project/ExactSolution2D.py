@@ -93,7 +93,7 @@ class ExactSolution2D(BaseClass2D.BaseClass2D):
             extra_msg = "\":\n" + str(sol)
             self.log_msg(msg   ,
                          "info",
-                         extra_info)
+                         extra_msg)
             self._sol = sol
         except AssertionError:
             msg = "\"MPI Abort\" called setting exact solution for "
@@ -132,7 +132,7 @@ class ExactSolution2D(BaseClass2D.BaseClass2D):
             extra_msg = "\":\n" + str(s_der)
             self.log_msg(msg   ,
                          "info",
-                         extra_info)
+                         extra_msg)
             self._s_der = s_der
         except AssertionError:
             msg = "\"MPI Abort\" called setting second derivative for "
