@@ -24,8 +24,8 @@ class ParsingFileException(Exception):
 # ------------------------------------------------------------------------------
 
 glob = class_global.Py_Class_Global_D2()
-config_file = "../config/PABLO.ini"
-log_file = "../log/Laplacian2D.log"
+config_file = "./config/PABLO.ini"
+log_file = "./log/Laplacian2D.log"
 # Initialize the parser for the configuration file and read it.
 config = ConfigParser.ConfigParser()
 files_list = config.read(config_file)
