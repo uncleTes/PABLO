@@ -6,12 +6,15 @@ import sys
 import petsc4py
 petsc4py.init(sys.argv)
 from petsc4py import PETSc
+from mpi4py import MPI
 import numpy
 import copy
 import time
 import ConfigParser
 import class_global
 import class_octant
+import class_para_tree
+import project.ExactSolution2D as ExactSolution2D
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
