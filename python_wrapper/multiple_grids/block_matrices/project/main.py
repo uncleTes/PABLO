@@ -20,7 +20,8 @@ import project.ExactSolution2D as ExactSolution2D
 # ------------------------------------------------------------------------------
 # http://stackoverflow.com/questions/1319615/proper-way-to-declare-custom-exceptions-in-modern-python
 class ParsingFileException(Exception):
-    """Raised when something with the config file is wrong."""
+    """Class which derives from \"Exception\" which is raised when something
+       with the config file is wrong."""
 # ------------------------------------------------------------------------------
 
 glob = class_global.Py_Class_Global_D2()
@@ -85,6 +86,20 @@ rank_w = comm_w.Get_rank()
 def set_comm_dict(n_grids  ,
                   proc_grid,
                   comm_l):
+    """Method which set a dictionary (\"comm_dictionary\") which is necessary 
+       for the parallelized classes like \"ExactSolution2D\" or 
+       \"Laplacian2D\".
+       
+       Arguments:
+           n_grids (int) : number of grids present in the config file.
+           proc_grids (int) : number telling which grid thw current process is
+                              working on.
+           comm_l (mpi4py.MPI.Comm) : \"local\" communicator; \"local\" stands 
+                                      for the grid which is defined for.
+
+       Returns:
+           a dictionary, previously setted."""
+
     refinement_levels = refinements[proc_grid]
     # Anchor node for PABLO.
     an = anchors[proc_grid]
@@ -131,6 +146,22 @@ def create_intercomms(n_grids      ,
                       procs_l_lists,
                       logger       ,
                       intercomm_dict = {}):
+    """Method which creates the \"MPI\" intercommumicators for the different
+       grids.
+       
+       Arguments:
+           n_grids (int) : number of grids present in the config file.
+           proc_grids (int) : number telling which grid thw current process is
+                              working on.
+           comm_l (mpi4py.MPI.Comm) : \"local\" communicator; \"local\" stands 
+                                      for the grid which is defined for.
+           procs_l_lists (list[lists]) : list containing the lists of processes
+                                         for each grid.
+           logger (utilities.Logger) : logger needed to log the 
+                                       intercommunicators created.
+           intercomm_dict (dict) : dictionary filled with the intercommunicators
+                                   created."""
+
     n_intercomms = n_grids - 1
     grids_to_connect = range(0, n_grids)
     grids_to_connect.remove(proc_grid)
@@ -201,6 +232,20 @@ def create_intercomms(n_grids      ,
 # ------------------------------------------------------------------------------
 def set_octree(comm_l,
                proc_grid):
+    """Method which set the \"PABLO\" for the current process.
+    
+       Arguments:
+           proc_grids (int) : number telling which grid thw current process is
+                              working on.
+           comm_l (mpi4py.MPI.Comm) : \"local\" communicator; \"local\" stands 
+                                      for the grid which is defined for.
+            
+       Returns:
+           pablo (class_para_tree.Py_Class_Para_Tree_D2) : the octree.
+           centers (list[lists]) : list containing lists of the abscissa and 
+                                   ordinate coordinates of the centers of the
+                                   quadtree of the current process."""
+
     comm_name = comm_l.Get_name()
     refinement_levels = refinements[proc_grid]
     # Anchor node for PABLO.
@@ -240,6 +285,21 @@ def set_octree(comm_l,
 def compute(comm_dictionary     ,
             intercomm_dictionary,
             centers):
+    """Method which compute all the calculation for the laplacian, exact 
+       solution and residuals.
+
+       Arguments:
+           comm_dictionary (dict) : dictionary containing useful data for each
+                                    intra-communicator and grid.
+           intercomm_dictionary (dict) : dictionary containing the 
+                                         intracommunicators created.
+           centers (list[lists]) : list containing lists of the centers of the
+                                   quadtree contained in the current process.
+
+       Returns:
+           data_to_save (numpy.array) : array containings the data to be saved
+                                        subsequently into the \"VTK\" file."""
+
     laplacian = Laplacian2D(comm_dictionary)
     exact_solution = ExactSolution2D(comm_dictionary)
     # Evaluating exact solution in the centers of the PABLO's cells.
@@ -330,6 +390,21 @@ def compute(comm_dictionary     ,
 def stub_compute(comm_dictionary     ,
                  intercomm_dictionary,
                  centers):
+    """A stub method which stores exact solution and its second derivative.
+
+       Arguments:
+           comm_dictionary (dict) : dictionary containing useful data for each
+                                    intra-communicator and grid.
+           intercomm_dictionary (dict) : dictionary containing the 
+                                         intracommunicators created.
+           centers (list[lists]) : list containing lists of the centers of the
+                                   quadtree contained in the current process.
+
+       Returns:
+           data_to_save (numpy.array) : array containings the data to be saved
+                                        subsequently into the \"VTK\" file;
+                                        in this case, are onlu exact values."""
+
     exact_solution = ExactSolution2D.ExactSolution2D(comm_dictionary)
     # Evaluating exact solution in the centers of the PABLO's cells.
     exact_solution.e_sol(centers[:, 0], 
@@ -347,6 +422,8 @@ def stub_compute(comm_dictionary     ,
 
 # -------------------------------------MAIN-------------------------------------
 def main():
+    """Main function....yeah, the name is self explanatory."""
+
     proc_grid = rank_w % n_grids 
     group_w = comm_w.Get_group()
     procs_w = comm_w.Get_size()
