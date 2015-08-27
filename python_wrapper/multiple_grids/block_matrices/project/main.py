@@ -332,6 +332,9 @@ def compute(comm_dictionary     ,
         laplacian.set_boundary_conditions()
         laplacian.solve()
         laplacian.update_values(intercomm_dictionary)
+        
+        # Sending to all the processes the message to stop computations.
+        comm_w.Bcast([looping, 1, MPI.BOOL], root = 1)
 
         if comm_w.Get_rank() == 1:
             h= laplacian.h
@@ -364,10 +367,7 @@ def compute(comm_dictionary     ,
             if ((res_L2 * 50 < init_res_L2) or
                 (n_iter >= 20)):
                 looping = False
-                # Sending to all the processes the message to stop computations.
-                comm_w.Bcast([looping, 1, MPI.BOOL], root = 1)
             
-
             if not set_in_res:
                 in_res_L2 = res_L2
                 in_res_inf = res_inf
