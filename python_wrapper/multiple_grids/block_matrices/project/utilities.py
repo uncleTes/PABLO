@@ -1,7 +1,7 @@
 # ------------------------------------IMPORT------------------------------------
 import xml.etree.cElementTree as ET
-import paraview
-from paraview.simple import *
+#import paraview
+#from paraview.simple import *
 import logging
 import os
 from mpi4py import MPI
@@ -53,49 +53,49 @@ def get_lists_from_string(string            ,
 # http://www.paraview.org/Wiki/ParaView/Python/Lookup_tables
 # http://www.paraview.org/Wiki/ParaView/Python_Scripting
 # http://www.paraview.org/Wiki/Python_recipes
-def rendering_multi_block_data(file_name, 
-                               data_to_render = []):
-
-    n_data = len(data_to_render)
-    reader = XMLMultiBlockDataReader(FileName = file_name)
-
-    for data in xrange(n_data):
-        render_view = CreateRenderView()
-        # Obtain display's properties.
-        dp = GetDisplayProperties(reader)
-        # Choose representation: "Surface", "Surface With Edges", etc.
-        dp.Representation = "Surface With Edges"
-        # "ColorBy" colors data depending by the parameters you insert; Here we
-        # have chosen "CELLS" instead of "POINTS" because we know that (for the
-        # moment), data are evaluated on the center of the cells. The parameter
-        # "data_to_render" is the data you want to display (in the "Laplacian2D.py"
-        # is for example "exact" solution).
-        ColorBy(dp, ("CELLS", data_to_render[data]))
-        # Rescale visualized values to the data's ones.
-        dp.RescaleTransferFunctionToDataRange(True)
-        # Visualize scalar bar.
-        dp.SetScalarBarVisibility(render_view, True)
-        show = Show(reader, render_view)
-        # http://public.kitware.com/pipermail/paraview-developers/2012-April/001510.html
-        render_view.ViewSize = [800, 600]
-
-    # If there are more than one data to render, link the camera to each
-    # other to obtain the same scale in eac araview's RenderView.
-    if n_data > 1:
-        for data in xrange(1, n_data):
-            AddCameraLink(GetRenderViews()[0], 
-                          GetRenderViews()[data], 
-                          "link_" + str(data))
-    # Finally, visualize the data(s).
-    #for view in GetViews():
-    #    # This is the body of method "Interact()" of Paraview python. For the
-    #    # moment is not supported for pvpython, it has been inserted into
-    #    # a nightly release and will be pushed in the next stable 4.4.
-    #    # http://www.kitware.com/blog/home/post/837.
-    #    Render(view)
-    #    view.GetInteractor().Start()
-    while True:
-        RenderAllViews()
+#def rendering_multi_block_data(file_name, 
+#                               data_to_render = []):
+#
+#    n_data = len(data_to_render)
+#    reader = XMLMultiBlockDataReader(FileName = file_name)
+#
+#    for data in xrange(n_data):
+#        render_view = CreateRenderView()
+#        # Obtain display's properties.
+#        dp = GetDisplayProperties(reader)
+#        # Choose representation: "Surface", "Surface With Edges", etc.
+#        dp.Representation = "Surface With Edges"
+#        # "ColorBy" colors data depending by the parameters you insert; Here we
+#        # have chosen "CELLS" instead of "POINTS" because we know that (for the
+#        # moment), data are evaluated on the center of the cells. The parameter
+#        # "data_to_render" is the data you want to display (in the "Laplacian2D.py"
+#        # is for example "exact" solution).
+#        ColorBy(dp, ("CELLS", data_to_render[data]))
+#        # Rescale visualized values to the data's ones.
+#        dp.RescaleTransferFunctionToDataRange(True)
+#        # Visualize scalar bar.
+#        dp.SetScalarBarVisibility(render_view, True)
+#        show = Show(reader, render_view)
+#        # http://public.kitware.com/pipermail/paraview-developers/2012-April/001510.html
+#        render_view.ViewSize = [800, 600]
+#
+#    # If there are more than one data to render, link the camera to each
+#    # other to obtain the same scale in eac araview's RenderView.
+#    if n_data > 1:
+#        for data in xrange(1, n_data):
+#            AddCameraLink(GetRenderViews()[0], 
+#                          GetRenderViews()[data], 
+#                          "link_" + str(data))
+#    # Finally, visualize the data(s).
+#    #for view in GetViews():
+#    #    # This is the body of method "Interact()" of Paraview python. For the
+#    #    # moment is not supported for pvpython, it has been inserted into
+#    #    # a nightly release and will be pushed in the next stable 4.4.
+#    #    # http://www.kitware.com/blog/home/post/837.
+#    #    Render(view)
+#    #    view.GetInteractor().Start()
+#    while True:
+#        RenderAllViews()
 
 # Suppose you have the list "lst = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"; calling 
 # this functio as chunk_list(lst, 3), will return the following list:
