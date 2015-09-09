@@ -687,14 +687,14 @@ class Laplacian2D(object):
                                                                   insert_mode)
                         else:
                             insert_mode = PETSc.InsertMode.ADD_VALUES
-                            self.__inter_extra_array.setValue(value[1]         ,
-                                                              intra_extra_value,
-                                                              insert_mode)
+                            self._e_array.setValue(value[1]         ,
+                                                   intra_extra_value,
+                                                   insert_mode)
 
-        self.__inter_extra_array.assemblyBegin()
-        self.__inter_extra_array.assemblyEnd()
-        self.__inter_extra_array_ghost_boundary.assemblyBegin()
-        self.__inter_extra_array_ghost_boundary.assemblyEnd()
+        self._e_array.assemblyBegin()
+        self._e_array.assemblyEnd()
+        self._e_array_gb.assemblyBegin()
+        self._e_array_gb.assemblyEnd()
         # Resetting structures used for the "allgather" functions.
         self.init_e_structures()
         self.logger.info("Updated  inter_extra_array for comm \"" +
