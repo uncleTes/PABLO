@@ -308,8 +308,8 @@ def compute(comm_dictionary     ,
     # Evaluating second derivative of the exact solution,
     exact_solution.e_s_der(centers[:, 0], 
                            centers[:, 1])
-    laplacian.init_global_ghosts()
-    laplacian.set_inter_extra_array()
+    laplacian.init_g_g()
+    laplacian.init_e_arrays()
     laplacian.init_sol()
     # Initial residual L2.
     in_res_L2 = 0.0
@@ -329,7 +329,7 @@ def compute(comm_dictionary     ,
         laplacian.init_residual()
         laplacian.init_rhs(exact_solution.s_der)
         laplacian.init_mat()
-        laplacian.set_boundary_conditions()
+        laplacian.set_b_c()
         laplacian.solve()
         laplacian.update_values(intercomm_dictionary)
         
