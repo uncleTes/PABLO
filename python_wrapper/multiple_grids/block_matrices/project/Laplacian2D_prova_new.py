@@ -37,7 +37,7 @@ class Laplacian2D(object):
                                  \"f_bound\" or \"b_bound\" are \"None\"."""
         # http://stackoverflow.com/questions/19205916/how-to-call-base-classs-init-method-from-the-child-class
         super(Laplacian2D, self).__init__(kwargs)
-        self.set_intercomm_structures()
+        self.init_e_structures()
         # If some arguments are not presents, function "setdefault" will set 
         # them to the default value.
         # Penalization.
@@ -518,27 +518,35 @@ class Laplacian2D(object):
                      extra_msg)
         self.init_e_arrays()
     
-    def set_intercomm_structures(self):
-        # Setting "self.__temp_data_local" to a dictionary because after 
-        # the "allgather" operations it will became a list of dictionaries.
-        # The "self.__temp_data_local" will contains local data to be exchanged
-        # between grids of different levels.
-        self.__temp_data_local = {}
-        # The "self.__temp_data_global" will contains exchanged data between 
-        # grids of different levels.
-        self.__temp_data_global = []
-        # The "self.__intra_extra_indices_local" will contains indices of the 
-        # local data to be exchanged between grids of different levels.
-        self.__intra_extra_indices_local = []
-        # The "self.__intra_extra_indices_global" will contains indices of the 
-        # excahnged data between grids of different levels.
-        self.__intra_extra_indices_global = []
-        # The "self.__intra_extra_values_local" will contains values of the 
-        # local data to be exchanged between grids of different levels.
-        self.__intra_extra_values_local = []
-        # The "self.__intra_extra_indices_local" will contains values of the 
-        # exchanged data between grids of different levels.
-        self.__intra_extra_values_global = []
+    # Initialize exchanged structures.	
+    def init_e_structures(self):
+	"""Method which initializes structures used to exchange data between
+	   different grids."""
+
+        # The \"self._edl\" will contains local data to be exchanged between
+	# grids of different levels.
+	# Exchanged data local.
+        self._edl = {} # is the old \"self.__temp_data_local\".
+        # The \"self._edg\" will contains the excahnged data between grids of
+	# different levels.
+	# Exchanged data global.
+        self._edg = [] # is the old \"self.__temp_data_global\".
+        # The \"self._eil\" will contains indices of the local data to be
+	# exchanged between grids of different levels.
+	# Exchanged indices local.
+        self._eil = [] # is the old \"self.__intra_extra_indices_local\".
+        # The \"self._eig\" will contains indices of the excahnged data between
+	# grids of different levels.
+	# Exchanged indices global.
+        self._eig = [] # is the old \"self.__intra_extra_indices_global\".
+        # The \"self._evl\" will contains values of the local data to be
+	# exchanged between grids of different levels.
+	# Exchanged values local.
+        self._evl = [] # is the old \"self.__intra_extra_values_local\".
+        # The \"self._evg\" will contains values of the exchanged data between
+	# grids of different levels.
+	# Exchanged values global.
+        self._evg = []
     
     def update_values(self, 
                       intercomm_dictionary = {}):
@@ -688,7 +696,7 @@ class Laplacian2D(object):
         self.__inter_extra_array_ghost_boundary.assemblyBegin()
         self.__inter_extra_array_ghost_boundary.assemblyEnd()
         # Resetting structures used for the "allgather" functions.
-        self.set_intercomm_structures()
+        self.init_e_structures()
         self.logger.info("Updated  inter_extra_array for comm \"" +
                          str(self.__comm.Get_name())              + 
                          "\" and rank \""                         +
