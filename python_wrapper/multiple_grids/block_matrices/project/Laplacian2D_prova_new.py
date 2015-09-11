@@ -1,7 +1,16 @@
 import numbers
 import math
+import BaseClass2D
+import ExactSolution2D
+import numpy
+from petsc4py import PETSc 
+import class_global
+import utilities
 
-class Laplacian2D(object):   
+glob = class_global.Py_Class_Global_D2()
+log_file = "./log/Laplacian2D_prova_new.log"
+
+class Laplacian2D(BaseClass2D.BaseClass2D):   
     """Class which evaluates the laplacian onto a 2D grid.
     
     Attributes:
@@ -61,12 +70,12 @@ class Laplacian2D(object):
         if ((not self._f_bound) or 
             (not self._b_bound)):
             msg = "\"MPI Abort\" called during initialization "
-            extra_msg = " Penalization or bakground boundaries or both are " +
+            extra_msg = " Penalization or bakground boundaries or both are " + \
                         "not initialized. Please check your \"config file\"."
             self.log_msg(msg    , 
                          "error",
                          extra_msg)
-           self._comm_w.Abort(1) 
+	    self._comm_w.Abort(1) 
         # The grid of the current process: process' grid.
         self._proc_g = kwargs["process grid"]
         # Total number of octants into the communicator.
@@ -83,7 +92,7 @@ class Laplacian2D(object):
             self.log_msg(msg    ,
                          "error",
                          extra_msg)
-            self._comm_w.Abort(1)
+	    self._comm_w.Abort(1)
 
         # Length of the edge of an octree.
         self._h = self._edge / numpy.sqrt(self._N_oct)
@@ -106,7 +115,7 @@ class Laplacian2D(object):
                a tuple or a list containing the centers evaluated."""
 
         if ((len(faces) != 1) and
-            (len(faces) != len(centers)):
+            (len(faces) != len(centers))):
             msg = "\"MPI Abort\" called " 
             extra_msg = " Different length of \"faces\" and \"centers\"."
             self.log_msg(msg    ,
@@ -115,7 +124,8 @@ class Laplacian2D(object):
             self._comm_w.Abort(1)
 
         h = self._h
-        centers = []
+	# Evaluated centers.
+        eval_centers = []
         for i, face in enumerate(faces):
             (x_center, y_center) = centers[i]
             if not isinstance(face, numbers.Integral):
@@ -132,18 +142,22 @@ class Laplacian2D(object):
                 self._comm_w.Abort(1)
             else:
                 if ((face % 2) == 0):
-                    (x_center = x_center - h) if (face == 0) else \
-                    (y_center = y_center - h)
+		    if (face == 0):
+                    	x_center = x_center - h
+		    else:
+                    	y_center = y_center - h
                 else:
-                    (x_center = x_center + h) if (face == 1) else \
-                    (y_center = y_center + h)
+		    if (face == 1):
+                    	x_center = x_center + h
+		    else:
+                    	y_center = y_center + h
 
-                centers.append((x_center, y_center))
+                eval_centers.append((x_center, y_center))
 
         if len(centers) == 1:
-            return centers[0]
+            return eval_centers[0]
                 
-        return centers
+        return eval_centers
 
     # Evaluate boundary conditions. 
     def eval_b_c(self   ,
@@ -172,8 +186,8 @@ class Laplacian2D(object):
         x_s = [c_neigh[0] for c_neigh in c_neighs] 
         y_s = [c_neigh[1] for c_neigh in c_neighs] 
 
-        boundary_values = ExactSolution2D.solution(x_s, 
-                                                   y_s)
+        boundary_values = ExactSolution2D.ExactSolution2D.solution(x_s, 
+                                                   		   y_s)
 
         return boundary_values
 
@@ -194,12 +208,14 @@ class Laplacian2D(object):
                                                  log_file)
             if check and b_faces[i] == 1:
                 key = (grid, b_indices[i], "ghost_boundary")
-                self.__temp_data_local.update({key : neigh_center})
-                b_values[i] = self.__inter_extra_array_ghost_boundary.getValue(b_indices[i])
+                self._edl.update({key : neigh_center})
+                b_values[i] = self._e_array_gb.getValue(b_indices[i])
 
     
     # Set boundary conditions.
     def set_b_c(self):
+	"""Method to set boundary conditions for the current problem."""
+
         penalization = self._pen
         b_bound = self._b_bound
         grid = self._proc_g
@@ -211,6 +227,7 @@ class Laplacian2D(object):
         h = self._h
         h2 = h * h
         is_background = False
+	overlapping = self._over_l
         # If we are onto the grid \"0\", we are onto the background grid.
         if not grid:
             is_background = True
@@ -244,37 +261,37 @@ class Laplacian2D(object):
         else:
             for i, center in enumerate(b_centers):
                 # Check if foreground grid is inside the background one.
-                check = check_into_square(center     ,
-                                          b_bound    ,
-                                          self.logger,
-                                          log_file)
+                check = utilities.check_into_square(center     ,
+                                          	    b_bound    ,
+                                          	    self.logger,
+                                          	    log_file)
                 if check:
                     # Can't use list as dictionary's keys.
                     # http://stackoverflow.com/questions/7257588/why-cant-i-use-a-list-as-a-dict-key-in-python
                     # https://wiki.python.org/moin/DictionaryKeys
                     key = (grid        , # Grid (0 is for the background grid)
                            b_indices[i], # Global index of the octant
-                           faces[i]    , # Boundary face
+                           b_faces[i]  , # Boundary face
                            h)            # Edge's length
                     # We store the centers of the cells on the boundary.
-                    self.__temp_data_local.update({key : center})
-                    b_values[i] = self.__inter_extra_array.getValue(b_indices[i])
+                    self._edl.update({key : center})
+                    b_values[i] = self._e_array.getValue(b_indices[i])
                     # Residual evaluation...
                     sol_value = self._sol.getValue(b_indices[i])
-                    self._residual_local.update({tuple(center) : sol_value})
+                    self._res_l.update({tuple(center) : sol_value})
                 else:
                     b_values[i] = self.eval_b_c(center,
                                                 b_faces[i])
 
         b_values[:] = [b_value * (-1/h2) for b_value in b_values]
         insert_mode = PETSc.InsertMode.ADD_VALUES
-        self.__rhs.setValues(b_indices,
-                             b_values ,
-                             insert_mode)
+        self._rhs.setValues(b_indices,
+                            b_values ,
+                            insert_mode)
         # ATTENTION!! Non using these functions will give you an unassembled
         # vector PETSc.
-        self.__rhs.assemblyBegin()
-        self.__rhs.assemblyEnd()
+        self._rhs.assemblyBegin()
+        self._rhs.assemblyEnd()
         msg = "Set boundary conditions"
         extra_msg = "of grid \"" + str(self._proc_g) + "\""
         self.log_msg(msg   ,
@@ -316,8 +333,9 @@ class Laplacian2D(object):
     # Init matrix.
     def init_mat(self,
                  # Overlap octants' number.
-                 o_n_oct):
-        penalization = self._penalization
+                 o_n_oct = 0):
+        penalization = self._pen
+        f_bound = self._f_bound
         grid = self._proc_g
         self._mat = PETSc.Mat().create(comm = self._comm)
         # Local and global matrix's sizes.
@@ -352,7 +370,7 @@ class Laplacian2D(object):
             p_bound = self.apply_overlap(overlap)
 
         for octant in xrange(0, n_oct):
-            indices, values = ([] for i in range(0, 2))# Indices/values
+            indices, values = ([] for i in range(0, 2)) # Indices/values
             neighs, ghosts = ([] for i in range(0, 2))
             g_octant = o_ranges[0] + octant
             py_oct = self._octree.get_octant(octant)
@@ -361,27 +379,34 @@ class Laplacian2D(object):
             is_penalized = False
             # Background grid.
             if is_background:
-                is_penalized = check_into_squares(center     ,
-                                                  p_bound    ,
-                                                  self.logger,
-                                                  log_file)
+                is_penalized = utilities.check_into_squares(center     ,
+                                                  	    p_bound    ,
+                                                  	    self.logger,
+                                                  	    log_file)
                 if is_penalized:
                     key = (grid, g_octant)
-                    self.__temp_data_local.update({key : center})
+                    self._edl.update({key : center})
                 # Residual evaluation...
-                if check_into_squares(center     ,
-                                      f_bound    ,
-                                      self.logger,
-                                      log_file): #and not is_penalized:
-                    sol_value = self._solution.getValue(g_octant)
-                    self.__residual_local.update({tuple(center) : sol_value})
+		eval_res = (check_into_squares(center     ,
+                                      	       f_bound    ,
+                                      	       self.logger,
+                                      	       log_file) and not 
+			    is_penalized) if overlap else \
+			   utilities.check_into_squares(center     ,
+                                      	      		f_bound    ,
+                                      	      		self.logger,
+                                      	      		log_file)
+
+		if eval_res:
+                    sol_value = self._sol.getValue(g_octant)
+                    self._res_l.update({tuple(center) : sol_value})
             # Here we are, upper grids.
-            else:
-                circle_center = (0.5, 0.5)
-                circle_radius = 0.125
-                is_penalized = check_into_circle(center       ,
-                                                 circle_center,
-                                                 circle_radius)
+            #else:
+            #    circle_center = (0.5, 0.5)
+            #    circle_radius = 0.125
+            #    is_penalized = check_into_circle(center       ,
+            #                                     circle_center,
+            #                                     circle_radius)
 
             indices.append(g_octant)
             values.append(((-4.0 / h2) - penalization) if is_penalized 
@@ -403,7 +428,7 @@ class Laplacian2D(object):
                     values.append(1.0 / h2)
                     
             self._mat.setValues(g_octant, # Rows
-                                indices,  # Columns
+                                indices , # Columns
                                 values)   # Values to be inserted
 
         # ATTENTION!! Non using these functions will give you an unassembled
@@ -411,8 +436,8 @@ class Laplacian2D(object):
         self._mat.assemblyBegin()
         self._mat.assemblyEnd()
         msg = "Initialized matrix"
-        extra_msg = "with sizes \"" + str(self.__mat.getSizes()) + \
-                    "\" and type \"" + str(self.__mat.getType()) + "\""
+        extra_msg = "with sizes \"" + str(self._mat.getSizes()) + \
+                    "\" and type \"" + str(self._mat.getType()) + "\""
         self.log_msg(msg   ,
                      "info",
                      extra_msg)
@@ -420,7 +445,7 @@ class Laplacian2D(object):
     # Initialize extra arrays.
     def init_e_arrays(self,
                       array = None):
-        self.e_array = self.init_array("extra array",
+        self._e_array = self.init_array("extra array",
                                        array)
         self._e_array_gb = self.init_array("extra array ghost boundary",
                                            array)
@@ -429,6 +454,19 @@ class Laplacian2D(object):
                    # Array name.
                    a_name = "",
                    array = None):
+	"""Method which initializes an array or with zeros or with a 
+	   \"numpy.ndarray\" passed as parameter.
+
+	   Arguments:
+		a_name (string) : name of the array to initialize, being written
+				  into the log. Default value is \"\"
+		array (numpy.ndarray) : possible array to use to initialize the
+					returned array. Default value is 
+					\"None\".
+
+	   Returns:
+		a PETSc array."""
+	
         pen = self._pen
         grid = self._proc_g
         n_oct = self._n_oct
@@ -469,6 +507,9 @@ class Laplacian2D(object):
     
     def init_rhs(self, 
                  numpy_array):
+	"""Method which intializes the right hand side."""
+
+	penalization = self._pen
         grid = self._proc_g
         is_background = False
         if not grid:
@@ -476,16 +517,20 @@ class Laplacian2D(object):
 
         numpy_rhs = numpy.subtract(numpy_array, 
                                    numpy.multiply(penalization,
-                                                  self._inter_extra_array.getArray())) if \
+                                                  self._e_array.getArray())) if \
                     is_background else \
                     numpy_array
         self._rhs = self.init_array("right hand side",
                                     numpy_rhs)
     
     def init_sol(self):
+	"""Method which initializes the solution."""
+
         self._sol = self.init_array("solution")
     
     def init_residual(self):
+        self._res_l = {}
+        self._res_g = []
         self._res = self.init_array("residual")
     
     def solve(self):
@@ -507,7 +552,7 @@ class Laplacian2D(object):
         pc.setFromOptions()
         # Solve the system.
         ksp.solve(self._rhs, 
-                  self._solution)
+                  self._sol)
         # How many iterations are done.
         it_number = ksp.getIterationNumber()
 
@@ -557,7 +602,7 @@ class Laplacian2D(object):
         # Upper bound octree's id contained.
         up_id_octree = o_ranges[0] + n_oct
         # Octree's ids contained.
-        ids_octree = range(o_ranges[0], up_id_octree)
+        ids_octree_contained = range(o_ranges[0], up_id_octree)
         # Calling "allgather" to obtain data from the corresponding grid,
         # onto the intercommunicators created, not the intracommunicators.
         # http://www.mcs.anl.gov/research/projects/mpi/mpi-standard/mpi-report-1.1/node114.htm#Node117
@@ -566,36 +611,37 @@ class Laplacian2D(object):
         for key, intercomm in intercomm_dictionary.items():
             # Extending a list with the lists obtained by the other processes
             # of the corresponding intercommunicator.
-            self.__temp_data_global.extend(intercomm.allgather(self.__temp_data_local))
-            self.__residual_global.extend(intercomm.allgather(self.__residual_local))
+            self._edg.extend(intercomm.allgather(self._edl))
+            self._res_g.extend(intercomm.allgather(self._res_l))
         # Residual evaluation... 
-        for index, dictionary in enumerate(self.__residual_global):
+        for index, dictionary in enumerate(self._res_g):
             for center, solution_value in dictionary.items():
-                local_idx = self.__octree.get_point_owner_idx(center)
+                local_idx = self._octree.get_point_owner_idx(center)
                 global_idx = local_idx + o_ranges[0]
 
                 if global_idx in ids_octree_contained:
-                    center_cell_container = self.__octree.get_center(local_idx)[:2]
-                    location = check_point_position_from_another(center,
-                                                                 center_cell_container)
+                    center_cell_container = self._octree.get_center(local_idx)[:2]
+                    location = utilities.points_location(center,
+                                                         center_cell_container)
                     neigh_centers, neigh_values = ([] for i in range(0, 2))
-                    (neigh_centers, neigh_values) = self.find_right_neighbours(location,
-                                                                               local_idx,
-                                                                               o_ranges[0])
-                    bilinear_value = bilinear_interpolation(center,
-                                                            neigh_centers,
-                                                            neigh_values)
+                    (neigh_centers, 
+		     neigh_values) = self.find_right_neighbours(location ,
+                                                        local_idx,
+                                                        o_ranges[0])
+                    bilinear_value = utilities.bil_interp(center       ,
+                                                          neigh_centers,
+                                                          neigh_values)
                     insert_mode = PETSc.InsertMode.INSERT_VALUES
                     value = bilinear_value - solution_value
-                    self.__residual.setValue(global_idx, 
-                                             value     ,
-                                             insert_mode)
-        self.__residual.assemblyBegin()
-        self.__residual.assemblyEnd()
+                    self._res.setValue(global_idx, 
+                                       value     ,
+                                       insert_mode)
+        self._res.assemblyBegin()
+        self._res.assemblyEnd()
 
         # "self.__temp_data_global" will be a list of same structures of data,
         # after the "allgather" call; these structures are dictionaries.
-        for index, dictionary in enumerate(self.__temp_data_global):
+        for index, dictionary in enumerate(self._edg):
             for key, center in dictionary.items():
                 (x_center, y_center) = center
                 into_background = True
@@ -604,8 +650,8 @@ class Laplacian2D(object):
                     ghost_boundary = True
                 # We are onto grids of the first level.
                 if grid:
-                    local_idx = self.__octree.get_point_owner_idx((x_center,
-                                                                   y_center))
+                    local_idx = self._octree.get_point_owner_idx((x_center,
+                                                                  y_center))
                 # We are onto the background grid.
                 else:
                     if key[2] == 0:
@@ -617,19 +663,19 @@ class Laplacian2D(object):
                     if key[2] == 3:
                         y_center = y_center + key[3]
 
-                    into_background = check_point_into_square_2D((x_center, 
-                                                                  y_center)  ,
-                                                                 b_boundaries,
-                                                                 self.logger ,
-                                                                 log_file)
+                    into_background = utilities.check_into_square((x_center, 
+                                                         	   y_center)  ,
+                                                        	  b_bound     ,
+								  self.logger ,
+								  log_file)
                     if into_background:
                         # The function "get_point_owner_idx" wants only one argument
                         # so we are passing it a tuple.
-                        local_idx = self.__octree.get_point_owner_idx((x_center,
-                                                                       y_center))
+                        local_idx = self._octree.get_point_owner_idx((x_center,
+                                                                      y_center))
                     # Is this "else" useful? For me no.
                     else:
-                        local_idx = self.__octree.get_point_owner_idx(center)
+                        local_idx = self._octree.get_point_owner_idx(center)
 
                 global_idx = local_idx + o_ranges[0]
 
@@ -637,54 +683,54 @@ class Laplacian2D(object):
                     # Appending a tuple containing the grid number and
                     # the corresponding octant index.
                     if ghost_boundary:
-                        self.__intra_extra_indices_local.append((key[0], key[1], key[2]))
+                        self._eil.append((key[0], key[1], key[2]))
                     else:
-                        self.__intra_extra_indices_local.append((key[0], key[1]))
+                        self._eil.append((key[0], key[1]))
                     if into_background:
-                        center_cell_container = self.__octree.get_center(local_idx)[:2]
-                        location = check_point_position_from_another((x_center,
-                                                                      y_center),
-                                                                     center_cell_container)
+                        center_cell_container = self._octree.get_center(local_idx)[:2]
+                        location = utilities.points_location((x_center,
+                                                              y_center),
+                                                              center_cell_container)
                         neigh_centers, neigh_values = ([] for i in range(0, 2))
                         (neigh_centers, neigh_values) = self.find_right_neighbours(location ,
                                                                                    local_idx,
                                                                                    o_ranges[0])
-                        solution_value = bilinear_interpolation((x_center, 
-                                                                 y_center)   ,
-                                                                neigh_centers,
-                                                                neigh_values)
+                        solution_value = utilities.bil_interp((x_center, 
+                                                               y_center)   ,
+                                                              neigh_centers,
+                                                              neigh_values)
                     else:
-                        solution_value = ExactSolution2D.solution(x_center, 
-                                                                  y_center)
+                        solution_value = ExactSolution2D.ExactSolution2D.solution(x_center, 
+                                                                  		  y_center)
 
-                    self.__intra_extra_values_local.append(solution_value)
+                    self._evl.append(solution_value)
         # Updating data for each process into "self.__intra_extra_indices_global"
         # and "self.__intra_extra_values_global", calling "allgather" to obtain 
         # data from the corresponding grid onto the intercommunicators created, 
         # not the intracommunicators.
         for key, intercomm in intercomm_dictionary.items():
-            self.__intra_extra_indices_global.extend(intercomm.allgather(self.__intra_extra_indices_local))
-            self.__intra_extra_values_global.extend(intercomm.allgather(self.__intra_extra_values_local))
+            self._eig.extend(intercomm.allgather(self._eil))
+            self._evg.extend(intercomm.allgather(self._evl))
 
-        for index, values in enumerate(self.__intra_extra_indices_global):
+        for index, values in enumerate(self._eig):
             for position, value in enumerate(values):
                 # Check if the global index belong to the process.
                 if value[1] in ids_octree_contained:
                     # Check if we are onto the right grid.
-                    if value[0] == self.__proc_grid:
-                        intra_extra_value = self.__intra_extra_values_global[index][position]
+                    if value[0] == self._proc_g:
+                        intra_extra_value = self._evg[index][position]
                         # Background grid.
                         if grid == 0:
                             insert_mode = PETSc.InsertMode.INSERT_VALUES
                             # Here "insert_mode" does not affect nothing.
                             if len(value) == 3:
-                                self.__inter_extra_array_ghost_boundary.setValue(value[1],
-                                                                                 intra_extra_value,
-                                                                                 insert_mode)
+                                self._e_array_gb.setValue(value[1],
+                                                          intra_extra_value,
+                                                          insert_mode)
                             else:
-                                self.__inter_extra_array.setValue(value[1]         , 
-                                                                  intra_extra_value,
-                                                                  insert_mode)
+                                self._e_array.setValue(value[1]         , 
+                                                       intra_extra_value,
+                                                       insert_mode)
                         else:
                             insert_mode = PETSc.InsertMode.ADD_VALUES
                             self._e_array.setValue(value[1]         ,
@@ -698,10 +744,171 @@ class Laplacian2D(object):
         # Resetting structures used for the "allgather" functions.
         self.init_e_structures()
         self.logger.info("Updated  inter_extra_array for comm \"" +
-                         str(self.__comm.Get_name())              + 
+                         str(self._comm.Get_name())               + 
                          "\" and rank \""                         +
-                         str(self.__comm.Get_rank())              +
+                         str(self._comm.Get_rank())               +
                          "\" of grid \""                          +
-                         str(self.__proc_grid)                    +
+                         str(self._proc_g)                    	  +
                          "\":\n"                                  +
-                         str(self.__inter_extra_array.getArray()))
+                         str(self._e_array.getArray()))
+    
+    def find_right_neighbours(self          , 
+                              location      , 
+                              current_octant,
+                              start_octant):				
+        py_oct = self._octree.get_octant(current_octant)
+        # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Vec/VecGhostUpdateBegin.html
+        #self._sol.ghostUpdate(PETSc.InsertMode.ADD,
+        #                      PETSc.ScatterMode.REVERSE)
+        self._sol.ghostUpdate(PETSc.InsertMode.INSERT,
+                              PETSc.ScatterMode.FORWARD)
+        with self._sol.localForm() as lf:
+            # Getting the local solution with the ghost values.
+            l_sol = lf.getArray()
+            # Making a copy of the local solution.
+            l_sol_copy = numpy.copy(l_sol)
+            ordered_points = {}
+            centers = []
+            values = []
+            if location == "nordovest":
+                # Adding 1) the number of node, 2) (codim, number of face/node).
+                ordered_points.update({0 : (1, 0)})
+                ordered_points.update({1 : None})
+                ordered_points.update({2 : (2, 2)})
+                ordered_points.update({3 : (1, 3)})
+            elif location == "nordest":
+                ordered_points.update({0 : None})
+                ordered_points.update({1 : (1, 1)})
+                ordered_points.update({2 : (1, 3)})
+                ordered_points.update({3 : (2, 3)})
+            elif location == "sudovest":
+                ordered_points.update({0 : (2, 0)})
+                ordered_points.update({1 : (1, 2)})
+                ordered_points.update({2 : (1, 0)})
+                ordered_points.update({3 : None})
+            elif location == "sudest":
+                ordered_points.update({0 : (1, 2)})
+                ordered_points.update({1 : (2, 1)})
+                ordered_points.update({2 : None})
+                ordered_points.update({3 : (1, 1)})
+            # Using \"sorted\" to be sure that values of the dict 
+	    # \"ordered_points\" are ordered by keys.
+            for q_point in sorted(ordered_points.keys()):
+                edge_or_node = ordered_points[q_point]
+                if edge_or_node is None:
+                    centers.append(self._octree.get_center(current_octant)[:2])
+                    values.append(l_sol_copy[current_octant])
+                else:
+                    neighs, ghosts = ([] for i in range(0, 2))
+                    (neighs, 
+		     ghosts) = self._octree.find_neighbours(current_octant ,
+                                                            edge_or_node[1],
+                                                            edge_or_node[0],
+                                                            neighs         ,
+                                                            ghosts)
+                    # Check if it is really a neighbour of edge or node. If not,
+                    # it means that we are near the boundary and so...
+                    if len(neighs) is not 0:
+                        # Neighbour is into the same process, so is local.
+                        if not ghosts[0]:
+                            cell_center = self._octree.get_center(neighs[0])[:2]
+                            centers.append(cell_center)
+                            cell_value = l_sol_copy[neighs[0]]
+                            values.append(cell_value)
+                        else:
+                            # In this case, the quas(/oc)tree is no more local
+                            # into the current process, so we have to find it
+                            # globally.
+                            index = self._octree.get_ghost_global_idx(neighs[0])
+                            # \".index\" give us the index of 
+                            # \"self._global_ghosts\" that contains the index
+                            # of the global ghost quad(/oc)tree previously
+                            # found and stored in \"index\".
+                            ghost_index = self._global_ghosts.index(index)
+                            py_ghost_oct = self._octree.get_ghost_octant(neighs[0])
+                            cell_center = self._octree.get_center(py_ghost_oct, 
+                                                                  True)[:2]
+                            # \"local solution\" store the local values after
+                            # the ghost values (that's why the presence of 
+                            # \"+ self._n_oct\" in the index of \"l_sol_copy\".
+                            cell_value = l_sol_copy[ghost_index + self._n_oct]
+                            centers.append(cell_center)
+                            # http://lists.mcs.anl.gov/pipermail/petsc-users/2012-February/012423.html
+                            # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Vec/VecGhostGetLocalForm.html#VecGhostGetLocalForm
+                            values.append(cell_value)
+                    # ...we need to evaluate boundary values.
+                    else:
+                        border_center = self._octree.get_center(current_octant)[:2]
+                        center = None
+                        h = self._h
+                        # We have edge neighbours on the boundaries.
+                        if edge_or_node[0] == 1:
+                            if edge_or_node[1] == 0:
+                                center = (border_center[0] - h, 
+                                          border_center[1])
+                            elif edge_or_node[1] == 1:
+                                center = (border_center[0] + h, 
+                                          border_center[1])
+                            elif edge_or_node[1] == 2:
+                                center = (border_center[0], 
+                                          border_center[1] - h)
+                            elif edge_or_node[1] == 3:
+                                center = (border_center[0], 
+                                          border_center[1] + h)
+                        # We have node neighbours on the boundaries.
+                        elif edge_or_node[0] == 2:
+                            if edge_or_node[1] == 0:
+                                center = (border_center[0] - h, 
+                                          border_center[1] - h)
+                            elif edge_or_node[1] == 1:
+                                center = (border_center[0] + h, 
+                                          border_center[1] - h)
+                            elif edge_or_node[1] == 2:
+                                center = (border_center[0] - h, 
+                                          border_center[1] + h)
+                            elif edge_or_node[1] == 3:
+                                center = (border_center[0] + h, 
+                                          border_center[1] + h)
+
+                        value = ExactSolution2D.ExactSolution2D.solution(center[0],
+                                                              	         center[1])
+                        centers.append(center)
+                        values.append(value)
+
+        return (centers, values)
+    
+    @property
+    def comm(self):
+        return self._comm
+
+    @property
+    def octree(self):
+        return self._octree
+
+    @property
+    def N(self):
+        return self._N_oct
+
+    @property
+    def n(self):
+        return self._n_oct
+
+    @property
+    def mat(self):
+        return self._mat
+
+    @property
+    def rhs(self):
+        return self._rhs
+
+    @property
+    def sol(self):
+        return self._sol
+
+    @property
+    def res(self):
+        return self._res
+
+    @property
+    def h(self):
+        return self._h

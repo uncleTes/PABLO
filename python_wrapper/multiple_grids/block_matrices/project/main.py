@@ -14,7 +14,8 @@ import ConfigParser
 import class_global
 import class_octant
 import class_para_tree
-import project.ExactSolution2D as ExactSolution2D
+import ExactSolution2D as ExactSolution2D
+import Laplacian2D_prova_new as Laplacian2D
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
@@ -113,7 +114,7 @@ def set_comm_dict(n_grids  ,
     penalization = f_pen if proc_grid else b_pen
     background_boundaries = [anchors[0][0], anchors[0][0] + edges[0],
                              anchors[0][1], anchors[0][1] + edges[0]]
-    comm_dictionary.update({"background_boundaries" : background_boundaries})
+    comm_dictionary.update({"background boundaries" : background_boundaries})
     foreground_boundaries = []
     f_list = range(1, n_grids)
     # If we are on the foreground grids we save all the foreground 
@@ -130,9 +131,9 @@ def set_comm_dict(n_grids  ,
             foreground_boundaries.append(boundary)
 
     comm_dictionary.update({"penalization" : penalization})
-    comm_dictionary.update({"foreground_boundaries" : 
+    comm_dictionary.update({"foreground boundaries" : 
                             foreground_boundaries})
-    comm_dictionary.update({"proc_grid" : proc_grid})
+    comm_dictionary.update({"process grid" : proc_grid})
     comm_dictionary.update({"overlapping" : overlapping})
     comm_dictionary.update({"log file" : log_file})
 
@@ -151,7 +152,7 @@ def create_intercomms(n_grids      ,
        
        Arguments:
            n_grids (int) : number of grids present in the config file.
-           proc_grids (int) : number telling which grid thw current process is
+           proc_grids (int) : number telling which grid the current process is
                               working on.
            comm_l (mpi4py.MPI.Comm) : \"local\" communicator; \"local\" stands 
                                       for the grid which is defined for.
@@ -300,8 +301,8 @@ def compute(comm_dictionary     ,
            data_to_save (numpy.array) : array containings the data to be saved
                                         subsequently into the \"VTK\" file."""
 
-    laplacian = Laplacian2D(comm_dictionary)
-    exact_solution = ExactSolution2D(comm_dictionary)
+    laplacian = Laplacian2D.Laplacian2D(comm_dictionary)
+    exact_solution = ExactSolution2D.ExactSolution2D(comm_dictionary)
     # Evaluating exact solution in the centers of the PABLO's cells.
     exact_solution.e_sol(centers[:, 0], 
                          centers[:, 1])
@@ -334,22 +335,23 @@ def compute(comm_dictionary     ,
         laplacian.update_values(intercomm_dictionary)
         
         # Sending to all the processes the message to stop computations.
-        comm_w.Bcast([looping, 1, MPI.BOOL], root = 1)
+        looping = comm_w.bcast(looping, root = 1)
+        #comm_w.Bcast([looping, 1, MPI.BOOL], root = 1)
 
         if comm_w.Get_rank() == 1:
             h= laplacian.h
 
             sol_diff = numpy.subtract(exact_solution.sol,
-                                      laplacian.solution.getArray())
+                                      laplacian.sol.getArray())
 
             norm_inf = numpy.linalg.norm(sol_diff,
                                          # Type of norm we want to evaluate.
                                          numpy.inf)
             norm_L2 = numpy.linalg.norm(sol_diff,
                                         2) * h
-            res_inf = numpy.linalg.norm(laplacian.residual.getArray(),
+            res_inf = numpy.linalg.norm(laplacian.res.getArray(),
                                         numpy.inf)
-            res_L2 = numpy.linalg.norm(laplacian.residual.getArray(),
+            res_L2 = numpy.linalg.norm(laplacian.res.getArray(),
                                        2) * h
 
             msg = "iteration " + str(n_iter) + " has norm infinite equal to " +\
@@ -364,7 +366,7 @@ def compute(comm_dictionary     ,
             if res_inf < min_res_inf:
                 min_res_inf = res_inf
 
-            if ((res_L2 * 50 < init_res_L2) or
+            if ((res_L2 * 50 < in_res_L2) or
                 (n_iter >= 20)):
                 looping = False
             
@@ -451,28 +453,28 @@ def main():
     intercomm_dictionary = {}
 
     if procs_w > 1:
-        create_intercomms(n_grids ,
+        create_intercomms(n_grids 	   ,
                           proc_grid    ,
                           comm_l       ,
                           procs_l_lists,
                           logger       ,
                           intercomm_dictionary)
 
-    comm_dictionary = set_comm_dict(n_grids,
+    comm_dictionary = set_comm_dict(n_grids  ,
                                     proc_grid,
-                                    comm_l)
+                               		comm_l)
 
     pablo, centers = set_octree(comm_l,
                                 proc_grid)
 
     comm_dictionary.update({"octree" : pablo})
 
-    #data_to_save = compute(comm_dictionary     ,
-    #                       intercomm_dictionary,
-    #                       centers)
-    data_to_save = stub_compute(comm_dictionary     ,
-                                intercomm_dictionary,
+    data_to_save = compute(comm_dictionary     ,
+                           intercomm_dictionary,
                            centers)
+    #data_to_save = stub_compute(comm_dictionary     ,
+    #                            intercomm_dictionary,
+    #                       centers)
 
     n_octs = pablo.get_num_octants()
     n_nodes = pablo.get_num_nodes()
