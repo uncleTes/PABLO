@@ -30,8 +30,8 @@ class ExactSolution2D(BaseClass2D.BaseClass2D):
            Returns:
                a numpy vector with the solution."""
 
-        return numpy.sin(numpy.power(x - 0.5, 2) + 
-                         numpy.power(y - 0.5, 2))
+        return numpy.sin(numpy.power(numpy.array(x) - 0.5, 2) + 
+                         numpy.power(numpy.array(y) - 0.5, 2))
 
     # Solution second derivative = 4 * cos((x - 0.5)^2 + (y - 0.5)^2) - 
     #                              4 * sin((x - 0.5)^2 + (y - 0.5)^2) *
