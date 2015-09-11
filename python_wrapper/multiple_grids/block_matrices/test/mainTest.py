@@ -1,7 +1,6 @@
 import unittest
 from mpi4py import MPI
 import project.main as main
-import class_global
 import project.utilities as utilities
 import ConfigParser
 import os
