@@ -149,8 +149,8 @@ def check_null_logger(logger,
         logger.addHandler(handler)
     return logger
 
-def check_point_position_from_another(point_to_check,
-                                      other_point):
+def points_location(point_to_check,
+                    other_point):
     if ((point_to_check[0] - other_point[0] <= 0) and
         (point_to_check[1] - other_point[1] >= 0)):
         return "nordovest"
@@ -311,9 +311,9 @@ def check_into_squares(point_to_check,
 #   f(Q22) = value of the function in x2 and y2
 #   x,y = unknown_point ("unknown point" stand for a point for which it is 
 #         not known the value of the function f)
-def bilinear_interpolation(unknown_point, 
-                           points_coordinates,
-                           points_values):
+def bil_interp(unknown_point	 , 
+               points_coordinates,
+               points_values):
     addend_01 = (points_values[0]          * 
                  (points_coordinates[3][0] - unknown_point[0]) * 
                  (points_coordinates[3][1] - unknown_point[1]))
