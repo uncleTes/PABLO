@@ -383,7 +383,7 @@ def compute(comm_dictionary     ,
     # Creating a numpy array with two single numpy arrays. Note that you 
     # could have done this also with two simple python's lists.
     data_to_save = numpy.array([exact_solution.sol,
-                                laplacian.solution.getArray()])
+                                laplacian.sol.getArray()])
 
     return data_to_save
 # ------------------------------------------------------------------------------
@@ -481,7 +481,7 @@ def main():
 
     vtk = my_class_vtk_02.Py_Class_VTK(data_to_save            , # Data
                                        pablo                   , # Octree
-                                       "../data/"              , # Dir
+                                       "./data/"               , # Dir
                                        "laplacian_" + comm_name, # Name
                                        "ascii"                 , # Type
                                        n_octs                  , # Ncells
@@ -543,7 +543,7 @@ if __name__ == "__main__":
     if rank_w == 0:
         file_name = "multiple_PABLO.vtm"
         files_vtu = utilities.find_files_in_dir(".vtu", 
-                                                "../data/")
+                                                "./data/")
     
         info_dictionary = {}
         info_dictionary.update({"vtu_files" : files_vtu})
@@ -551,7 +551,7 @@ if __name__ == "__main__":
         info_dictionary.update({"file_name" : file_name})
     
         #write_vtk_multi_block_data_set(**info_dictionary)
-        write_vtk_multi_block_data_set(info_dictionary)
+        utilities.write_vtk_multi_block_data_set(info_dictionary)
     
         t_end = time.time()
 
