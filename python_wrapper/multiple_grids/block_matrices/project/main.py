@@ -333,10 +333,6 @@ def compute(comm_dictionary     ,
         laplacian.set_b_c()
         laplacian.solve()
         laplacian.update_values(intercomm_dictionary)
-        
-        # Sending to all the processes the message to stop computations.
-        looping = comm_w.bcast(looping, root = 1)
-        #comm_w.Bcast([looping, 1, MPI.BOOL], root = 1)
 
         if comm_w.Get_rank() == 1:
             h= laplacian.h
@@ -374,9 +370,13 @@ def compute(comm_dictionary     ,
                 in_res_L2 = res_L2
                 in_res_inf = res_inf
                 set_in_res = True
+        
+	# Sending to all the processes the message to stop computations.
+        looping = comm_w.bcast(looping, root = 1)
+        #comm_w.Bcast([looping, 1, MPI.BOOL], root = 1)
 
         n_iter += 1
-    
+
     if comm_w.Get_rank() == 1:
         print("Inf residual minumum = " + str(min_res_inf))
         print("L2 residual minumum = " + str(min_res_L2))
