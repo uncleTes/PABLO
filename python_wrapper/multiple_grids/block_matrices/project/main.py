@@ -549,6 +549,7 @@ if __name__ == "__main__":
         info_dictionary.update({"vtu_files" : files_vtu})
         info_dictionary.update({"pablo_file_names" : comm_names})
         info_dictionary.update({"file_name" : file_name})
+	info_dictionary.update({"directory" : "./data"})
     
         #write_vtk_multi_block_data_set(**info_dictionary)
         utilities.write_vtk_multi_block_data_set(info_dictionary)
