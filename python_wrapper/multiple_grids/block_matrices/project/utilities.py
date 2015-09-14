@@ -113,6 +113,7 @@ def split_list_in_two(list_to_be_splitted):
 #def write_vtk_multi_block_data_set(**kwargs):
 def write_vtk_multi_block_data_set(kwargs = {}):
     file_name = kwargs["file_name"]
+    directory_name = kwargs["directory"]
 
     VTKFile = ET.Element("VTKFile"                    , 
                          type = "vtkMultiBlockDataSet", 
@@ -136,7 +137,8 @@ def write_vtk_multi_block_data_set(kwargs = {}):
         iter += 1
 
     vtkTree = ET.ElementTree(VTKFile)
-    vtkTree.write(file_name)
+    file_to_write = directory_name + str("/") + file_name
+    vtkTree.write(file_to_write)
 
 def check_null_logger(logger, 
                       log_file):
