@@ -1,5 +1,6 @@
 import numbers
 import math
+import collections
 import BaseClass2D
 import ExactSolution2D
 import numpy
@@ -281,6 +282,20 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                     # Residual evaluation...
                     sol_value = self._sol.getValue(b_indices[i])
                     self._res_l.update({tuple(center) : sol_value})
+
+	    dups = collections.defaultdict(list)
+	    for i, e in enumerate(b_indices):
+		dups[e].append(i)
+
+	    # Popped elements.
+	    p_els = 0
+	    for k, v in sorted(dups.iteritems()):
+		if len(v) >= 2:
+		    for i in range(1, len(v)):
+			b_indices.pop(v[i] - p_els)
+			b_values.pop(v[i] - p_els)
+		
+			p_els = p_els + 1
 
         b_values[:] = [b_value * (-1/h2) for b_value in b_values]
         insert_mode = PETSc.InsertMode.ADD_VALUES
