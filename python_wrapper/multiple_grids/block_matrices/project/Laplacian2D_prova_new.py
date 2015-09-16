@@ -281,9 +281,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                     # Residual evaluation...
                     sol_value = self._sol.getValue(b_indices[i])
                     self._res_l.update({tuple(center) : sol_value})
-                else:
-                    b_values[i] = self.eval_b_c(center,
-                                                b_faces[i])
 
         b_values[:] = [b_value * (-1/h2) for b_value in b_values]
         insert_mode = PETSc.InsertMode.ADD_VALUES
