@@ -453,7 +453,7 @@ def main():
     intercomm_dictionary = {}
 
     if procs_w > 1:
-        create_intercomms(n_grids 	   ,
+        create_intercomms(n_grids      ,
                           proc_grid    ,
                           comm_l       ,
                           procs_l_lists,
