@@ -254,6 +254,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         b_values = self.eval_b_c(b_centers,
                                  b_faces)
 
+	b_values = b_values.tolist()
+
         if is_background:
             if overlapping:
                 self.over_adds(b_centers,
