@@ -362,8 +362,8 @@ def compute(comm_dictionary     ,
             if res_inf < min_res_inf:
                 min_res_inf = res_inf
 
-            if ((res_L2 * 50 < in_res_L2) or
-                (n_iter >= 20)):
+            if ((res_L2 * 1000 < in_res_L2) or
+                (n_iter >= 200)):
                 looping = False
             
             if not set_in_res:
