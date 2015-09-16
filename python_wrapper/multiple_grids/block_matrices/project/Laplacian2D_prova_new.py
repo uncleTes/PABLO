@@ -8,7 +8,7 @@ import class_global
 import utilities
 
 glob = class_global.Py_Class_Global_D2()
-log_file = "./log/Laplacian2D_prova_new.log"
+#log_file = "./log/Laplacian2D_prova_new.log"
 
 class Laplacian2D(BaseClass2D.BaseClass2D):   
     """Class which evaluates the laplacian onto a 2D grid.
@@ -218,6 +218,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 	"""Method to set boundary conditions for the current problem."""
 
         penalization = self._pen
+	log_file = self.logger.handlers[0].baseFilename
         b_bound = self._b_bound
         grid = self._proc_g
         n_oct = self._n_oct
@@ -335,6 +336,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
     def init_mat(self,
                  # Overlap octants' number.
                  o_n_oct = 0):
+	log_file = self.logger.handlers[0].baseFilename
         penalization = self._pen
         f_bound = self._f_bound
         grid = self._proc_g
@@ -596,6 +598,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
     
     def update_values(self, 
                       intercomm_dictionary = {}):
+	log_file = self.logger.handlers[0].baseFilename
         n_oct = self._n_oct
         o_ranges = self._mat.getOwnershipRange()
         b_bound = self._b_bound
