@@ -345,22 +345,22 @@ class Logger(object):
     def __init__(self, 
                  name, 
                  log_file):
-        self.__logger = logging.getLogger(name)
+        self._logger = logging.getLogger(name)
         # http://stackoverflow.com/questions/15870380/python-custom-logging-across-all-modules
-        if not self.__logger.handlers:
-            self.__logger.setLevel(logging.DEBUG)
-            self.__handler = logging.FileHandler(log_file)
+        if not self._logger.handlers:
+            self._logger.setLevel(logging.DEBUG)
+            self._handler = logging.FileHandler(log_file)
 
-            self.__formatter = logging.Formatter("%(name)15s - "    + 
-                                                 "%(asctime)s - "   +
-                                                 "%(funcName)8s - " +
-                                                 "%(levelname)s - " +
-                                                 "%(message)s")
-            self.__handler.setFormatter(self.__formatter)
-            self.__logger.addHandler(self.__handler)
-            self.__logger.propagate = False
+            self._formatter = logging.Formatter("%(name)15s - "    + 
+                                                "%(asctime)s - "   +
+                                                "%(funcName)8s - " +
+                                                "%(levelname)s - " +
+                                                "%(message)s")
+            self._handler.setFormatter(self._formatter)
+            self._logger.addHandler(self._handler)
+            self._logger.propagate = False
 
     @property
     def logger(self):
-        return self.__logger
+        return self._logger
 # ------------------------------------------------------------------------------
