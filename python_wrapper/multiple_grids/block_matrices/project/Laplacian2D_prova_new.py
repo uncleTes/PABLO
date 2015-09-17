@@ -354,26 +354,29 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         penalization = self._pen
         f_bound = self._f_bound
         grid = self._proc_g
-        self._mat = PETSc.Mat().create(comm = self._comm)
+        #self._mat = PETSc.Mat().create(comm = self._comm)
         # Local and global matrix's sizes.
         n_oct = self._n_oct
         N_oct = self._N_oct
         sizes = (n_oct, 
                  N_oct)
-        self._mat.setSizes((sizes, 
-                            sizes))
+        self._mat = PETSc.Mat().createAIJ([n_oct, N_oct],
+					  nnz = 5	,
+					  comm = self._comm)
+        #self._mat.setSizes((sizes, 
+        #                    sizes))
         # Setting type of matrix directly. Using method \"setFromOptions()\"
         # the user can choose what kind of matrix build at runtime.
-        #self.__mat.setFromOptions()
-        self._mat.setType(PETSc.Mat.Type.AIJ)
+        #self._mat.setFromOptions()
+        #self._mat.setType(PETSc.Mat.Type.AIJ)
         # !!!TODO!!!
         # For better performances, instead of \"setUp()\" use 
         # \"setPreallocationCSR()\".
         # The AIJ format is also called the Yale sparse matrix format or
         # compressed row storage (CSR).
         # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatMPIAIJSetPreallocation.html
-        #self._mat.setPreallocationCSR((5, 4))
-        self._mat.setUp()
+        #self._mat.setPreallocationCSR([1, 4])
+        #self._mat.setUp()
         # Getting ranges of the matrix owned by the current process.
         o_ranges = self._mat.getOwnershipRange()
         h = self._h
