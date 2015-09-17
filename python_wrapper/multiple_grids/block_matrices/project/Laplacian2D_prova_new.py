@@ -504,10 +504,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             try:
                 assert isinstance(array, numpy.ndarray)
                 # Temporary PETSc vector.
-                t_petsc = PETSc.Vec().createGhostWithArray(g_ghosts    ,
-                                                           array       ,
-                                                           size = sizes,
-                                                           comm = self._comm)
+                t_petsc = PETSc.Vec().createWithArray(array       ,
+                                                      size = sizes,
+                                                      comm = self._comm)
                 t_petsc.copy(t_array)
             except AssertionError:
                 msg = "\"MPI Abort\" called during array's initialization"
