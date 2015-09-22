@@ -536,7 +536,8 @@ if __name__ == "__main__":
     t_start = time.time()
 
     import cProfile
-    cProfile.run('main()', sort='time', filename='cProfile_stats.txt')
+    #cProfile.run('main()', sort='time', filename='cProfile_stats.txt')
+    cProfile.run('main()', sort='time')
 
     comm_w.Barrier()
 
