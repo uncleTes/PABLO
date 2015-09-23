@@ -15,7 +15,7 @@ import class_global
 import class_octant
 import class_para_tree
 import ExactSolution2D as ExactSolution2D
-import Laplacian2D_prova_new as Laplacian2D
+import Laplacian2D as Laplacian2D
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------

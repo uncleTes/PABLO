@@ -1,433 +1,553 @@
-class Laplacian2D(object):    
+import numbers
+import math
+import collections
+import BaseClass2D
+import ExactSolution2D
+import numpy
+from petsc4py import PETSc 
+import class_global
+import utilities
+
+glob = class_global.Py_Class_Global_D2()
+
+class Laplacian2D(BaseClass2D.BaseClass2D):   
+    """Class which evaluates the laplacian onto a 2D grid.
+    
+    Attributes:
+        _comm (MPI.Intracomm) : intracommunicator which identify the
+                                process where evaluate the laplacian.
+        _octree (class_para_tree.Py_Class_Para_Tree_D2) : PABLO's ParaTree.
+        _comm_w (MPI.Intracomm) : global intracommunicator.
+        _pen (float or int) : penalization value.
+        _over_l (boolean) : flag inndicating if we are in an overlapped or 
+                            full immersed case.
+        _f_bound (list of lists) : foreground boundaries (boundaries of the
+                                   grids over the background ones).
+        _b_bound (list of numbers) : background boundaries.
+        _proc_g (int) : grid for which the current process is doing all the 
+                        work.
+        _N_oct (int) : total number of octants in the communicator.
+        _n_oct (int) : local number of octants in the process.
+        _edge (number) : length of the edge of the grid."""
+
     def __init__(self, 
                  kwargs = {}):
+        """Initialization method for the \"Laplacian2D\" class.
+
+        Arguments:
+            kwargs (dictionary) : it must contains the following keys (in 
+                                  addition to the ones of \"BaseClass2D\"):
+                                  - \"edge\".
+                                     
+            Raises:
+                AssertionError : if \"edge" is not greater than 0.0, then the 
+                                 exception is raised and catched, launching an 
+                                 \"MPI Abort\", launched also if attributes 
+                                 \"f_bound\" or \"b_bound\" are \"None\"."""
         # http://stackoverflow.com/questions/19205916/how-to-call-base-classs-init-method-from-the-child-class
         super(Laplacian2D, self).__init__(kwargs)
-        self.set_intercomm_structures()
-        edge = kwargs["edge"]
+        self.init_e_structures()
         # If some arguments are not presents, function "setdefault" will set 
         # them to the default value.
-        self.__penalization = kwargs.setdefault("penalization", 
-                                                0)
-        self.__overlapping = kwargs.setdefault("overlapping",
-                                               False)
+        # Penalization.
+        self._pen = kwargs.setdefault("penalization", 
+                                      0)
+        # Over-lapping.
+        self._over_l = kwargs.setdefault("overlapping",
+                                         False)
         # [[x_anchor, x_anchor + edge, 
-        #   y_anchor, y_anchor + edge]...] = penalization boundaries.
-        self.__f_boundaries = kwargs.setdefault("foreground_boundaries",
-                                                None)
+        #   y_anchor, y_anchor + edge]...] = penalization boundaries (aka
+        # foreground boundaries).
+        self._f_bound = kwargs.setdefault("foreground boundaries",
+                                          None)
         # [x_anchor, x_anchor + edge, 
         #  y_anchor, y_anchor + edge] = background boundaries.
-        self.__b_boundaries = kwargs.setdefault("background_boundaries",
-                                                None)
+        self._b_bound = kwargs.setdefault("background boundaries",
+                                          None)
         # Checking existence of penalization boundaries and background 
-        # boundaries.
-        if (self.__f_boundaries == None) or (self.__b_boundaries == None):
-            self.logger.warning("Penalization or bakground boundaries or "    +
-                                "both are not initialized. Please check the " +
-                                "config file. Exiting from the program.")
-            print("Program exited.")
-            sys.exit(1)
-        # The grid of the current process.
-        self.__proc_grid = kwargs["proc_grid"]
-
-        self.logger.info("Initialized class for comm \"" +
-                         str(self.__comm.Get_name())     + 
-                         "\" and rank \""                +
-                         str(self.__comm.Get_rank())     + 
-                         "\".")
+        # boundaries. The construct \"if not\" is useful whether 
+        # \"self._f_bound\" or \"self._b_bound\" are None ore with len = 0.
+        #if ((not self._f_bound) or 
+        #    (not self._b_bound)):
+	if not self._b_bound:
+            msg = "\"MPI Abort\" called during initialization "
+            extra_msg = " Penalization or bakground boundaries or both are " + \
+                        "not initialized. Please check your \"config file\"."
+            self.log_msg(msg    , 
+                         "error",
+                         extra_msg)
+	    self._comm_w.Abort(1) 
+        # The grid of the current process: process' grid.
+        self._proc_g = kwargs["process grid"]
         # Total number of octants into the communicator.
-        self.__N = self.__octree.global_num_octants
+        self._N_oct = self._octree.global_num_octants
         # Local number of octants in the current process of the communicator.
-        self.__n = self.__octree.get_num_octants()
+        self._n_oct = self._octree.get_num_octants()
         # Length of the edge of the grid.
-        self.__edge = edge
+        self._edge = kwargs["edge"]
+        try:
+            assert self._edge > 0.0
+        except AssertionError:
+            msg = "\"MPI Abort\" called during initialization "
+            extra_msg = " Attribute \"self._edge\" equal or smaller than 0."
+            self.log_msg(msg    ,
+                         "error",
+                         extra_msg)
+	    self._comm_w.Abort(1)
+
         # Length of the edge of an octree.
-        self.__h = self.__edge / numpy.sqrt(self.__N)
-    
-    def right_boundary_center(self,
-                              center,
-                              face):
-        # We make this thing because not using a deepcopy to append "center" 
-        # in "self.boundary_elements", it would be changed by the following 
-        # lines of code.
-        h = self.__h
-        (x_center, y_center) = center
-        if face == 0:
-            x_center = x_center - h
-        if face == 1:
-            x_center = x_center + h
-        if face == 2:
-            y_center = y_center - h
-        if face == 3:
-            y_center = y_center + h
+        self._h = self._edge / numpy.sqrt(self._N_oct)
+   
+    # Returns the center of the face neighbour.
+    def neighbour_centers(self   ,
+                          centers,
+                          faces):
+        """Function which returns the centers of neighbours, depending on 
+           for which face we are interested into.
+           
+           Arguments:
+               centers (tuple or list of tuple) : coordinates of the centers of 
+                                                  the current octree.
+               faces (int between 0 and 3 or list) : faces for which we are  
+                                                     interested into knowing
+                                                     the neighbour's center.
+                                            
+           Returns:
+               a tuple or a list containing the centers evaluated."""
 
-        return (x_center, y_center)
+        if ((len(faces) != 1) and
+            (len(faces) != len(centers))):
+            msg = "\"MPI Abort\" called " 
+            extra_msg = " Different length of \"faces\" and \"centers\"."
+            self.log_msg(msg    ,
+                         "error",
+                         extra_msg)
+            self._comm_w.Abort(1)
+
+        h = self._h
+	# Evaluated centers.
+        eval_centers = []
+        for i, face in enumerate(faces):
+            (x_center, y_center) = centers[i]
+            if not isinstance(face, numbers.Integral):
+                face = int(math.ceil(face))
+            try:
+                # Python's comparison chaining idiom.
+                assert 0 <= face <= 3
+            except AssertionError:
+                msg = "\"MPI Abort\" called " 
+                extra_msg = " Faces numeration incorrect."
+                self.log_msg(msg    ,
+                             "error",
+                             extra_msg)
+                self._comm_w.Abort(1)
+            else:
+                if ((face % 2) == 0):
+		    if (face == 0):
+                    	x_center = x_center - h
+		    else:
+                    	y_center = y_center - h
+                else:
+		    if (face == 1):
+                    	x_center = x_center + h
+		    else:
+                    	y_center = y_center + h
+
+                eval_centers.append((x_center, y_center))
+
+        if len(centers) == 1:
+            return eval_centers[0]
+                
+        return eval_centers
+
+    # Evaluate boundary conditions. 
+    def eval_b_c(self   ,
+                 centers,
+                 faces):
+        """Method which evaluate boundary condition on one octree or more,
+           depending by the number of the \"center\" passed by.
+           
+           Arguments:
+               centers (tuple or list of tuple) : coordinates of the center/s
+                                                  of the octree on the boundary.
+               faces (int between 0 and 3 or list of int) : the face of the 
+                                                            current octree for 
+                                                            which we are
+                                                            interested
+                                                            into knowing the 
+                                                            neighbour's center.
+                                                           
+           Returns:
+               the evaluated boundary condition or a list of them."""
+
+        # Centers neighbours.
+        c_neighs = self.neighbour_centers(centers,
+                                          faces)
+
+        x_s = [c_neigh[0] for c_neigh in c_neighs] 
+        y_s = [c_neigh[1] for c_neigh in c_neighs] 
+
+        boundary_values = ExactSolution2D.ExactSolution2D.solution(x_s, 
+                                                   		   y_s)
+
+        return boundary_values
+
+    # Overlap adds.
+    def over_adds(b_centers,
+                  b_faces  ,
+                  b_values ,
+                  b_indices):
+        f_bound = self._f_bound
+        neigh_centers = self.neighbour_centers(b_centers,
+                                               b_faces)
+        for i, neigh_center in enumerate(neigh_centers):
+            # Check on the current extra border octant of the background grid if
+            # is overlapped by foreground grids.
+            check = utilities.check_into_squares(neigh_center,
+                                                 f_bound     ,
+                                                 self.logger ,
+                                                 log_file)
+            if check and b_faces[i] == 1:
+                key = (grid, b_indices[i], "ghost_boundary")
+                self._edl.update({key : neigh_center})
+                b_values[i] = self._e_array_gb.getValue(b_indices[i])
+
     
-    def evaluate_boundary_condition(self,
-                                    center,
-                                    face):
-        (x_center, y_center) = self.right_boundary_center(center,
-                                                          face)
-        boundary_value = ExactSolution2D.solution(x_center, 
-                                                  y_center)
-        return boundary_value
-    
-    def set_boundary_conditions(self):
-        penalization = self.__penalization
-        f_boundaries = self.__f_boundaries
-        b_boundaries = self.__b_boundaries
-        grid = self.__proc_grid
-        local_nocts = self.__n
+    # Set boundary conditions.
+    def set_b_c(self):
+	"""Method to set boundary conditions for the current problem."""
+
+        penalization = self._pen
+	log_file = self.logger.handlers[0].baseFilename
+        b_bound = self._b_bound
+        grid = self._proc_g
+        n_oct = self._n_oct
         nfaces = glob.nfaces
-        o_ranges = self.__mat.getOwnershipRange()
-        h = self.__h
+        # \"getOwnershipRange()\" gives us the local ranges of the matrix owned
+        # by the current process.
+        o_ranges = self._mat.getOwnershipRange()
+        h = self._h
         h2 = h * h
+        is_background = False
+	overlapping = self._over_l
+        # If we are onto the grid \"0\", we are onto the background grid.
+        if not grid:
+            is_background = True
 
-        for octant in xrange(0, local_nocts):
-            # Global index of the current local octant "octant".
+        b_indices, b_values = ([] for i in range(0, 2))# Boundary indices/values
+        b_centers, b_faces = ([] for i in range(0, 2)) # Boundary centers/faces
+        for octant in xrange(0, n_oct):
+            # Global index of the current local octant \"octant\".
             g_octant = o_ranges[0] + octant
-            b_indices, b_values = ([] for i in range(0, 2))
-            py_oct = self.__octree.get_octant(octant)
-            center  = self.__octree.get_center(octant)[:2]
-            # Checker to know if we have an edge on the boundary.
-            is_boundary = False
+            py_oct = self._octree.get_octant(octant)
+            center  = self._octree.get_center(octant)[:2]
 
             for face in xrange(0, nfaces):
-                if self.__octree.get_bound(py_oct, 
-                                           face):
-                    # Truly we have one edge on the boundary.
-                    is_boundary = True
+                # If we have an edge on the boundary.
+                if self._octree.get_bound(py_oct, 
+                                          face):
                     b_indices.append(g_octant)
-                    # Background's grid: equals to number 0.
-                    if grid == 0:
-                        boundary_value = self.evaluate_boundary_condition(center,
-                                                                          face)
-                        if overlapping:
-                            (x_center, y_center) = self.right_boundary_center(center,
-                                                                              face)
-                            # Check on the current extra border octant of the 
-                            # background grid if is overlapped by foreground 
-                            # grids.
-                            overlapped = check_point_into_squares_2D((x_center,
-                                                                      y_center)  ,
-                                                                     f_boundaries,
-                                                                     self.logger ,
-                                                                     log_file)
-                            if overlapped and face == 1:
-                                # Commented the following two lines for lines
-                                # 458-459-460.
-                                key = (grid, g_octant, "ghost_boundary")
-                                self.__temp_data_local.update({key : (x_center, y_center)})
-                                boundary_value = self.__inter_extra_array_ghost_boundary.getValue(g_octant)
-                                #print(boundary_value)
-                        # Instead of using for each cicle the commented function
-                        # "setValue()", we have decided to save two list containing
-                        # the indices and the values to be added at the "self.__rhs"
-                        # and then use the function "setValues()".
-                        b_values.append((boundary_value * -1) / h2)
-                    # Grids not of the background: equal to number >= 1.
-                    else:
-                        # Check if foreground grid is inside the background one.
-                        into_background = check_point_into_square_2D(center      ,
-                                                                     b_boundaries,
-                                                                     self.logger ,
-                                                                     log_file)
-                        if into_background:
-                            # Can't use list as dictionary's keys.
-                            # http://stackoverflow.com/questions/7257588/why-cant-i-use-a-list-as-a-dict-key-in-python
-                            # https://wiki.python.org/moin/DictionaryKeys
-                            key = (grid    , # Grid (0 is for the background grid)
-                                   g_octant, # Global index of the octant
-                                   face    , # Boundary face
-                                   h)        # Edge's length
-                            # We store the centers of the cells on the boundary.
-                            self.__temp_data_local.update({key : center})
-                        else:
-                            boundary_value = self.evaluate_boundary_condition(center,
-                                                                              face)
-                            b_value = (boundary_value * -1) / h2
-                            self.__rhs.setValues(g_octant,
-                                                 b_value,
-                                                 PETSc.InsertMode.ADD_VALUES)
+                    b_faces.append(face)
+                    b_centers.append(center)
+            
+        b_values = self.eval_b_c(b_centers,
+                                 b_faces)
 
-            # Being at least with one edge on the boundary, we need to update
-            # the rhs.
-            if is_boundary:
-                insert_mode = PETSc.InsertMode.ADD_VALUES
-                # The background grid will add all the values obtained by the
-                # exact solution.
-                if grid == 0:
-                    self.__rhs.setValues(b_indices, 
-                                         b_values, 
-                                         insert_mode)
-                # On the countrary, the grids of the upper level will update
-                # only one value, corresponding to the "g_octant" index. That is
-                # because in the function "update_values" we check if the
-                # quadtree has more edge on the boundary, and yet sum this values
-                # into one.
-                else:
+	b_values = b_values.tolist()
+
+        if is_background:
+            if overlapping:
+                self.over_adds(b_centers,
+                               b_faces  ,
+                               b_values ,
+                               b_indices) 
+        # Grids not of the background: equal to number >= 1.
+        else:
+            for i, center in enumerate(b_centers):
+                # Check if foreground grid is inside the background one.
+                check = utilities.check_into_square(center     ,
+                                          	    b_bound    ,
+                                          	    self.logger,
+                                          	    log_file)
+                if check:
+                    # Can't use list as dictionary's keys.
+                    # http://stackoverflow.com/questions/7257588/why-cant-i-use-a-list-as-a-dict-key-in-python
+                    # https://wiki.python.org/moin/DictionaryKeys
+                    key = (grid        , # Grid (0 is for the background grid)
+                           b_indices[i], # Global index of the octant
+                           b_faces[i]  , # Boundary face
+                           h)            # Edge's length
+                    # We store the centers of the cells on the boundary.
+                    self._edl.update({key : center})
+                    b_values[i] = self._e_array.getValue(b_indices[i])
                     # Residual evaluation...
-                    if into_background:
-                        sol_value = self.__solution.getValue(g_octant)
-                        self.__residual_local.update({tuple(center) : sol_value})
+                    sol_value = self._sol.getValue(b_indices[i])
+                    self._res_l.update({tuple(center) : sol_value})
 
-                    boundary_value = self.__inter_extra_array.getValue(g_octant)
-                    b_value = ((boundary_value * -1) / h2)
-                    self.__rhs.setValue(g_octant,
-                                        b_value,
-                                        insert_mode)
+	    dups = collections.defaultdict(list)
+	    for i, e in enumerate(b_indices):
+		dups[e].append(i)
+
+	    # Popped elements.
+	    p_els = 0
+	    for k, v in sorted(dups.iteritems()):
+		if len(v) >= 2:
+		    for i in range(1, len(v)):
+			b_indices.pop(v[i] - p_els)
+			b_values.pop(v[i] - p_els)
+		
+			p_els = p_els + 1
+
+        b_values[:] = [b_value * (-1/h2) for b_value in b_values]
+        insert_mode = PETSc.InsertMode.ADD_VALUES
+        self._rhs.setValues(b_indices,
+                            b_values ,
+                            insert_mode)
         # ATTENTION!! Non using these functions will give you an unassembled
         # vector PETSc.
-        self.__rhs.assemblyBegin()
-        self.__rhs.assemblyEnd()
-        self.logger.info("Set boundary conditions for comm \"" +
-                         str(self.__comm.Get_name())           + 
-                         "\" and rank \""                      +
-                         str(self.__comm.Get_rank())           +
-                         "\" of grid \""                       +
-                         str(self.__proc_grid)                 +
-                         "\":\n"                               +
-                         str(self.__rhs.getArray()))
-    
-    def init_global_ghosts(self):
-        # Number of local ghosts (if present).
-        local_ghost_nocts = self.octree.get_num_ghosts()
-        self.__global_ghosts = []
+        self._rhs.assemblyBegin()
+        self._rhs.assemblyEnd()
+        msg = "Set boundary conditions"
+        extra_msg = "of grid \"" + str(self._proc_g) + "\""
+        self.log_msg(msg   ,
+                     "info",
+                     extra_msg)
 
-        for g_octant in xrange(0, local_ghost_nocts):
+    # Init global ghosts.
+    def init_g_g(self):
+        # Number of local ghosts (if present).
+        g_n_oct = self._octree.get_num_ghosts()
+        self._global_ghosts = []
+
+        for g_octant in xrange(0, g_n_oct):
             # Getting global index for ghost octant.
-            gg_idx = self.__octree.get_ghost_global_idx(g_octant)
+            gg_idx = self._octree.get_ghost_global_idx(g_octant)
             # Saving all global indeces for the ghost octants, for each single
             # process. This is useful for PETSc.
-            self.__global_ghosts.append(gg_idx)
-    
-    def init_mat(self):
-        penalization = self.__penalization
-        f_boundaries = self.__f_boundaries
-        grid = self.__proc_grid
-        self.__mat = PETSc.Mat().create(comm = self.__comm)
+            self._global_ghosts.append(gg_idx)
+
+    def apply_overlap(self,
+                      overlap):
+        f_bound = self._f_bound
+        # \"p_bound\" is a new vector of vectors which contains the 
+        # effective boundaries to check for penalization using an 
+        # overlapping region for the grids, used into D.D.
+        # Penalization boundaries.
+        p_bound = []
+        # Reducing penalization boundaries using the overlap.
+        for boundary in f_bound:
+            # Temporary boundary
+            t_bound = []
+            for index, point in enumerate(boundary):
+                t_bound.append(point + overlap) if (index % 2) == 0 else \
+                t_bound.append(point - overlap)
+            p_bound.append(t_bound)
+
+        return p_bound
+   
+    # Init matrix.
+    def init_mat(self,
+                 # Overlap octants' number.
+                 o_n_oct = 0):
+	log_file = self.logger.handlers[0].baseFilename
+        penalization = self._pen
+        f_bound = self._f_bound
+        grid = self._proc_g
         # Local and global matrix's sizes.
-        sizes = (self.__n, 
-                 self.__N)
-        self.__mat.setSizes((sizes, 
-                             sizes))
-        # Setting type of matrix directly. Using method "setFromOptions()"
-        # the user can choose what kind of matrix build at runtime.
-        #self.__mat.setFromOptions()
-        self.__mat.setType(PETSc.Mat.Type.AIJ)
-        # For better performances, instead of "setUp()" use 
-        # "setPreallocationCSR()".
+        n_oct = self._n_oct
+        N_oct = self._N_oct
+        sizes = (n_oct, 
+                 N_oct)
         # The AIJ format is also called the Yale sparse matrix format or
         # compressed row storage (CSR).
         # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatMPIAIJSetPreallocation.html
-        #self.__mat.setPreallocationCSR((5, 4))
-        self.__mat.setUp()
+        self._mat = PETSc.Mat().createAIJ(size = (sizes, sizes),
+					  nnz = (5, 5)	,
+					  #csr = (range(0, n_oct + 1), 
+			        	  #	  range(0, n_oct)),
+					  comm = self._comm)
         # Getting ranges of the matrix owned by the current process.
-        o_ranges = self.__mat.getOwnershipRange()
-        h = self.__h
+        o_ranges = self._mat.getOwnershipRange()
+        h = self._h
         h2 = h * h
-        local_nocts = self.__n
         nfaces = glob.nfaces
+        is_background = False
+        overlap = o_n_oct * h
+        p_bound = []
+        if not grid:
+            is_background = True
+            p_bound = self.apply_overlap(overlap)
 
-        for octant in xrange(0, local_nocts):
-            indices, values = ([] for i in range(0, 2))
+        for octant in xrange(0, n_oct):
+            indices, values = ([] for i in range(0, 2)) # Indices/values
             neighs, ghosts = ([] for i in range(0, 2))
             g_octant = o_ranges[0] + octant
-            indices.append(g_octant)
+            py_oct = self._octree.get_octant(octant)
+            center  = self._octree.get_center(octant)[:2]
             # Check to know if a quad(oc)tree on the background is penalized.
             is_penalized = False
             # Background grid.
-            if grid == 0:
-                # Penalization is different from 0.
-                #if penalization:
-                # "penalization_boundaries" is a new vector of vectors which 
-                # contains the effective boundaries to check for penalization
-                # using an overlapping region for the grids, used into DD.
-                penalization_boundaries = []
-                overlap = 16 * h
-                # Reducing penalization boundaries using the overlap.
-                for boundary in f_boundaries:
-                    penalization_boundary = []
-                    for index, point in enumerate(boundary):
-                        if (index % 2 ) == 0:
-                            penalization_boundary.append(point + overlap)
-                        else:
-                            penalization_boundary.append(point - overlap)
-                    penalization_boundaries.append(penalization_boundary)
-
-                center  = self.__octree.get_center(octant)[:2]
-                is_penalized = check_point_into_squares_2D(center                 ,
-                                                           penalization_boundaries,
-                                                           self.logger            ,
-                                                           log_file)
+            if is_background:
+                is_penalized = utilities.check_into_squares(center     ,
+                                                  	    p_bound    ,
+                                                  	    self.logger,
+                                                  	    log_file)
                 if is_penalized:
                     key = (grid, g_octant)
-                    self.__temp_data_local.update({key : center})
+                    self._edl.update({key : center})
                 # Residual evaluation...
-                if check_point_into_squares_2D(center,
-                                               f_boundaries,
-                                               self.logger,
-                                               log_file): #and not is_penalized:
-                    sol_value = self.__solution.getValue(g_octant)
-                    self.__residual_local.update({tuple(center) : sol_value})
-            # Here we are, upper grids.
-            else:
-                circle_center = (0.5, 0.5)
-                circle_radius = 0.125
-                center = self.__octree.get_center(octant)[:2]
-                is_penalized = check_point_into_circle(center       ,
-                                                       circle_center,
-                                                       circle_radius)
+		eval_res = (check_into_squares(center     ,
+                                      	       f_bound    ,
+                                      	       self.logger,
+                                      	       log_file) and not 
+			    is_penalized) if overlap else \
+			   utilities.check_into_squares(center     ,
+                                      	      		f_bound    ,
+                                      	      		self.logger,
+                                      	      		log_file)
 
+		if eval_res:
+		    sol_value = self._sol.getValue(g_octant)
+                    self._res_l.update({tuple(center) : sol_value})
+            # Here we are, upper grids.
+            #else:
+            #    circle_center = (0.5, 0.5)
+            #    circle_radius = 0.125
+            #    is_penalized = check_into_circle(center       ,
+            #                                     circle_center,
+            #                                     circle_radius)
+
+            indices.append(g_octant)
             values.append(((-4.0 / h2) - penalization) if is_penalized 
                            else (-4.0 / h2))
-            py_oct = self.__octree.get_octant(octant)
 
             for face in xrange(0, nfaces):
-                if not self.__octree.get_bound(py_oct, 
-                                               face):
-                    (neighs, ghosts) = self.__octree.find_neighbours(octant, 
-                                                                     face  , 
-                                                                     1     , 
-                                                                     neighs, 
-                                                                     ghosts)
+                if not self._octree.get_bound(py_oct, 
+                                              face):
+                    (neighs, ghosts) = self._octree.find_neighbours(octant, 
+                                                                    face  , 
+                                                                    1     , 
+                                                                    neighs, 
+                                                                    ghosts)
                     if not ghosts[0]:
-                        indices.append(neighs[0] + o_ranges[0])
+                        index = neighs[0] + o_ranges[0]
                     else:
-                        index = self.__octree.get_ghost_global_idx(neighs[0])
-                        indices.append(index)
+                        index = self._octree.get_ghost_global_idx(neighs[0])
+                    indices.append(index)
                     values.append(1.0 / h2)
-                    
-            self.__mat.setValues(g_octant, 
-                                 indices, 
-                                 values)
+
+            self._mat.setValues(g_octant, # Rows
+                                indices , # Columns
+                                values)   # Values to be inserted
 
         # ATTENTION!! Non using these functions will give you an unassembled
         # matrix PETSc.
-        self.__mat.assemblyBegin()
-        self.__mat.assemblyEnd()
-        # ATTENTION!! Involves copy.
-        mat_numpy = self.__mat.getValuesCSR()
-        # View the matrix...(please note that it will be printed on the
-        # screen).
-        #self.__mat.view()
-        self.logger.info("Initialized matrix for comm \"" +
-                         str(self.__comm.Get_name())      + 
-                         "\" and rank \""                 +
-                         str(self.__comm.Get_rank())      +
-                         "\" with sizes \""               +
-                         str(self.__mat.getSizes())       +
-                         "\" and type \""                 +
-                         str(self.__mat.getType())        +
-                         "\":\n"                          +
-                         # http://lists.mcs.anl.gov/pipermail/petsc-users/2012-May/013379.html
-                         str(mat_numpy))
-    
-    def set_inter_extra_array(self, 
-                              numpy_array = None):
-        sizes = (self.__n, 
-                 self.__N)
-        global_ghosts = self.__global_ghosts
-        self.__inter_extra_array = PETSc.Vec().createGhost(global_ghosts,
-                                                           size = sizes ,
-                                                           comm = self.__comm)
-        self.__inter_extra_array_ghost_boundary = PETSc.Vec().createGhost(global_ghosts,
-                                                                          size = sizes ,
-                                                                          comm = self.__comm)
-        self.__inter_extra_array.setUp()
-        self.__inter_extra_array_ghost_boundary.setUp()
-        if numpy_array is None:
-            self.__inter_extra_array.set(0)
-            self.__inter_extra_array_ghost_boundary.set(0)
-        else:
-            petsc_temp = PETSc.Vec().createGhostWithArray(global_ghosts,
-                                                          numpy_array  ,
-                                                          size = sizes ,
-                                                          comm = self.__comm)
-            petsc_temp.copy(self.__inter_extra_array)
-            
-            petsc_temp.copy(self.__inter_extra_array_ghost_boundary)
+        self._mat.assemblyBegin()
+        self._mat.assemblyEnd()
+        msg = "Initialized matrix"
+        extra_msg = "with sizes \"" + str(self._mat.getSizes()) + \
+                    "\" and type \"" + str(self._mat.getType()) + "\""
+        self.log_msg(msg   ,
+                     "info",
+                     extra_msg)
 
-        self.logger.info("Initialized intra_extra_array for comm \"" +
-                         str(self.__comm.Get_name())                 + 
-                         "\" and rank \""                            +
-                         str(self.__comm.Get_rank())                 +
-                         "\".")
+    # Initialize extra arrays.
+    def init_e_arrays(self,
+                      array = None):
+        self._e_array = self.init_array("extra array",
+                                       array)
+        self._e_array_gb = self.init_array("extra array ghost boundary",
+                                           array)
+
+    def init_array(self       ,
+                   # Array name.
+                   a_name = "",
+                   array = None):
+	"""Method which initializes an array or with zeros or with a 
+	   \"numpy.ndarray\" passed as parameter.
+
+	   Arguments:
+		a_name (string) : name of the array to initialize, being written
+				  into the log. Default value is \"\"
+		array (numpy.ndarray) : possible array to use to initialize the
+					returned array. Default value is 
+					\"None\".
+
+	   Returns:
+		a PETSc array."""
+	
+        pen = self._pen
+        grid = self._proc_g
+        n_oct = self._n_oct
+        N_oct = self._N_oct
+        sizes = (n_oct, 
+                 N_oct)
+        # Global ghosts.
+        g_ghosts = self._global_ghosts
+        # Temporary array.
+        t_array = PETSc.Vec().createGhost(g_ghosts    ,
+                                          size = sizes,
+                                          comm = self._comm)
+        t_array.setUp()
+
+        if array is None:
+            t_array.set(0)
+        else:
+            try:
+                assert isinstance(array, numpy.ndarray)
+                # Temporary PETSc vector.
+                t_petsc = PETSc.Vec().createWithArray(array       ,
+                                                      size = sizes,
+                                                      comm = self._comm)
+                t_petsc.copy(t_array)
+            except AssertionError:
+                msg = "\"MPI Abort\" called during array's initialization"
+                extra_msg = "Parameter \"array\" not an instance of " + \
+                            "\"numpy.ndarray\"."
+                self.log_msg(msg    ,
+                             "error",
+                             extra_msg)
+                self._comm_w.Abort(1)
+        msg = "Initialized \"" + str(a_name) + "\""
+        self.log_msg(msg,
+                     "info")
+        return t_array
     
     def init_rhs(self, 
                  numpy_array):
-        penalization = self.__penalization
-        grid = self.__proc_grid
-        sizes = (self.__n, 
-                 self.__N)
-        global_ghosts = self.__global_ghosts
-        self.__rhs = PETSc.Vec().createGhost(global_ghosts    ,
-                                             size = sizes     ,
-                                             comm = self.__comm)
-        self.__rhs.setUp()
-        numpy_rhs = numpy.subtract(numpy_array,
-                                   numpy.multiply(penalization,
-                                   self.__inter_extra_array.getArray())) if not \
-                    grid else \
-                    numpy_array
-        # The method "createWithArray()" put in common the memory used to create
-        # the numpy vector with the PETSc's one.
-        petsc_temp = PETSc.Vec().createWithArray(numpy_rhs   ,
-                                                 size = sizes,
-                                                 comm = self.__comm)
-        petsc_temp.copy(self.__rhs)
+	"""Method which intializes the right hand side."""
 
-        self.logger.info("Initialized rhs for comm \"" +
-                         str(self.__comm.Get_name())   + 
-                         "\" and rank \""              +
-                         str(self.__comm.Get_rank())   +
-                         "\" of grid \""               +
-                         str(self.__proc_grid)         +
-                         "\":\n"                       +
-                         str(self.__rhs.getArray()))
+	penalization = self._pen
+        grid = self._proc_g
+        is_background = False
+        if not grid:
+            is_background = True
+
+        numpy_rhs = numpy.subtract(numpy_array, 
+                                   numpy.multiply(penalization,
+                                                  self._e_array.getArray())) if \
+                    is_background else \
+                    numpy_array
+        self._rhs = self.init_array("right hand side",
+                                    numpy_rhs)
     
     def init_sol(self):
-        sizes = (self.__n, 
-                 self.__N)
-        global_ghosts = self.__global_ghosts
-        self.__solution = PETSc.Vec().createGhost(global_ghosts,
-                                                  size = sizes ,
-                                                  comm = self.__comm)
-        self.__solution.setUp()
-        # Set the solution to all zeros.
-        self.__solution.set(0)
-        # View the vector...
-        #self.__solution.view()
-        self.logger.info("Initialized solution for comm \"" +
-                         str(self.__comm.Get_name())        + 
-                         "\" and rank \""                   +
-                         str(self.__comm.Get_rank())        +
-                         "\".")
+	"""Method which initializes the solution."""
+
+        self._sol = self.init_array("solution")
     
     def init_residual(self):
-        self.__residual_local = {}
-        self.__residual_global = []
-        sizes = (self.__n, 
-                 self.__N)
-        global_ghosts = self.__global_ghosts
-        self.__residual = PETSc.Vec().createGhost(global_ghosts,
-                                                  size = sizes ,
-                                                  comm = self.__comm)
-        self.__residual.setUp()
-        self.__residual.set(0)
-        self.logger.info("Initialized residual for comm \"" +
-                         str(self.__comm.Get_name())        + 
-                         "\" and rank \""                   +
-                         str(self.__comm.Get_rank())        +
-                         "\".")
+        self._res_l = {}
+        self._res_g = []
+        self._res = self.init_array("residual")
     
     def solve(self):
         # Creating a "KSP" object.
         ksp = PETSc.KSP()
         pc = PETSc.PC()
-        ksp.create(self.__comm)
-        ksp.setOperators(self.__mat,
-                         self.__mat)
+        ksp.create(self._comm)
+        ksp.setOperators(self._mat,
+                         self._mat)
 
         pc = ksp.getPC()
         # Setting tolerances.
@@ -439,34 +559,59 @@ class Laplacian2D(object):
         ksp.setFromOptions()
         pc.setFromOptions()
         # Solve the system.
-        ksp.solve(self.__rhs, 
-                  self.__solution)
+        ksp.solve(self._rhs, 
+                  self._sol)
         # How many iterations are done.
         it_number = ksp.getIterationNumber()
 
-        self.logger.info("Evaluated solution for comm \"" +
-                         str(self.__comm.Get_name())      +
-                         "\" and rank \""                 + 
-                         str(self.__comm.Get_rank())      +
-                         "\" Using \""                    +
-                         str(it_number)                   +
-                         "\" iterations:"                 +
-                         # The "getArray()" method call from "self.__solution"
-                         # is a method which return the numpy array from the
-                         # PETSC's one. The returned NumPy array shares the 
-                         # memory buffer wit the PETSc Vec, so NO copies are 
-                         # involved.
-                         str(self.__solution.getArray()))
-        # Resetting to zeros "self.__inter_extra_array".
-        self.set_inter_extra_array()
+        msg = "Evaluated solution"
+        extra_msg = "Using \"" + str(it_number) + "\" iterations."
+        self.log_msg(msg   ,
+                     "info",
+                     extra_msg)
+        self.init_e_arrays()
     
-    def update_values(self, intercomm_dictionary = {}):
-        local_nocts = self.__n
-        o_ranges = self.__mat.getOwnershipRange()
-        b_boundaries = self.__b_boundaries
-        grid = self.__proc_grid
-        max_id_octree_contained = o_ranges[0] + local_nocts
-        ids_octree_contained = range(o_ranges[0], max_id_octree_contained)
+    # Initialize exchanged structures.	
+    def init_e_structures(self):
+	"""Method which initializes structures used to exchange data between
+	   different grids."""
+
+        # The \"self._edl\" will contains local data to be exchanged between
+	# grids of different levels.
+	# Exchanged data local.
+        self._edl = {} # is the old \"self.__temp_data_local\".
+        # The \"self._edg\" will contains the excahnged data between grids of
+	# different levels.
+	# Exchanged data global.
+        self._edg = [] # is the old \"self.__temp_data_global\".
+        # The \"self._eil\" will contains indices of the local data to be
+	# exchanged between grids of different levels.
+	# Exchanged indices local.
+        self._eil = [] # is the old \"self.__intra_extra_indices_local\".
+        # The \"self._eig\" will contains indices of the excahnged data between
+	# grids of different levels.
+	# Exchanged indices global.
+        self._eig = [] # is the old \"self.__intra_extra_indices_global\".
+        # The \"self._evl\" will contains values of the local data to be
+	# exchanged between grids of different levels.
+	# Exchanged values local.
+        self._evl = [] # is the old \"self.__intra_extra_values_local\".
+        # The \"self._evg\" will contains values of the exchanged data between
+	# grids of different levels.
+	# Exchanged values global.
+        self._evg = []
+    
+    def update_values(self, 
+                      intercomm_dictionary = {}):
+	log_file = self.logger.handlers[0].baseFilename
+        n_oct = self._n_oct
+        o_ranges = self._mat.getOwnershipRange()
+        b_bound = self._b_bound
+        grid = self._proc_g
+        # Upper bound octree's id contained.
+        up_id_octree = o_ranges[0] + n_oct
+        # Octree's ids contained.
+        ids_octree_contained = range(o_ranges[0], up_id_octree)
         # Calling "allgather" to obtain data from the corresponding grid,
         # onto the intercommunicators created, not the intracommunicators.
         # http://www.mcs.anl.gov/research/projects/mpi/mpi-standard/mpi-report-1.1/node114.htm#Node117
@@ -475,36 +620,37 @@ class Laplacian2D(object):
         for key, intercomm in intercomm_dictionary.items():
             # Extending a list with the lists obtained by the other processes
             # of the corresponding intercommunicator.
-            self.__temp_data_global.extend(intercomm.allgather(self.__temp_data_local))
-            self.__residual_global.extend(intercomm.allgather(self.__residual_local))
+            self._edg.extend(intercomm.allgather(self._edl))
+            self._res_g.extend(intercomm.allgather(self._res_l))
         # Residual evaluation... 
-        for index, dictionary in enumerate(self.__residual_global):
+        for index, dictionary in enumerate(self._res_g):
             for center, solution_value in dictionary.items():
-                local_idx = self.__octree.get_point_owner_idx(center)
+                local_idx = self._octree.get_point_owner_idx(center)
                 global_idx = local_idx + o_ranges[0]
 
                 if global_idx in ids_octree_contained:
-                    center_cell_container = self.__octree.get_center(local_idx)[:2]
-                    location = check_point_position_from_another(center,
-                                                                 center_cell_container)
+                    center_cell_container = self._octree.get_center(local_idx)[:2]
+                    location = utilities.points_location(center,
+                                                         center_cell_container)
                     neigh_centers, neigh_values = ([] for i in range(0, 2))
-                    (neigh_centers, neigh_values) = self.find_right_neighbours(location,
-                                                                               local_idx,
-                                                                               o_ranges[0])
-                    bilinear_value = bilinear_interpolation(center,
-                                                            neigh_centers,
-                                                            neigh_values)
+                    (neigh_centers, 
+		     neigh_values) = self.find_right_neighbours(location ,
+                                                        local_idx,
+                                                        o_ranges[0])
+                    bilinear_value = utilities.bil_interp(center       ,
+                                                          neigh_centers,
+                                                          neigh_values)
                     insert_mode = PETSc.InsertMode.INSERT_VALUES
                     value = bilinear_value - solution_value
-                    self.__residual.setValue(global_idx, 
-                                             value     ,
-                                             insert_mode)
-        self.__residual.assemblyBegin()
-        self.__residual.assemblyEnd()
+                    self._res.setValue(global_idx, 
+                                       value     ,
+                                       insert_mode)
+        self._res.assemblyBegin()
+        self._res.assemblyEnd()
 
         # "self.__temp_data_global" will be a list of same structures of data,
         # after the "allgather" call; these structures are dictionaries.
-        for index, dictionary in enumerate(self.__temp_data_global):
+        for index, dictionary in enumerate(self._edg):
             for key, center in dictionary.items():
                 (x_center, y_center) = center
                 into_background = True
@@ -513,8 +659,8 @@ class Laplacian2D(object):
                     ghost_boundary = True
                 # We are onto grids of the first level.
                 if grid:
-                    local_idx = self.__octree.get_point_owner_idx((x_center,
-                                                                   y_center))
+                    local_idx = self._octree.get_point_owner_idx((x_center,
+                                                                  y_center))
                 # We are onto the background grid.
                 else:
                     if key[2] == 0:
@@ -526,19 +672,19 @@ class Laplacian2D(object):
                     if key[2] == 3:
                         y_center = y_center + key[3]
 
-                    into_background = check_point_into_square_2D((x_center, 
-                                                                  y_center)  ,
-                                                                 b_boundaries,
-                                                                 self.logger ,
-                                                                 log_file)
+                    into_background = utilities.check_into_square((x_center, 
+                                                         	   y_center)  ,
+                                                        	  b_bound     ,
+								  self.logger ,
+								  log_file)
                     if into_background:
                         # The function "get_point_owner_idx" wants only one argument
                         # so we are passing it a tuple.
-                        local_idx = self.__octree.get_point_owner_idx((x_center,
-                                                                       y_center))
+                        local_idx = self._octree.get_point_owner_idx((x_center,
+                                                                      y_center))
                     # Is this "else" useful? For me no.
                     else:
-                        local_idx = self.__octree.get_point_owner_idx(center)
+                        local_idx = self._octree.get_point_owner_idx(center)
 
                 global_idx = local_idx + o_ranges[0]
 
@@ -546,115 +692,93 @@ class Laplacian2D(object):
                     # Appending a tuple containing the grid number and
                     # the corresponding octant index.
                     if ghost_boundary:
-                        self.__intra_extra_indices_local.append((key[0], key[1], key[2]))
+                        self._eil.append((key[0], key[1], key[2]))
                     else:
-                        self.__intra_extra_indices_local.append((key[0], key[1]))
+                        self._eil.append((key[0], key[1]))
                     if into_background:
-                        center_cell_container = self.__octree.get_center(local_idx)[:2]
-                        location = check_point_position_from_another((x_center,
-                                                                      y_center),
-                                                                     center_cell_container)
+                        center_cell_container = self._octree.get_center(local_idx)[:2]
+                        location = utilities.points_location((x_center,
+                                                              y_center),
+                                                              center_cell_container)
                         neigh_centers, neigh_values = ([] for i in range(0, 2))
                         (neigh_centers, neigh_values) = self.find_right_neighbours(location ,
                                                                                    local_idx,
                                                                                    o_ranges[0])
-                        solution_value = bilinear_interpolation((x_center, 
-                                                                 y_center)   ,
-                                                                neigh_centers,
-                                                                neigh_values)
+                        solution_value = utilities.bil_interp((x_center, 
+                                                               y_center)   ,
+                                                              neigh_centers,
+                                                              neigh_values)
                     else:
-                        solution_value = ExactSolution2D.solution(x_center, 
-                                                                  y_center)
+                        solution_value = ExactSolution2D.ExactSolution2D.solution(x_center, 
+                                                                  		  y_center)
 
-                    self.__intra_extra_values_local.append(solution_value)
+                    self._evl.append(solution_value)
         # Updating data for each process into "self.__intra_extra_indices_global"
         # and "self.__intra_extra_values_global", calling "allgather" to obtain 
         # data from the corresponding grid onto the intercommunicators created, 
         # not the intracommunicators.
         for key, intercomm in intercomm_dictionary.items():
-            self.__intra_extra_indices_global.extend(intercomm.allgather(self.__intra_extra_indices_local))
-            self.__intra_extra_values_global.extend(intercomm.allgather(self.__intra_extra_values_local))
+            self._eig.extend(intercomm.allgather(self._eil))
+            self._evg.extend(intercomm.allgather(self._evl))
 
-        for index, values in enumerate(self.__intra_extra_indices_global):
+        for index, values in enumerate(self._eig):
             for position, value in enumerate(values):
                 # Check if the global index belong to the process.
                 if value[1] in ids_octree_contained:
                     # Check if we are onto the right grid.
-                    if value[0] == self.__proc_grid:
-                        intra_extra_value = self.__intra_extra_values_global[index][position]
+                    if value[0] == self._proc_g:
+                        intra_extra_value = self._evg[index][position]
                         # Background grid.
                         if grid == 0:
                             insert_mode = PETSc.InsertMode.INSERT_VALUES
                             # Here "insert_mode" does not affect nothing.
                             if len(value) == 3:
-                                self.__inter_extra_array_ghost_boundary.setValue(value[1],
-                                                                                 intra_extra_value,
-                                                                                 insert_mode)
+                                self._e_array_gb.setValue(value[1],
+                                                          intra_extra_value,
+                                                          insert_mode)
                             else:
-                                self.__inter_extra_array.setValue(value[1]         , 
-                                                                  intra_extra_value,
-                                                                  insert_mode)
+                                self._e_array.setValue(value[1]         , 
+                                                       intra_extra_value,
+                                                       insert_mode)
                         else:
                             insert_mode = PETSc.InsertMode.ADD_VALUES
-                            self.__inter_extra_array.setValue(value[1]         ,
-                                                              intra_extra_value,
-                                                              insert_mode)
+                            self._e_array.setValue(value[1]         ,
+                                                   intra_extra_value,
+                                                   insert_mode)
 
-        self.__inter_extra_array.assemblyBegin()
-        self.__inter_extra_array.assemblyEnd()
-        self.__inter_extra_array_ghost_boundary.assemblyBegin()
-        self.__inter_extra_array_ghost_boundary.assemblyEnd()
+        self._e_array.assemblyBegin()
+        self._e_array.assemblyEnd()
+        self._e_array_gb.assemblyBegin()
+        self._e_array_gb.assemblyEnd()
         # Resetting structures used for the "allgather" functions.
-        self.set_intercomm_structures()
+        self.init_e_structures()
         self.logger.info("Updated  inter_extra_array for comm \"" +
-                         str(self.__comm.Get_name())              + 
+                         str(self._comm.Get_name())               + 
                          "\" and rank \""                         +
-                         str(self.__comm.Get_rank())              +
+                         str(self._comm.Get_rank())               +
                          "\" of grid \""                          +
-                         str(self.__proc_grid)                    +
+                         str(self._proc_g)                    	  +
                          "\":\n"                                  +
-                         str(self.__inter_extra_array.getArray()))
+                         str(self._e_array.getArray()))
     
-    def set_intercomm_structures(self):
-        # Setting "self.__temp_data_local" to a dictionary because after 
-        # the "allgather" operations it will became a list of dictionaries.
-        # The "self.__temp_data_local" will contains local data to be exchanged
-        # between grids of different levels.
-        self.__temp_data_local = {}
-        # The "self.__temp_data_global" will contains exchanged data between 
-        # grids of different levels.
-        self.__temp_data_global = []
-        # The "self.__intra_extra_indices_local" will contains indices of the 
-        # local data to be exchanged between grids of different levels.
-        self.__intra_extra_indices_local = []
-        # The "self.__intra_extra_indices_global" will contains indices of the 
-        # excahnged data between grids of different levels.
-        self.__intra_extra_indices_global = []
-        # The "self.__intra_extra_values_local" will contains values of the 
-        # local data to be exchanged between grids of different levels.
-        self.__intra_extra_values_local = []
-        # The "self.__intra_extra_indices_local" will contains values of the 
-        # exchanged data between grids of different levels.
-        self.__intra_extra_values_global = []
-
     def find_right_neighbours(self          , 
                               location      , 
                               current_octant,
-                              start_octant):
-        py_octant = self.__octree.get_octant(current_octant)
+                              start_octant):				
+        py_oct = self._octree.get_octant(current_octant)
         # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Vec/VecGhostUpdateBegin.html
-        #self.__solution.ghostUpdate(PETSc.InsertMode.ADD,
-        #                            PETSc.ScatterMode.REVERSE)
-        self.__solution.ghostUpdate(PETSc.InsertMode.INSERT,
-                                    PETSc.ScatterMode.FORWARD)
-        with self.__solution.localForm() as lf:
+        #self._sol.ghostUpdate(PETSc.InsertMode.ADD,
+        #                      PETSc.ScatterMode.REVERSE)
+        self._sol.ghostUpdate(PETSc.InsertMode.INSERT,
+                              PETSc.ScatterMode.FORWARD)
+        with self._sol.localForm() as lf:
             # Getting the local solution with the ghost values.
-            local_solution = lf.getArray()
+            l_sol = lf.getArray()
             # Making a copy of the local solution.
-            local_solution_copy = numpy.copy(local_solution)
+            l_sol_copy = numpy.copy(l_sol)
             ordered_points = {}
-            cell_centers = []
-            cell_values = []
+            centers = []
+            values = []
             if location == "nordovest":
                 # Adding 1) the number of node, 2) (codim, number of face/node).
                 ordered_points.update({0 : (1, 0)})
@@ -676,56 +800,56 @@ class Laplacian2D(object):
                 ordered_points.update({1 : (2, 1)})
                 ordered_points.update({2 : None})
                 ordered_points.update({3 : (1, 1)})
-                # Using "sorted" to be sure that values of the dict 
-                # "ordered_points" are ordered by keys.
+            # Using \"sorted\" to be sure that values of the dict 
+	    # \"ordered_points\" are ordered by keys.
             for q_point in sorted(ordered_points.keys()):
                 edge_or_node = ordered_points[q_point]
                 if edge_or_node is None:
-                    cell_centers.append(self.__octree.get_center(current_octant)[:2])
-                    cell_values.append(local_solution_copy[current_octant])
+                    centers.append(self._octree.get_center(current_octant)[:2])
+                    values.append(l_sol_copy[current_octant])
                 else:
                     neighs, ghosts = ([] for i in range(0, 2))
-                    (neighs, ghosts) = self.__octree.find_neighbours(current_octant ,
-                                                                     edge_or_node[1],
-                                                                     edge_or_node[0],
-                                                                     neighs         ,
-                                                                     ghosts)
+                    (neighs, 
+		     ghosts) = self._octree.find_neighbours(current_octant ,
+                                                            edge_or_node[1],
+                                                            edge_or_node[0],
+                                                            neighs         ,
+                                                            ghosts)
                     # Check if it is really a neighbour of edge or node. If not,
                     # it means that we are near the boundary and so...
                     if len(neighs) is not 0:
                         # Neighbour is into the same process, so is local.
                         if not ghosts[0]:
-                            cell_center = self.__octree.get_center(neighs[0])[:2]
-                            cell_centers.append(cell_center)
-                            cell_value = local_solution_copy[neighs[0]]
-                            cell_values.append(cell_value)
+                            cell_center = self._octree.get_center(neighs[0])[:2]
+                            centers.append(cell_center)
+                            cell_value = l_sol_copy[neighs[0]]
+                            values.append(cell_value)
                         else:
                             # In this case, the quas(/oc)tree is no more local
                             # into the current process, so we have to find it
                             # globally.
-                            index = self.__octree.get_ghost_global_idx(neighs[0])
-                            # ".index" give us the index of 
-                            # "self.__global_ghosts" that contains the index
+                            index = self._octree.get_ghost_global_idx(neighs[0])
+                            # \".index\" give us the index of 
+                            # \"self._global_ghosts\" that contains the index
                             # of the global ghost quad(/oc)tree previously
-                            # found and stored in "index".
-                            ghost_index = self.__global_ghosts.index(index)
-                            py_ghost_oct = self.__octree.get_ghost_octant(neighs[0])
-                            cell_center = self.__octree.get_center(py_ghost_oct, 
-                                                                   True)[:2]
-                            # "local solution" store the local values and after
+                            # found and stored in \"index\".
+                            ghost_index = self._global_ghosts.index(index)
+                            py_ghost_oct = self._octree.get_ghost_octant(neighs[0])
+                            cell_center = self._octree.get_center(py_ghost_oct, 
+                                                                  True)[:2]
+                            # \"local solution\" store the local values after
                             # the ghost values (that's why the presence of 
-                            # "+ self.__n" in the index of "local_solution_copy.
-                            cell_value = local_solution_copy[ghost_index + 
-                                                             self.__n]
-                            cell_centers.append(cell_center)
+                            # \"+ self._n_oct\" in the index of \"l_sol_copy\".
+                            cell_value = l_sol_copy[ghost_index + self._n_oct]
+                            centers.append(cell_center)
                             # http://lists.mcs.anl.gov/pipermail/petsc-users/2012-February/012423.html
                             # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Vec/VecGhostGetLocalForm.html#VecGhostGetLocalForm
-                            cell_values.append(cell_value)
+                            values.append(cell_value)
                     # ...we need to evaluate boundary values.
                     else:
-                        border_center = self.__octree.get_center(current_octant)[:2]
+                        border_center = self._octree.get_center(current_octant)[:2]
                         center = None
-                        h = self.__h
+                        h = self._h
                         # We have edge neighbours on the boundaries.
                         if edge_or_node[0] == 1:
                             if edge_or_node[1] == 0:
@@ -755,59 +879,45 @@ class Laplacian2D(object):
                                 center = (border_center[0] + h, 
                                           border_center[1] + h)
 
-                        value = ExactSolution2D.solution(center[0],
-                                                         center[1])
-                        cell_centers.append(center)
-                        cell_values.append(value)
+                        value = ExactSolution2D.ExactSolution2D.solution(center[0],
+                                                              	         center[1])
+                        centers.append(center)
+                        values.append(value)
 
-
-        return (cell_centers, 
-                cell_values)
+        return (centers, values)
     
     @property
     def comm(self):
-        return self.__comm
+        return self._comm
 
     @property
     def octree(self):
-        return self.__octree
+        return self._octree
 
     @property
     def N(self):
-        return self.__N
+        return self._N_oct
 
     @property
     def n(self):
-        return self.__n
+        return self._n_oct
 
     @property
     def mat(self):
-        return self.__mat
+        return self._mat
 
     @property
     def rhs(self):
-        return self.__rhs
+        return self._rhs
 
     @property
-    def solution(self):
-        return self.__solution
+    def sol(self):
+        return self._sol
 
     @property
-    def temp_data_local(self):
-        return self.__temp_data_local
-
-    @property
-    def temp_data_global(self):
-        return self.__temp_data_global
-
-    @property
-    def inter_extra_array(self):
-        return self.__inter_extra_array
-
-    @property
-    def residual(self):
-        return self.__residual
+    def res(self):
+        return self._res
 
     @property
     def h(self):
-        return self.__h
+        return self._h
