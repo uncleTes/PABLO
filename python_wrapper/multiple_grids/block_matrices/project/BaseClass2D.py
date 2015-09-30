@@ -1,4 +1,5 @@
 import utilities
+# http://wiki.gwdg.de/index.php/Mpi4py
 from mpi4py import MPI
 # Module \"sys\" is needed for \"SystemExit\" exceptions. 
 import sys
