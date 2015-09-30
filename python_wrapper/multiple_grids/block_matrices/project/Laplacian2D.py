@@ -1,3 +1,6 @@
+# set tabstop=8 softtabstop=0 expandtab shiftwidth=4 smarttab
+# A guide to analyzing Python performance:
+# http://www.huyng.com/posts/python-performance-analysis/
 import numbers
 import math
 import collections
@@ -361,6 +364,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # The AIJ format is also called the Yale sparse matrix format or
         # compressed row storage (CSR).
         # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatMPIAIJSetPreallocation.html
+        # http://lists.mcs.anl.gov/pipermail/petsc-users/2013-August/018502.html
         self._mat = PETSc.Mat().createAIJ(size = (sizes, sizes),
 					  nnz = (5, 5)	,
 					  #csr = (range(0, n_oct + 1), 
