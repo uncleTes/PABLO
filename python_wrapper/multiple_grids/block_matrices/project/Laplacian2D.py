@@ -366,7 +366,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatMPIAIJSetPreallocation.html
         # http://lists.mcs.anl.gov/pipermail/petsc-users/2013-August/018502.html
         self._mat = PETSc.Mat().createAIJ(size = (sizes, sizes),
-					  nnz = (5, 5)	,
+					  nnz = (5, 5)	, # Why is working also with (5, 1) ?
 					  #csr = (range(0, n_oct + 1), 
 			        	  #	  range(0, n_oct)),
 					  comm = self._comm)
