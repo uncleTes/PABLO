@@ -107,9 +107,6 @@ def set_comm_dict(n_grids  ,
        Returns:
            a dictionary, previously setted."""
 
-    refinement_levels = refinements[proc_grid]
-    # Anchor node for PABLO.
-    an = anchors[proc_grid]
     # Edge's length for PABLO.
     ed = edges[proc_grid]
 
