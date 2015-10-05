@@ -54,6 +54,12 @@ try:
     refinements = utilities.get_list_from_string(config.get("PABLO", "Refinements"), 
                                                  ", ")
 
+    # Quadtree for grid.
+    quad_f_g = [pow(4, ref - 1) for ref in refinements]
+
+    # Total number of quadtree on the totality of the grids.
+    tot_quad = sum(quad_f_g)
+
     assert (len(anchors) == n_grids)
     assert (len(edges) == n_grids)
     assert (len(refinements) == n_grids)
@@ -111,6 +117,7 @@ def set_comm_dict(n_grids  ,
     comm_dictionary.update({"edge" : ed})
     comm_dictionary.update({"communicator" : comm_l})
     comm_dictionary.update({"world communicator" : comm_w})
+    comm_dictionary.update({"total quadtrees number" : tot_quad})
     penalization = f_pen if proc_grid else b_pen
     background_boundaries = [anchors[0][0], anchors[0][0] + edges[0],
                              anchors[0][1], anchors[0][1] + edges[0]]
