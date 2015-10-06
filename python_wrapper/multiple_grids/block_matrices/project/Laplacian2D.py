@@ -412,6 +412,19 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 					  comm = self._comm)
         # Getting ranges of the matrix owned by the current process.
         o_ranges = self._mat.getOwnershipRange()
+        # Creating a block matrix
+        tot_oct = self._tot_oct
+        tot_sizes = (n_oct, tot_oct)
+        b_size = self.find_block_dim()
+        d_nz, o_nz = self.find_block_nnz(tot_oct,
+                                         b_size)
+        self._b_mat = PETSc.Mat().createBAIJ(size = (tot_sizes, tot_sizes),
+                                             bsize = b_size               ,
+                                             nnz = (d_nz, o_nz)           ,
+                                             comm = self._comm_w)
+
+        #print(self._b_mat.getSizes())
+
         h = self._h
         h2 = h * h
         nfaces = glob.nfaces
@@ -488,6 +501,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # matrix PETSc.
         self._mat.assemblyBegin()
         self._mat.assemblyEnd()
+        self._b_mat.assemblyBegin()
+        self._b_mat.assemblyEnd()
         msg = "Initialized matrix"
         extra_msg = "with sizes \"" + str(self._mat.getSizes()) + \
                     "\" and type \"" + str(self._mat.getType()) + "\""
