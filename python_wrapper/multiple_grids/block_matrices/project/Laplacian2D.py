@@ -364,6 +364,29 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         #      " has block dimension equal to " + str(b_dim))
 
         return b_dim
+
+    # Find non zero block, on the diagonal portion of the process and
+    # on the non-diagonal one.
+    def find_block_nnz(self   ,
+                       tot_oct,
+                       b_size):
+        # Blocks for blocks' rows.
+        b_for_br = (self._n_oct / b_size)
+        # Blocks for matrix' columns.
+        b_for_mc = (tot_oct / b_size)
+        # Total blocks for blocks' rows.
+        tb_for_br = b_for_br * b_for_mc
+        # Diagonal blocks non zero.
+        db_nz = b_for_br * b_for_br
+        # Other blocks non zero.
+        ob_nz = tb_for_br - db_nz
+        
+        #print("process " + str(self._comm_w.Get_rank()) +
+        #      " has non zero blocks tuple equal to "    + 
+        #      str((db_nz, ob_nz)))
+
+        return (db_nz, ob_nz)
+        
    
     # Init matrix.
     def init_mat(self,
