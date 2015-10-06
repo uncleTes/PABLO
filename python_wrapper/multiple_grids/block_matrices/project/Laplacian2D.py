@@ -8,6 +8,7 @@ import BaseClass2D
 import ExactSolution2D
 import numpy
 from petsc4py import PETSc 
+from mpi4py import MPI
 import class_global
 import utilities
 
@@ -349,6 +350,20 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             p_bound.append(t_bound)
 
         return p_bound
+
+    # Find block dimension for the block matrix.
+    def find_block_dim(self):
+        n_oct = self._n_oct
+        b_dim = 0
+        # Block dimension: used "allreduce" instead of "Allreduce", python
+        # variant.
+        b_dim = self._comm_w.allreduce(n_oct,
+                                       op = MPI.MIN)
+
+        #print("process " + str(self._comm_w.Get_rank()) +
+        #      " has block dimension equal to " + str(b_dim))
+
+        return b_dim
    
     # Init matrix.
     def init_mat(self,
