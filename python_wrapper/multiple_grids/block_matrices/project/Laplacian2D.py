@@ -406,7 +406,21 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatMPIAIJSetPreallocation.html
         # http://lists.mcs.anl.gov/pipermail/petsc-users/2013-August/018502.html
         self._mat = PETSc.Mat().createAIJ(size = (sizes, sizes),
-					  nnz = (5, 5)	, # Why is working also with (5, 1) ?
+					  #nnz = (5, 5)	       ,
+                                          # The line above is commented because
+                                          # I think that the case below is 
+                                          # better, reflecting the "worst" cases
+                                          # for the diagonal part and the other
+                                          # one. If there is only one process, 
+                                          # we will have 5 elements of the 
+                                          # stencil on the same process, so into
+                                          # the diagonal part. If otherwise, we
+                                          # should use a single process for each
+                                          # octant, we would have one element in
+                                          # the diagonal part (row-column 
+                                          # intersection) and 4 elements into 
+                                          # the off-diagonal part, not 5.   
+                                          nnz = (5, 4)         ,
 					  #csr = (range(0, n_oct + 1), 
 			        	  #	  range(0, n_oct)),
 					  comm = self._comm)
