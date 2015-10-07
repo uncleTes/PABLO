@@ -437,6 +437,12 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                              nnz = (d_nz, o_nz)           ,
                                              comm = self._comm_w)
 
+        tot_o_ranges = self._b_mat.getOwnershipRange()
+
+        #print("process " + str(self._comm_w.Get_rank()) +
+        #      " has total ranges "    + 
+        #      str(tot_o_ranges))
+
         #print(self._b_mat.getSizes())
 
         h = self._h
