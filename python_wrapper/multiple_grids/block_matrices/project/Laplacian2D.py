@@ -386,82 +386,48 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         #      str((db_nz, ob_nz)))
 
         return (db_nz, ob_nz)
-        
-   
-    # Init matrix.
-    def init_mat(self,
-                 # Overlap octants' number.
-                 o_n_oct = 0):
+
+    # Initialize diagonal matrices of the block matrix.
+    def init_diag_mat(self,
+                      o_n_oct = 0):
+
+        # ---------------------------------------------------------------------
 	log_file = self.logger.handlers[0].baseFilename
         penalization = self._pen
         f_bound = self._f_bound
         grid = self._proc_g
-        # Local and global matrix's sizes.
         n_oct = self._n_oct
-        N_oct = self._N_oct
-        sizes = (n_oct, 
-                 N_oct)
-        # The AIJ format is also called the Yale sparse matrix format or
-        # compressed row storage (CSR).
-        # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatMPIAIJSetPreallocation.html
-        # http://lists.mcs.anl.gov/pipermail/petsc-users/2013-August/018502.html
-        self._mat = PETSc.Mat().createAIJ(size = (sizes, sizes),
-					  #nnz = (5, 5)	       ,
-                                          # The line above is commented because
-                                          # I think that the case below is 
-                                          # better, reflecting the "worst" cases
-                                          # for the diagonal part and the other
-                                          # one. If there is only one process, 
-                                          # we will have 5 elements of the 
-                                          # stencil on the same process, so into
-                                          # the diagonal part. If otherwise, we
-                                          # should use a single process for each
-                                          # octant, we would have one element in
-                                          # the diagonal part (row-column 
-                                          # intersection) and 4 elements into 
-                                          # the off-diagonal part, not 5.   
-                                          nnz = (5, 4)         ,
-					  #csr = (range(0, n_oct + 1), 
-			        	  #	  range(0, n_oct)),
-					  comm = self._comm)
-        # Getting ranges of the matrix owned by the current process.
-        o_ranges = self._mat.getOwnershipRange()
-        # Creating a block matrix
+        nfaces = glob.nfaces
+        h = self._h
+        h2 = h * h
+        is_background = False
+        overlap = o_n_oct * h
+        p_bound = []
         tot_oct = self._tot_oct
-        tot_sizes = (n_oct, tot_oct)
+        tot_sizes = (n_oct, 
+                     tot_oct)
         b_size = self.find_block_dim()
         d_nz, o_nz = self.find_block_nnz(tot_oct,
                                          b_size)
+        # ---------------------------------------------------------------------
         self._b_mat = PETSc.Mat().createBAIJ(size = (tot_sizes, tot_sizes),
                                              bsize = b_size               ,
                                              nnz = (d_nz, o_nz)           ,
                                              comm = self._comm_w)
 
-        tot_o_ranges = self._b_mat.getOwnershipRange()
-
-        #print("process " + str(self._comm_w.Get_rank()) +
-        #      " has total ranges "    + 
-        #      str(tot_o_ranges))
-
-        #print(self._b_mat.getSizes())
-
-        h = self._h
-        h2 = h * h
-        nfaces = glob.nfaces
-        is_background = False
-        overlap = o_n_oct * h
-        p_bound = []
+        o_ranges = self._b_mat.getOwnershipRange()
+        
         if not grid:
             is_background = True
             p_bound = self.apply_overlap(overlap)
-
+        
         for octant in xrange(0, n_oct):
             indices, values = ([] for i in range(0, 2)) # Indices/values
             neighs, ghosts = ([] for i in range(0, 2))
             g_octant = o_ranges[0] + octant
             py_oct = self._octree.get_octant(octant)
             center  = self._octree.get_center(octant)[:2]
-            # Check to know if a quad(oc)tree on the background is penalized.
+            # Check to know if an octant on the background is penalized.
             is_penalized = False
             # Background grid.
             if is_background:
@@ -469,33 +435,21 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                                   	    p_bound    ,
                                                   	    self.logger,
                                                   	    log_file)
+                # If is penalized, we save its global index to know later where
+                # to insert the bilinear coefficients (we store also its origin 
+                # grid, but being on the background grid, the \"grid\" will be
+                # always \"0\". Thsi is done to have a conformity with the 
+                # \"keys\" of the other grids).
                 if is_penalized:
-                    key = (grid, g_octant)
+                    key = (grid, 
+                           g_octant)
                     self._edl.update({key : center})
-                # Residual evaluation...
-		eval_res = (check_into_squares(center     ,
-                                      	       f_bound    ,
-                                      	       self.logger,
-                                      	       log_file) and not 
-			    is_penalized) if overlap else \
-			   utilities.check_into_squares(center     ,
-                                      	      		f_bound    ,
-                                      	      		self.logger,
-                                      	      		log_file)
-
-		if eval_res:
-		    sol_value = self._sol.getValue(g_octant)
-                    self._res_l.update({tuple(center) : sol_value})
-            # Here we are, upper grids.
-            #else:
-            #    circle_center = (0.5, 0.5)
-            #    circle_radius = 0.125
-            #    is_penalized = check_into_circle(center       ,
-            #                                     circle_center,
-            #                                     circle_radius)
-
+            
             indices.append(g_octant)
-            values.append(((-4.0 / h2) - penalization) if is_penalized 
+            # If is penalized, the coefficient stored inside the matrix will
+            # be \"1\" because the real value will be given by the interpolation
+            # of the bilinear coefficients inside the \"restriction\" matrix.
+            values.append(((1.0 / h2)) if is_penalized 
                            else (-4.0 / h2))
 
             for face in xrange(0, nfaces):
@@ -512,24 +466,22 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                         index = self._octree.get_ghost_global_idx(neighs[0])
                     indices.append(index)
                     values.append(1.0 / h2)
+            
+            self._b_mat.setValuesBlocked(g_octant, # Rows
+                                         indices , # Columns
+                                         values)   # Values to be inserted
 
-            self._mat.setValues(g_octant, # Rows
-                                indices , # Columns
-                                values)   # Values to be inserted
-
-        # ATTENTION!! Non using these functions will give you an unassembled
-        # matrix PETSc.
-        self._mat.assemblyBegin()
-        self._mat.assemblyEnd()
         self._b_mat.assemblyBegin()
         self._b_mat.assemblyEnd()
-        msg = "Initialized matrix"
-        extra_msg = "with sizes \"" + str(self._mat.getSizes()) + \
-                    "\" and type \"" + str(self._mat.getType()) + "\""
+        # ---------------------------------------------------------------------
+        msg = "Initialized block matrix"
+        extra_msg = "with sizes \"" + str(self._b_mat.getSizes()) + \
+                    "\" and type \"" + str(self._b_mat.getType()) + "\""
         self.log_msg(msg   ,
                      "info",
                      extra_msg)
-
+        # ---------------------------------------------------------------------
+   
     # Initialize extra arrays.
     def init_e_arrays(self,
                       array = None):
@@ -679,7 +631,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 	# grids of different levels.
 	# Exchanged values global.
         self._evg = []
-    
+
     def update_values(self, 
                       intercomm_dictionary = {}):
 	log_file = self.logger.handlers[0].baseFilename
