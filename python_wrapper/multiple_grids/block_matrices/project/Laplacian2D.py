@@ -218,24 +218,22 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 self._edl.update({key : neigh_center})
                 b_values[i] = self._e_array_gb.getValue(b_indices[i])
 
+    # Set block boundary conditions.
+    def set_b_b_c(self):
     
-    # Set boundary conditions.
-    def set_b_c(self):
-	"""Method to set boundary conditions for the current problem."""
-
-        penalization = self._pen
+        # ---------------------------------------------------------------------
 	log_file = self.logger.handlers[0].baseFilename
+        penalization = self._pen
         b_bound = self._b_bound
         grid = self._proc_g
         n_oct = self._n_oct
         nfaces = glob.nfaces
-        # \"getOwnershipRange()\" gives us the local ranges of the matrix owned
-        # by the current process.
-        o_ranges = self._mat.getOwnershipRange()
         h = self._h
         h2 = h * h
         is_background = False
 	overlapping = self._over_l
+        o_ranges = self._b_mat.getOwnershipRange()
+        # ---------------------------------------------------------------------
         # If we are onto the grid \"0\", we are onto the background grid.
         if not grid:
             is_background = True
@@ -285,12 +283,14 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                            h)            # Edge's length
                     # We store the centers of the cells on the boundary.
                     self._edl.update({key : center})
-                    b_values[i] = self._e_array.getValue(b_indices[i])
-                    # Residual evaluation...
-                    sol_value = self._sol.getValue(b_indices[i])
-                    self._res_l.update({tuple(center) : sol_value})
-
-	    dups = collections.defaultdict(list)
+                    # The new corresponding value inside \"b_values\" would be
+                    # \"0.0\", because the boundary value is given by the 
+                    # coefficients of the bilinear operator in the \"extension\"
+                    # matrix.
+                    b_values[i] = 0.0
+	    
+            # Searching for duplicates inside \"b_indices\".
+            dups = collections.defaultdict(list)
 	    for i, e in enumerate(b_indices):
 		dups[e].append(i)
 
@@ -303,21 +303,21 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 			b_values.pop(v[i] - p_els)
 		
 			p_els = p_els + 1
-
+        
         b_values[:] = [b_value * (-1/h2) for b_value in b_values]
         insert_mode = PETSc.InsertMode.ADD_VALUES
         self._rhs.setValues(b_indices,
                             b_values ,
                             insert_mode)
-        # ATTENTION!! Non using these functions will give you an unassembled
-        # vector PETSc.
         self._rhs.assemblyBegin()
         self._rhs.assemblyEnd()
+        # ---------------------------------------------------------------------
         msg = "Set boundary conditions"
         extra_msg = "of grid \"" + str(self._proc_g) + "\""
         self.log_msg(msg   ,
                      "info",
                      extra_msg)
+        # ---------------------------------------------------------------------
 
     # Init global ghosts.
     def init_g_g(self):
