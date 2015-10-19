@@ -453,8 +453,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 # always \"0\". Thsi is done to have a conformity with the 
                 # \"keys\" of the other grids).
                 if is_penalized:
-                    key = (grid, 
-                           g_octant)
+                    key = (grid    , 
+                           g_octant,
+                           h)
                     self._edl.update({key : center})
             
             indices.append(g_octant)
@@ -478,7 +479,10 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                         index = self._octree.get_ghost_global_idx(neighs[0])
                         index = index + g_d
                     indices.append(index)
-                    values.append(1.0 / h2)
+                    if is_penalized:
+                        values.append(0.0)
+                    else:
+                        values.append(1.0 / h2)
             
             #self._b_mat.setValuesBlocked(g_octant, # Rows
             #                             indices , # Columns
