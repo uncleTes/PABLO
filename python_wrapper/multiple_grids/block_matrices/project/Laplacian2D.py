@@ -100,6 +100,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 	    self._comm_w.Abort(1)
 
         self._tot_oct = kwargs["total octants number"]
+        self._oct_f_g = kwargs["octants for grids"]
 
         # Length of the edge of an octree.
         self._h = self._edge / numpy.sqrt(self._N_oct)
