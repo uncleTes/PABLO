@@ -665,66 +665,35 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                         location = utilities.points_location((x_center,
                                                               y_center),
                                                               center_cell_container)
-                        neigh_centers, neigh_values = ([] for i in range(0, 2))
-                        (neigh_centers, neigh_values) = self.find_right_neighbours(location ,
-                                                                                   local_idx,
-                                                                                   o_ranges[0])
-                        solution_value = utilities.bil_interp((x_center, 
-                                                               y_center)   ,
-                                                              neigh_centers,
-                                                              neigh_values)
-                    else:
-                        solution_value = ExactSolution2D.ExactSolution2D.solution(x_center, 
-                                                                  		  y_center)
+                        neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
+                        (neigh_centers, neigh_indices)  = self.find_right_neighbours(location ,
+                                                                                     local_idx,
+                                                                                     o_ranges[0])
+                        bil_coeff = utilities.bil_interp((x_center, 
+                                                          y_center)   ,
+                                                         neigh_centers)
+                        bil_coeff = [coeff * (1/h2) for coeff in bil_coeff]
+                        if grid:
+                            bil_coeff = [coeff * (-1) for coeff in bil_coeff]
 
-                    self._evl.append(solution_value)
-        # Updating data for each process into "self.__intra_extra_indices_global"
-        # and "self.__intra_extra_values_global", calling "allgather" to obtain 
-        # data from the corresponding grid onto the intercommunicators created, 
-        # not the intracommunicators.
-        for key, intercomm in intercomm_dictionary.items():
-            self._eig.extend(intercomm.allgather(self._eil))
-            self._evg.extend(intercomm.allgather(self._evl))
-
-        for index, values in enumerate(self._eig):
-            for position, value in enumerate(values):
-                # Check if the global index belong to the process.
-                if value[1] in ids_octree_contained:
-                    # Check if we are onto the right grid.
-                    if value[0] == self._proc_g:
-                        intra_extra_value = self._evg[index][position]
-                        # Background grid.
-                        if grid == 0:
-                            insert_mode = PETSc.InsertMode.INSERT_VALUES
-                            # Here "insert_mode" does not affect nothing.
-                            if len(value) == 3:
-                                self._e_array_gb.setValue(value[1],
-                                                          intra_extra_value,
-                                                          insert_mode)
-                            else:
-                                self._e_array.setValue(value[1]         , 
-                                                       intra_extra_value,
-                                                       insert_mode)
-                        else:
-                            insert_mode = PETSc.InsertMode.ADD_VALUES
-                            self._e_array.setValue(value[1]         ,
-                                                   intra_extra_value,
-                                                   insert_mode)
-
-        self._e_array.assemblyBegin()
-        self._e_array.assemblyEnd()
-        self._e_array_gb.assemblyBegin()
-        self._e_array_gb.assemblyEnd()
-        # Resetting structures used for the "allgather" functions.
-        self.init_e_structures()
-        self.logger.info("Updated  inter_extra_array for comm \"" +
-                         str(self._comm.Get_name())               + 
-                         "\" and rank \""                         +
-                         str(self._comm.Get_rank())               +
-                         "\" of grid \""                          +
-                         str(self._proc_g)                    	  +
-                         "\":\n"                                  +
-                         str(self._e_array.getArray()))
+                        insert_mode = PETSc.InsertMode.ADD_VALUES
+                        #self._b_mat.setValuesBlocked(key[1]       ,
+                        #                             neigh_indices,
+                        #                             bil_coeff)
+                        self._b_mat.setValues(key[1]       ,
+                                              neigh_indices,
+                                              bil_coeff    ,
+                                              insert_mode)
+        self._b_mat.assemblyBegin()
+        self._b_mat.assemblyEnd()
+        
+        self.logger.info("Updated block matrix for comm \"" +
+                         str(self._comm.Get_name())         + 
+                         "\" and rank \""                   +
+                         str(self._comm.Get_rank())         +
+                         "\" of grid \""                    +
+                         str(self._proc_g))
+    # --------------------------------------------------------------------------
     
     def find_right_neighbours(self          , 
                               location      , 
