@@ -114,6 +114,7 @@ def set_comm_dict(n_grids  ,
     comm_dictionary.update({"edge" : ed})
     comm_dictionary.update({"communicator" : comm_l})
     comm_dictionary.update({"world communicator" : comm_w})
+    comm_dictionary.update({"octants for grids" : oct_f_g})
     comm_dictionary.update({"total octants number" : tot_oct})
     penalization = f_pen if proc_grid else b_pen
     background_boundaries = [anchors[0][0], anchors[0][0] + edges[0],
