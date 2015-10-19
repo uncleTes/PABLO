@@ -332,28 +332,27 @@ def check_into_squares(point_to_check,
 #   x,y = unknown_point ("unknown point" stand for a point for which it is 
 #         not known the value of the function f)
 def bil_interp(unknown_point	 , 
-               points_coordinates,
-               points_values):
-    addend_01 = (points_values[0]          * 
-                 (points_coordinates[3][0] - unknown_point[0]) * 
-                 (points_coordinates[3][1] - unknown_point[1]))
+               points_coordinates):
+    coeff_01 = ((points_coordinates[3][0] - unknown_point[0]) * 
+                (points_coordinates[3][1] - unknown_point[1]))
 
-    addend_02 = (points_values[1]          *
-                 (unknown_point[0] - points_coordinates[0][0]) *
-                 (points_coordinates[3][1] - unknown_point[1]))
+    coeff_02 = ((unknown_point[0] - points_coordinates[0][0]) *
+                (points_coordinates[3][1] - unknown_point[1]))
 
-    addend_03 = (points_values[2]          *
-                 (points_coordinates[3][0] - unknown_point[0]) *
-                 (unknown_point[1] - points_coordinates[0][1]))
+    coeff_03 = ((points_coordinates[3][0] - unknown_point[0]) *
+                (unknown_point[1] - points_coordinates[0][1]))
 
-    addend_04 = (points_values[3]          *
-                 (unknown_point[0] - points_coordinates[0][0]) *
-                 (unknown_point[1] - points_coordinates[0][1]))
+    coeff_04 = ((unknown_point[0] - points_coordinates[0][0]) *
+                (unknown_point[1] - points_coordinates[0][1]))
 
     multiplier = 1 / ((points_coordinates[3][0] - points_coordinates[0][0]) * 
                       (points_coordinates[3][1] - points_coordinates[0][1]))
 
-    return multiplier * (addend_01 + addend_02 + addend_03 + addend_04)
+    coefficients = [coeff_01, coeff_02, coeff_03, coeff_04]
+
+    coefficients = [coefficient * multiplier for coefficient in coefficients]
+
+    return coefficients
 
 
 # ------------------------------------------------------------------------------
