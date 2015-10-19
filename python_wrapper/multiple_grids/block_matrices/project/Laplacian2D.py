@@ -397,6 +397,11 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         penalization = self._pen
         f_bound = self._f_bound
         grid = self._proc_g
+        # Ghosts' deplacement.
+        g_d = 0
+        if grid:
+            for i in range(0, grid):
+                g_d = g_d + self._oct_f_g[i]
         n_oct = self._n_oct
         nfaces = glob.nfaces
         h = self._h
@@ -465,6 +470,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                         index = neighs[0] + o_ranges[0]
                     else:
                         index = self._octree.get_ghost_global_idx(neighs[0])
+                        index = index + g_d
                     indices.append(index)
                     values.append(1.0 / h2)
             
