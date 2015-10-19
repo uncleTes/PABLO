@@ -105,6 +105,24 @@ def chunk_list(list_to_chunk,
                how_many_parts):
     return [list_to_chunk[i::how_many_parts] for i in xrange(how_many_parts)]
 
+def chunk_list_ordered(l_to_chunk, 
+                       n_grids):
+    # List length.
+    l_l = len(l_to_chunk)
+    # Size of normal sublist.
+    s = l_l / n_grids
+    # Extra elements for the last sublist.
+    e_els = l_l - (n_grids * s)
+    # Returned list.
+    r_l = []
+    # End first chunk.
+    e_f_c = s + e_els
+    r_l.append(l_to_chunk[0 : e_f_c])
+    for i in range(0, n_grids - 1):
+        r_l.append(l_to_chunk[(e_f_c + (s * i)) : (e_f_c + (s * i) + s)])
+
+    return r_l
+
 def split_list_in_two(list_to_be_splitted):
     half_len = len(list_to_be_splitted)/2
 
