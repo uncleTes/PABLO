@@ -507,15 +507,13 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         pen = self._pen
         grid = self._proc_g
         n_oct = self._n_oct
+        tot_oct = self._tot_oct
         N_oct = self._N_oct
         sizes = (n_oct, 
-                 N_oct)
-        # Global ghosts.
-        g_ghosts = self._global_ghosts
+                 tot_oct)
         # Temporary array.
-        t_array = PETSc.Vec().createGhost(g_ghosts    ,
-                                          size = sizes,
-                                          comm = self._comm)
+        t_array = PETSc.Vec().createMPI(size = sizes,
+                                        comm = self._comm_w)
         t_array.setUp()
 
         if array is None:
@@ -526,7 +524,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 # Temporary PETSc vector.
                 t_petsc = PETSc.Vec().createWithArray(array       ,
                                                       size = sizes,
-                                                      comm = self._comm)
+                                                      comm = self._comm_w)
                 t_petsc.copy(t_array)
             except AssertionError:
                 msg = "\"MPI Abort\" called during array's initialization"
