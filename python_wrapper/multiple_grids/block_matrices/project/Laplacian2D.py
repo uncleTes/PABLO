@@ -551,10 +551,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         self._sol = self.init_array("solution")
     
-    def init_residual(self):
-        self._res_l = {}
-        self._res_g = []
-        self._res = self.init_array("residual")
     
     def solve(self):
         # Creating a "KSP" object.
