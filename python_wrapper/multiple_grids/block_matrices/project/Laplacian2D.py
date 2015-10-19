@@ -615,32 +615,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             # Extending a list with the lists obtained by the other processes
             # of the corresponding intercommunicator.
             self._edg.extend(intercomm.allgather(self._edl))
-            self._res_g.extend(intercomm.allgather(self._res_l))
-        # Residual evaluation... 
-        for index, dictionary in enumerate(self._res_g):
-            for center, solution_value in dictionary.items():
-                local_idx = self._octree.get_point_owner_idx(center)
-                global_idx = local_idx + o_ranges[0]
 
-                if global_idx in ids_octree_contained:
-                    center_cell_container = self._octree.get_center(local_idx)[:2]
-                    location = utilities.points_location(center,
-                                                         center_cell_container)
-                    neigh_centers, neigh_values = ([] for i in range(0, 2))
-                    (neigh_centers, 
-		     neigh_values) = self.find_right_neighbours(location ,
-                                                        local_idx,
-                                                        o_ranges[0])
-                    bilinear_value = utilities.bil_interp(center       ,
-                                                          neigh_centers,
-                                                          neigh_values)
-                    insert_mode = PETSc.InsertMode.INSERT_VALUES
-                    value = bilinear_value - solution_value
-                    self._res.setValue(global_idx, 
-                                       value     ,
-                                       insert_mode)
-        self._res.assemblyBegin()
-        self._res.assemblyEnd()
 
         # "self.__temp_data_global" will be a list of same structures of data,
         # after the "allgather" call; these structures are dictionaries.
