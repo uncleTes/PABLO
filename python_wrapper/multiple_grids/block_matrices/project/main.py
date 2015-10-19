@@ -315,76 +315,13 @@ def compute(comm_dictionary     ,
     exact_solution.e_s_der(centers[:, 0], 
                            centers[:, 1])
     laplacian.init_g_g()
-    laplacian.init_e_arrays()
     laplacian.init_sol()
-    # Initial residual L2.
-    in_res_L2 = 0.0
-    # Initial residual inf.
-    in_res_inf = 0.0
-    # Min residual L2.
-    min_res_L2 = 1.0e15
-    # Min residual inf.
-    min_res_inf = 1.0e15
-    # Setted initial residuals.
-    set_in_res = False
-    # Iteration number.
-    n_iter = 1
-    looping = True
+    laplacian.init_rhs(exact_solution.s_der)
+    laplacian.init_diag_mat()
+    laplacian.set_b_b_c()
+    laplacian.update_values(intercomm_dictionary)
+    laplacian.solve()
     
-    while looping:
-        laplacian.init_residual()
-        laplacian.init_rhs(exact_solution.s_der)
-        laplacian.init_mat()
-        laplacian.set_b_c()
-        laplacian.solve()
-        laplacian.update_values(intercomm_dictionary)
-
-        if comm_w.Get_rank() == 1:
-            h= laplacian.h
-
-            sol_diff = numpy.subtract(exact_solution.sol,
-                                      laplacian.sol.getArray())
-
-            norm_inf = numpy.linalg.norm(sol_diff,
-                                         # Type of norm we want to evaluate.
-                                         numpy.inf)
-            norm_L2 = numpy.linalg.norm(sol_diff,
-                                        2) * h
-            res_inf = numpy.linalg.norm(laplacian.res.getArray(),
-                                        numpy.inf)
-            res_L2 = numpy.linalg.norm(laplacian.res.getArray(),
-                                       2) * h
-
-            msg = "iteration " + str(n_iter) + " has norm infinite equal to " +\
-                  str(norm_inf) + " and has norm l2 equal to " + str(norm_L2) +\
-                  " and residual norm infinite equal to " + str(res_inf) +     \
-                  " and residual norm l2 equal to " + str(res_L2)
-            print(msg)
-
-            if res_L2 < min_res_L2:
-                min_res_L2 = res_L2
-
-            if res_inf < min_res_inf:
-                min_res_inf = res_inf
-
-            if ((res_L2 * 1000 < in_res_L2) or
-                (n_iter >= 200)):
-                looping = False
-            
-            if not set_in_res:
-                in_res_L2 = res_L2
-                in_res_inf = res_inf
-                set_in_res = True
-        
-	# Sending to all the processes the message to stop computations.
-        looping = comm_w.bcast(looping, root = 1)
-        #comm_w.Bcast([looping, 1, MPI.BOOL], root = 1)
-
-        n_iter += 1
-
-    if comm_w.Get_rank() == 1:
-        print("Inf residual minumum = " + str(min_res_inf))
-        print("L2 residual minumum = " + str(min_res_L2))
     # Creating a numpy array with two single numpy arrays. Note that you 
     # could have done this also with two simple python's lists.
     data_to_save = numpy.array([exact_solution.sol,
@@ -478,6 +415,7 @@ def main():
     data_to_save = compute(comm_dictionary     ,
                            intercomm_dictionary,
                            centers)
+
     #data_to_save = stub_compute(comm_dictionary     ,
     #                            intercomm_dictionary,
     #                       centers)
