@@ -1,3 +1,4 @@
+# ------------------------------------IMPORT------------------------------------
 # set tabstop=8 softtabstop=0 expandtab shiftwidth=4 smarttab
 # A guide to analyzing Python performance:
 # http://www.huyng.com/posts/python-performance-analysis/
@@ -11,9 +12,12 @@ from petsc4py import PETSc
 from mpi4py import MPI
 import class_global
 import utilities
+# ------------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
 glob = class_global.Py_Class_Global_D2()
 
+# ------------------------------------------------------------------------------
 class Laplacian2D(BaseClass2D.BaseClass2D):   
     """Class which evaluates the laplacian onto a 2D grid.
     
@@ -34,6 +38,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         _n_oct (int) : local number of octants in the process.
         _edge (number) : length of the edge of the grid."""
 
+    # --------------------------------------------------------------------------
     def __init__(self, 
                  kwargs = {}):
         """Initialization method for the \"Laplacian2D\" class.
@@ -48,6 +53,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                  exception is raised and catched, launching an 
                                  \"MPI Abort\", launched also if attributes 
                                  \"f_bound\" or \"b_bound\" are \"None\"."""
+
         # http://stackoverflow.com/questions/19205916/how-to-call-base-classs-init-method-from-the-child-class
         super(Laplacian2D, self).__init__(kwargs)
         self.init_e_structures()
@@ -104,7 +110,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         # Length of the edge of an octree.
         self._h = self._edge / numpy.sqrt(self._N_oct)
+    # --------------------------------------------------------------------------
    
+    # --------------------------------------------------------------------------
     # Returns the center of the face neighbour.
     def neighbour_centers(self   ,
                           centers,
@@ -166,7 +174,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             return eval_centers[0]
                 
         return eval_centers
+    # --------------------------------------------------------------------------
 
+    # --------------------------------------------------------------------------
     # Evaluate boundary conditions. 
     def eval_b_c(self   ,
                  centers,
@@ -198,12 +208,15 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                                    		   y_s)
 
         return boundary_values
+    # --------------------------------------------------------------------------
 
+    # --------------------------------------------------------------------------
     # Overlap adds.
     def over_adds(b_centers,
                   b_faces  ,
                   b_values ,
                   b_indices):
+
         f_bound = self._f_bound
         neigh_centers = self.neighbour_centers(b_centers,
                                                b_faces)
@@ -218,11 +231,12 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 key = (grid, b_indices[i], "ghost_boundary")
                 self._edl.update({key : neigh_center})
                 b_values[i] = self._e_array_gb.getValue(b_indices[i])
+    # --------------------------------------------------------------------------
 
+    # --------------------------------------------------------------------------
     # Set block boundary conditions.
     def set_b_b_c(self):
     
-        # ---------------------------------------------------------------------
 	log_file = self.logger.handlers[0].baseFilename
         penalization = self._pen
         b_bound = self._b_bound
@@ -234,7 +248,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         is_background = False
 	overlapping = self._over_l
         o_ranges = self._b_mat.getOwnershipRange()
-        # ---------------------------------------------------------------------
+
         # If we are onto the grid \"0\", we are onto the background grid.
         if not grid:
             is_background = True
@@ -297,13 +311,13 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                             insert_mode)
         self._rhs.assemblyBegin()
         self._rhs.assemblyEnd()
-        # ---------------------------------------------------------------------
+        
         msg = "Set boundary conditions"
         extra_msg = "of grid \"" + str(self._proc_g) + "\""
         self.log_msg(msg   ,
                      "info",
                      extra_msg)
-        # ---------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     # Init global ghosts.
     def init_g_g(self):
@@ -346,9 +360,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         b_dim = self._comm_w.allreduce(n_oct,
                                        op = MPI.MIN)
 
-        #print("process " + str(self._comm_w.Get_rank()) +
-        #      " has block dimension equal to " + str(b_dim))
-
         return b_dim
 
     # Find non zero block, on the diagonal portion of the process and
@@ -367,10 +378,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # Other blocks non zero.
         ob_nz = tb_for_br - db_nz
         
-        #print("process " + str(self._comm_w.Get_rank()) +
-        #      " has non zero blocks tuple equal to "    + 
-        #      str((db_nz, ob_nz)))
-
         return (db_nz, ob_nz)
 
     # Initialize diagonal matrices of the block matrix.
@@ -551,7 +558,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         self._sol = self.init_array("solution")
     
-    
     def solve(self):
         # Creating a "KSP" object.
         ksp = PETSc.KSP()
@@ -617,7 +623,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             # Extending a list with the lists obtained by the other processes
             # of the corresponding intercommunicator.
             self._edg.extend(intercomm.allgather(self._edl))
-
 
         # \"self._edg\" will be a list of same structures of data,
         # after the \"allgather\" call; these structures are dictionaries.
