@@ -416,10 +416,16 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         d_nz, o_nz = self.find_block_nnz(tot_oct,
                                          b_size)
         # ---------------------------------------------------------------------
-        self._b_mat = PETSc.Mat().createBAIJ(size = (tot_sizes, tot_sizes),
-                                             bsize = b_size               ,
-                                             nnz = (d_nz, o_nz)           ,
-                                             comm = self._comm_w)
+        #self._b_mat = PETSc.Mat().createBAIJ(size = (tot_sizes, tot_sizes),
+        #                                     bsize = b_size               ,
+        #                                     nnz = (d_nz, o_nz)           ,
+        #                                     comm = self._comm_w)
+        self._b_mat = PETSc.Mat().createAIJ(size = (tot_sizes, tot_sizes),
+                                            nnz = (5, 4)           ,
+                                            comm = self._comm_w)
+        
+        # For the moment we do not consider \"malloc\" as a big deal...testing.
+	self._b_mat.setOption(self._b_mat.Option.NEW_NONZERO_ALLOCATION_ERR, False)
 
         o_ranges = self._b_mat.getOwnershipRange()
         
@@ -474,9 +480,12 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                     indices.append(index)
                     values.append(1.0 / h2)
             
-            self._b_mat.setValuesBlocked(g_octant, # Rows
-                                         indices , # Columns
-                                         values)   # Values to be inserted
+            #self._b_mat.setValuesBlocked(g_octant, # Rows
+            #                             indices , # Columns
+            #                             values)   # Values to be inserted
+            self._b_mat.setValues(g_octant, # Rows
+                                  indices , # Columns
+                                  values)   # Values to be inserted
 
         self._b_mat.assemblyBegin()
         self._b_mat.assemblyEnd()
