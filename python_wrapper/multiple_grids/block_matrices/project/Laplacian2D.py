@@ -597,16 +597,18 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
     def update_values(self, 
                       intercomm_dictionary = {}):
-	log_file = self.logger.handlers[0].baseFilename
-        n_oct = self._n_oct
-        o_ranges = self._mat.getOwnershipRange()
+	
+        log_file = self.logger.handlers[0].baseFilename
         b_bound = self._b_bound
         grid = self._proc_g
+        n_oct = self._n_oct
+        o_ranges = self._b_mat.getOwnershipRange()
         # Upper bound octree's id contained.
         up_id_octree = o_ranges[0] + n_oct
         # Octree's ids contained.
         ids_octree_contained = range(o_ranges[0], up_id_octree)
-        # Calling "allgather" to obtain data from the corresponding grid,
+        
+        # Calling \"allgather\" to obtain data from the corresponding grid,
         # onto the intercommunicators created, not the intracommunicators.
         # http://www.mcs.anl.gov/research/projects/mpi/mpi-standard/mpi-report-1.1/node114.htm#Node117
         # http://mpitutorial.com/tutorials/mpi-broadcast-and-collective-communication/
@@ -617,8 +619,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             self._edg.extend(intercomm.allgather(self._edl))
 
 
-        # "self.__temp_data_global" will be a list of same structures of data,
-        # after the "allgather" call; these structures are dictionaries.
+        # \"self._edg\" will be a list of same structures of data,
+        # after the \"allgather\" call; these structures are dictionaries.
         for index, dictionary in enumerate(self._edg):
             for key, center in dictionary.items():
                 (x_center, y_center) = center
@@ -644,6 +646,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                                         	  b_bound     ,
 								  self.logger ,
 								  log_file)
+
 		    h2 = key[3] * key[3]
                     if into_background:
                         # The function "get_point_owner_idx" wants only one argument
