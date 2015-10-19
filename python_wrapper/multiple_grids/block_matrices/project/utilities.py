@@ -123,6 +123,15 @@ def chunk_list_ordered(l_to_chunk,
 
     return r_l
 
+def get_proc_grid(l_lists,
+                  w_rank):
+    for i, l_list in enumerate(l_lists):
+        for j, rank in enumerate(l_list):
+            if w_rank == rank:
+                return i
+
+    return None
+
 def split_list_in_two(list_to_be_splitted):
     half_len = len(list_to_be_splitted)/2
 
