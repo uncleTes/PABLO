@@ -430,12 +430,13 @@ def stub_compute(comm_dictionary     ,
 def main():
     """Main function....yeah, the name is self explanatory."""
 
-    proc_grid = rank_w % n_grids 
     group_w = comm_w.Get_group()
     procs_w = comm_w.Get_size()
     procs_w_list = range(0, procs_w)
-    procs_l_lists = utilities.chunk_list(procs_w_list,
-                                         n_grids)
+    procs_l_lists = utilities.chunk_list_ordered(procs_w_list,
+                                                 n_grids)
+    proc_grid = utilities.get_proc_grid(procs_l_lists,
+                                        comm_w.Get_rank())
     group_l = group_w.Incl(procs_l_lists[proc_grid])
     # Creating differents MPI intracommunicators.
     comm_l = comm_w.Create(group_l)
