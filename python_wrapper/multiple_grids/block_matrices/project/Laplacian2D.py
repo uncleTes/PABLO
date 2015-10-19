@@ -627,6 +627,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 if grid:
                     local_idx = self._octree.get_point_owner_idx((x_center,
                                                                   y_center))
+                    h2 = key[2] * key[2]
                 # We are onto the background grid.
                 else:
                     if key[2] == 0:
@@ -643,6 +644,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                                         	  b_bound     ,
 								  self.logger ,
 								  log_file)
+		    h2 = key[3] * key[3]
                     if into_background:
                         # The function "get_point_owner_idx" wants only one argument
                         # so we are passing it a tuple.
