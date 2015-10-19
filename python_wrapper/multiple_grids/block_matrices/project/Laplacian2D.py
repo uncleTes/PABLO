@@ -556,9 +556,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # Creating a "KSP" object.
         ksp = PETSc.KSP()
         pc = PETSc.PC()
-        ksp.create(self._comm)
-        ksp.setOperators(self._mat,
-                         self._mat)
+        ksp.create(self._comm_w)
+        ksp.setOperators(self._b_mat,
+                         self._b_mat)
 
         pc = ksp.getPC()
         # Setting tolerances.
@@ -580,7 +580,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         self.log_msg(msg   ,
                      "info",
                      extra_msg)
-        self.init_e_arrays()
     
     # Initialize exchanged structures.	
     def init_e_structures(self):
