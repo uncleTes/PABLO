@@ -623,9 +623,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             for key, center in dictionary.items():
                 (x_center, y_center) = center
                 into_background = True
-                ghost_boundary = False
-                if len(key) == 3:
-                    ghost_boundary = True
                 # We are onto grids of the first level.
                 if grid:
                     local_idx = self._octree.get_point_owner_idx((x_center,
@@ -658,12 +655,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 global_idx = local_idx + o_ranges[0]
 
                 if global_idx in ids_octree_contained:
-                    # Appending a tuple containing the grid number and
-                    # the corresponding octant index.
-                    if ghost_boundary:
-                        self._eil.append((key[0], key[1], key[2]))
-                    else:
-                        self._eil.append((key[0], key[1]))
                     if into_background:
                         center_cell_container = self._octree.get_center(local_idx)[:2]
                         location = utilities.points_location((x_center,
