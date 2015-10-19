@@ -700,125 +700,114 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                               current_octant,
                               start_octant):				
         py_oct = self._octree.get_octant(current_octant)
-        # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Vec/VecGhostUpdateBegin.html
-        #self._sol.ghostUpdate(PETSc.InsertMode.ADD,
-        #                      PETSc.ScatterMode.REVERSE)
-        self._sol.ghostUpdate(PETSc.InsertMode.INSERT,
-                              PETSc.ScatterMode.FORWARD)
-        with self._sol.localForm() as lf:
-            # Getting the local solution with the ghost values.
-            l_sol = lf.getArray()
-            # Making a copy of the local solution.
-            l_sol_copy = numpy.copy(l_sol)
-            ordered_points = {}
-            centers = []
-            values = []
-            if location == "nordovest":
-                # Adding 1) the number of node, 2) (codim, number of face/node).
-                ordered_points.update({0 : (1, 0)})
-                ordered_points.update({1 : None})
-                ordered_points.update({2 : (2, 2)})
-                ordered_points.update({3 : (1, 3)})
-            elif location == "nordest":
-                ordered_points.update({0 : None})
-                ordered_points.update({1 : (1, 1)})
-                ordered_points.update({2 : (1, 3)})
-                ordered_points.update({3 : (2, 3)})
-            elif location == "sudovest":
-                ordered_points.update({0 : (2, 0)})
-                ordered_points.update({1 : (1, 2)})
-                ordered_points.update({2 : (1, 0)})
-                ordered_points.update({3 : None})
-            elif location == "sudest":
-                ordered_points.update({0 : (1, 2)})
-                ordered_points.update({1 : (2, 1)})
-                ordered_points.update({2 : None})
-                ordered_points.update({3 : (1, 1)})
-            # Using \"sorted\" to be sure that values of the dict 
-	    # \"ordered_points\" are ordered by keys.
-            for q_point in sorted(ordered_points.keys()):
-                edge_or_node = ordered_points[q_point]
-                if edge_or_node is None:
-                    centers.append(self._octree.get_center(current_octant)[:2])
-                    values.append(l_sol_copy[current_octant])
-                else:
-                    neighs, ghosts = ([] for i in range(0, 2))
-                    (neighs, 
-		     ghosts) = self._octree.find_neighbours(current_octant ,
-                                                            edge_or_node[1],
-                                                            edge_or_node[0],
-                                                            neighs         ,
-                                                            ghosts)
-                    # Check if it is really a neighbour of edge or node. If not,
-                    # it means that we are near the boundary and so...
-                    if len(neighs) is not 0:
-                        # Neighbour is into the same process, so is local.
-                        if not ghosts[0]:
-                            cell_center = self._octree.get_center(neighs[0])[:2]
-                            centers.append(cell_center)
-                            cell_value = l_sol_copy[neighs[0]]
-                            values.append(cell_value)
-                        else:
-                            # In this case, the quas(/oc)tree is no more local
-                            # into the current process, so we have to find it
-                            # globally.
-                            index = self._octree.get_ghost_global_idx(neighs[0])
-                            # \".index\" give us the index of 
-                            # \"self._global_ghosts\" that contains the index
-                            # of the global ghost quad(/oc)tree previously
-                            # found and stored in \"index\".
-                            ghost_index = self._global_ghosts.index(index)
-                            py_ghost_oct = self._octree.get_ghost_octant(neighs[0])
-                            cell_center = self._octree.get_center(py_ghost_oct, 
-                                                                  True)[:2]
-                            # \"local solution\" store the local values after
-                            # the ghost values (that's why the presence of 
-                            # \"+ self._n_oct\" in the index of \"l_sol_copy\".
-                            cell_value = l_sol_copy[ghost_index + self._n_oct]
-                            centers.append(cell_center)
-                            # http://lists.mcs.anl.gov/pipermail/petsc-users/2012-February/012423.html
-                            # http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Vec/VecGhostGetLocalForm.html#VecGhostGetLocalForm
-                            values.append(cell_value)
-                    # ...we need to evaluate boundary values.
+        ordered_points = {}
+        centers = []
+        indices = []
+        grid = self._proc_g
+        # Ghosts' deplacement.
+        g_d = 0
+        if grid:
+            for i in range(0, grid):
+                g_d = g_d + self._oct_f_g[i]
+
+        if location == "nordovest":
+            # Adding 1) the number of node, 2) (codim, number of face/node).
+            ordered_points.update({0 : (1, 0)})
+            ordered_points.update({1 : None})
+            ordered_points.update({2 : (2, 2)})
+            ordered_points.update({3 : (1, 3)})
+        elif location == "nordest":
+            ordered_points.update({0 : None})
+            ordered_points.update({1 : (1, 1)})
+            ordered_points.update({2 : (1, 3)})
+            ordered_points.update({3 : (2, 3)})
+        elif location == "sudovest":
+            ordered_points.update({0 : (2, 0)})
+            ordered_points.update({1 : (1, 2)})
+            ordered_points.update({2 : (1, 0)})
+            ordered_points.update({3 : None})
+        elif location == "sudest":
+            ordered_points.update({0 : (1, 2)})
+            ordered_points.update({1 : (2, 1)})
+            ordered_points.update({2 : None})
+            ordered_points.update({3 : (1, 1)})
+        # Using \"sorted\" to be sure that values of the dict 
+	# \"ordered_points\" are ordered by keys.
+        for q_point in sorted(ordered_points.keys()):
+            edge_or_node = ordered_points[q_point]
+            if edge_or_node is None:
+                centers.append(self._octree.get_center(current_octant)[:2])
+                indices.append(current_octant + start_octant)
+            else:
+                neighs, ghosts = ([] for i in range(0, 2))
+                (neighs, 
+	         ghosts) = self._octree.find_neighbours(current_octant ,
+                                                        edge_or_node[1],
+                                                        edge_or_node[0],
+                                                        neighs         ,
+                                                        ghosts)
+                # Check if it is really a neighbour of edge or node. If not,
+                # it means that we are near the boundary and so...
+                if len(neighs) is not 0:
+                    # Neighbour is into the same process, so is local.
+                    if not ghosts[0]:
+                        cell_center = self._octree.get_center(neighs[0])[:2]
+                        centers.append(cell_center)
+                        indices.append(neighs[0] + start_octant)
                     else:
-                        border_center = self._octree.get_center(current_octant)[:2]
-                        center = None
-                        h = self._h
-                        # We have edge neighbours on the boundaries.
-                        if edge_or_node[0] == 1:
-                            if edge_or_node[1] == 0:
-                                center = (border_center[0] - h, 
-                                          border_center[1])
-                            elif edge_or_node[1] == 1:
-                                center = (border_center[0] + h, 
-                                          border_center[1])
-                            elif edge_or_node[1] == 2:
-                                center = (border_center[0], 
-                                          border_center[1] - h)
-                            elif edge_or_node[1] == 3:
-                                center = (border_center[0], 
-                                          border_center[1] + h)
-                        # We have node neighbours on the boundaries.
-                        elif edge_or_node[0] == 2:
-                            if edge_or_node[1] == 0:
-                                center = (border_center[0] - h, 
-                                          border_center[1] - h)
-                            elif edge_or_node[1] == 1:
-                                center = (border_center[0] + h, 
-                                          border_center[1] - h)
-                            elif edge_or_node[1] == 2:
-                                center = (border_center[0] - h, 
-                                          border_center[1] + h)
-                            elif edge_or_node[1] == 3:
-                                center = (border_center[0] + h, 
-                                          border_center[1] + h)
+                        # In this case, the quas(/oc)tree is no more local
+                        # into the current process, so we have to find it
+                        # globally.
+                        index = self._octree.get_ghost_global_idx(neighs[0])
+                        # \".index\" give us the index of 
+                        # \"self._global_ghosts\" that contains the index
+                        # of the global ghost quad(/oc)tree previously
+                        # found and stored in \"index\".
+                        ghost_index = self._global_ghosts.index(index)
+                        py_ghost_oct = self._octree.get_ghost_octant(neighs[0])
+                        cell_center = self._octree.get_center(py_ghost_oct, 
+                                                              True)[:2]
+                        centers.append(cell_center)
+                        indices.append(index + g_d)
+                # ...we need to evaluate boundary values.
+                else:
+                    border_center = self._octree.get_center(current_octant)[:2]
+                    center = None
+                    h = self._h
+                    # We have edge neighbours on the boundaries.
+                    if edge_or_node[0] == 1:
+                        if edge_or_node[1] == 0:
+                            center = (border_center[0] - h, 
+                                      border_center[1])
+                        elif edge_or_node[1] == 1:
+                            center = (border_center[0] + h, 
+                                      border_center[1])
+                        elif edge_or_node[1] == 2:
+                            center = (border_center[0], 
+                                      border_center[1] - h)
+                        elif edge_or_node[1] == 3:
+                            center = (border_center[0], 
+                                      border_center[1] + h)
+                    # We have node neighbours on the boundaries.
+                    elif edge_or_node[0] == 2:
+                        if edge_or_node[1] == 0:
+                            center = (border_center[0] - h, 
+                                      border_center[1] - h)
+                        elif edge_or_node[1] == 1:
+                            center = (border_center[0] + h, 
+                                      border_center[1] - h)
+                        elif edge_or_node[1] == 2:
+                            center = (border_center[0] - h, 
+                                      border_center[1] + h)
+                        elif edge_or_node[1] == 3:
+                            center = (border_center[0] + h, 
+                                      border_center[1] + h)
 
-                        value = ExactSolution2D.ExactSolution2D.solution(center[0],
-                                                              	         center[1])
-                        centers.append(center)
-                        values.append(value)
+                    centers.append(center)
+                    # Penso sia sbagliato onestamente.
+                    indices.append(current_octant)
 
-        return (centers, values)
+        return (centers, indices)
     
     @property
     def comm(self):
