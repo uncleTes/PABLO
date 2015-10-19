@@ -543,19 +543,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                  numpy_array):
 	"""Method which intializes the right hand side."""
 
-	penalization = self._pen
-        grid = self._proc_g
-        is_background = False
-        if not grid:
-            is_background = True
-
-        numpy_rhs = numpy.subtract(numpy_array, 
-                                   numpy.multiply(penalization,
-                                                  self._e_array.getArray())) if \
-                    is_background else \
-                    numpy_array
         self._rhs = self.init_array("right hand side",
-                                    numpy_rhs)
+                                    numpy_array)
     
     def init_sol(self):
 	"""Method which initializes the solution."""
