@@ -362,8 +362,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         return b_dim
 
-    # Find non zero block, on the diagonal portion of the process and
-    # on the non-diagonal one.
+    # Find non zero blocks, on the diagonal portion of the process and on the
+    # non-diagonal one.
     def find_block_nnz(self   ,
                        tot_oct,
                        b_size):
@@ -413,12 +413,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         #                                     nnz = (d_nz, o_nz)           ,
         #                                     comm = self._comm_w)
         self._b_mat = PETSc.Mat().createAIJ(size = (tot_sizes, tot_sizes),
-                                            nnz = (5, 4)           ,
+                                            nnz = (9, 8)                 ,
                                             comm = self._comm_w)
         
-        # For the moment we do not consider \"malloc\" as a big deal...testing.
-	self._b_mat.setOption(self._b_mat.Option.NEW_NONZERO_ALLOCATION_ERR, False)
-
         o_ranges = self._b_mat.getOwnershipRange()
         
         if not grid:
@@ -483,8 +480,11 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                   indices , # Columns
                                   values)   # Values to be inserted
 
-        self._b_mat.assemblyBegin()
-        self._b_mat.assemblyEnd()
+        # We have inserted argument \"assebly\" equal to 
+        # \"PETSc.Mat.AssemblyType.FLUSH_ASSEMBLY\" because the final assembly
+        # will be done after inserting the prolongation and restriction blocks.
+        self._b_mat.assemblyBegin(assembly = PETSc.Mat.AssemblyType.FLUSH_ASSEMBLY)
+        self._b_mat.assemblyEnd(assembly = PETSc.Mat.AssemblyType.FLUSH_ASSEMBLY)
         # ---------------------------------------------------------------------
         msg = "Initialized block matrix"
         extra_msg = "with sizes \"" + str(self._b_mat.getSizes()) + \
