@@ -413,7 +413,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         #                                     nnz = (d_nz, o_nz)           ,
         #                                     comm = self._comm_w)
         self._b_mat = PETSc.Mat().createAIJ(size = (tot_sizes, tot_sizes),
-                                            nnz = (9, 8)                 ,
+                                            nnz = (5, 8)                 ,
                                             comm = self._comm_w)
         
         o_ranges = self._b_mat.getOwnershipRange()
