@@ -640,6 +640,41 @@ cdef class  Py_Class_Para_Tree_D2:
 
 		return (neighbours, isghost)
 
+	def find_owner(self, uint64_t g_index):
+		cdef int ghost_owner_rank
+		cdef int n_of_steps
+		cdef int n_proc
+		cdef int j
+
+		ghost_owner_rank = -1
+		nproc = self.thisptr.nproc
+		n_of_steps = nproc / 2
+
+		if (g_index <= self.thisptr.partition_range_globalidx[nproc/2]):
+			for j in xrange(n_of_steps, -1, -1):
+				if j == 0:
+					ghost_owner_rank = j
+					break
+				else:
+					if (g_index > self.thisptr.partition_range_globalidx[j - 1] and g_index <= self.thisptr.partition_range_globalidx[j]):
+						ghost_owner_rank = j
+						break
+		else:
+			if (n_proc % 2):
+				n_of_steps -= 1
+			for j in xrange(n_of_steps, nproc):
+				if j == nproc - 1:
+					ghost_owner_rank = j
+					break 
+				else:
+					if (g_index > self.thisptr.partition_range_globalidx[j - 1] and g_index <= self.thisptr.partition_range_globalidx[j]):
+						ghost_owner_rank = j
+						break
+	
+		return ghost_owner_rank
+
+			
+
 	def get_is_new_c(self, uint32_t idx):
 		return self.thisptr.getIsNewC(idx)
 

@@ -277,19 +277,20 @@ def check_into_circle(point_to_check,
 
     return check
 
-def check_into_square(point_to_check,
-                      # [x_anchor, x_anchor + edge, 
-                      #  y_anchor, y_anchor + edge]
-                      square        ,
-                      logger        ,
-                      log_file):
+def check_point_into_square(point_to_check,
+                            # [x_anchor, x_anchor + edge, 
+                            #  y_anchor, y_anchor + edge]
+                            square        ,
+                            threshold     ,
+                            logger        ,
+                            log_file):
     check = False
 
     if isinstance(square, list):
-        if ((point_to_check[0] >= square[0]) and
-            (point_to_check[0] <= square[1]) and
-            (point_to_check[1] >= square[2]) and
-            (point_to_check[1] <= square[3])):
+        if ((point_to_check[0] - square[0] >= threshold) and
+            (square[1] - point_to_check[0] >= threshold) and
+            (point_to_check[1] - square[2] >= threshold) and
+            (square[3] - point_to_check[1] >= threshold)):
             check = True
     else:
         logger = check_null_logger(logger, 
@@ -297,20 +298,86 @@ def check_into_square(point_to_check,
         logger.error("Second parameter must be a list.")
     return check
 
-def check_into_squares(point_to_check, 
-                       # [[x_anchor, x_anchor + edge, 
-                       #   y_anchor, y_anchor + edge]...]
-                       squares       ,
-                       logger        ,
-                       log_file):
+def check_oct_into_square(oct_center,
+                          square    ,
+                          oct_edge  ,
+                          threshold ,
+                          logger    ,
+                          log_file):
+    check = False
+    points_to_check = []
+    an00 = (oct_center[0] - (oct_edge / 2),
+            oct_center[1] - (oct_edge / 2))
+    an10 = (oct_center[0] + (oct_edge / 2),
+            oct_center[1] - (oct_edge / 2))
+    an01 = (oct_center[0] - (oct_edge / 2),
+            oct_center[1] + (oct_edge / 2))
+    an11 = (oct_center[0] + (oct_edge / 2),
+            oct_center[1] + (oct_edge / 2))
+    points_to_check.append(an00)
+    points_to_check.append(an10)
+    points_to_check.append(an01)
+    points_to_check.append(an11)
+
+    for i, point in enumerate(points_to_check):
+        check = check_point_into_square(point,
+                                        square,
+                                        threshold,
+                                        logger,
+                                        log_file)
+        if not check:
+            break
+
+    return check
+
+def check_oct_into_squares(oct_center,
+                           squares   ,
+                           oct_edge  ,
+                           threshold ,
+                           logger    ,
+                           log_file):
+    check = False
+    points_to_check = []
+    an00 = (oct_center[0] - (oct_edge / 2),
+            oct_center[1] - (oct_edge / 2))
+    an10 = (oct_center[0] + (oct_edge / 2),
+            oct_center[1] - (oct_edge / 2))
+    an01 = (oct_center[0] - (oct_edge / 2),
+            oct_center[1] + (oct_edge / 2))
+    an11 = (oct_center[0] + (oct_edge / 2),
+            oct_center[1] + (oct_edge / 2))
+    points_to_check.append(an00)
+    points_to_check.append(an10)
+    points_to_check.append(an01)
+    points_to_check.append(an11)
+
+    for i, point in enumerate(points_to_check):
+        check = check_point_into_squares(point,
+                                         squares,
+                                         threshold,
+                                         logger,
+                                         log_file)
+        if not check:
+            break
+
+    return check
+
+def check_point_into_squares(point_to_check, 
+                             # [[x_anchor, x_anchor + edge, 
+                             #   y_anchor, y_anchor + edge]...]
+                             squares       ,
+                             threshold     ,
+                             logger        ,
+                             log_file):
     check = False
 
     if isinstance(squares, list):
         for i, square in enumerate(squares):
-            check = check_into_square(point_to_check,
-                                      square        ,
-                                      logger        ,
-                                      log_file)
+            check = check_point_into_square(point_to_check,
+                                            square        ,
+                                            threshold     ,
+                                            logger        ,
+                                            log_file)
             if check:
                 return check
     else:

@@ -308,24 +308,30 @@ def compute(comm_dictionary     ,
 
     laplacian = Laplacian2D.Laplacian2D(comm_dictionary)
     exact_solution = ExactSolution2D.ExactSolution2D(comm_dictionary)
-    # Evaluating exact solution in the centers of the PABLO's cells.
-    exact_solution.e_sol(centers[:, 0], 
-                         centers[:, 1])
-    # Evaluating second derivative of the exact solution,
-    exact_solution.e_s_der(centers[:, 0], 
-                           centers[:, 1])
-    laplacian.init_g_g()
+    laplacian.create_masks()
     laplacian.init_sol()
+    laplacian.init_mat()
+    not_penalized_centers = laplacian.not_pen_centers
+    not_penalized_x = numpy.asarray([center[0] for center in not_penalized_centers])
+    not_penalized_y = numpy.asarray([center[1] for center in not_penalized_centers])
+    # Evaluating exact solution in the centers of the PABLO's cells.
+    exact_solution.e_sol(not_penalized_x, 
+                         not_penalized_y)
+    # Evaluating second derivative of the exact solution,
+    exact_solution.e_s_der(not_penalized_x, 
+                           not_penalized_y)
     laplacian.init_rhs(exact_solution.s_der)
-    laplacian.init_diag_mat()
-    laplacian.set_b_b_c()
+    laplacian.set_b_c()
     laplacian.update_values(intercomm_dictionary)
     laplacian.solve()
+    interpolate_sol = laplacian.interpolate_solution()
     
     # Creating a numpy array with two single numpy arrays. Note that you 
     # could have done this also with two simple python's lists.
+    exact_solution.e_sol(centers[:, 0], 
+                         centers[:, 1])
     data_to_save = numpy.array([exact_solution.sol,
-                                laplacian.sol.getArray()])
+                                interpolate_sol.getArray()])
 
     return data_to_save
 # ------------------------------------------------------------------------------
@@ -405,16 +411,20 @@ def main():
 
     comm_dictionary = set_comm_dict(n_grids  ,
                                     proc_grid,
-                               		comm_l)
+                               	    comm_l)
 
     pablo, centers = set_octree(comm_l,
                                 proc_grid)
 
     comm_dictionary.update({"octree" : pablo})
+    comm_dictionary.update({"grid processes" : procs_l_lists[proc_grid]})
+    
 
     data_to_save = compute(comm_dictionary     ,
                            intercomm_dictionary,
                            centers)
+
+    #print(data_to_save)
 
     #data_to_save = stub_compute(comm_dictionary     ,
     #                            intercomm_dictionary,
@@ -422,6 +432,10 @@ def main():
 
     n_octs = pablo.get_num_octants()
     n_nodes = pablo.get_num_nodes()
+
+    #if not proc_grid:
+    #    n_octs = n_octs
+    #    n_nodes = n_nodes
 
     vtk = my_class_vtk_02.Py_Class_VTK(data_to_save            , # Data
                                        pablo                   , # Octree
@@ -433,7 +447,7 @@ def main():
                                        4*n_octs)                 # (Nnodes * 
                                                                  #  pow(2,dim))
     
-    # Add data to "vtk" object to be written later.
+    ## Add data to "vtk" object to be written later.
     vtk.add_data("evaluated", # Data
                  1          , # Data dim
                  "Float64"  , # Data type
