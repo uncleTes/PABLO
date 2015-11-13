@@ -308,9 +308,9 @@ def compute(comm_dictionary     ,
 
     laplacian = Laplacian2D.Laplacian2D(comm_dictionary)
     exact_solution = ExactSolution2D.ExactSolution2D(comm_dictionary)
-    laplacian.create_masks()
+    (d_nnz, o_nnz) = laplacian.create_masks()
     laplacian.init_sol()
-    laplacian.init_mat()
+    laplacian.init_mat((d_nnz, o_nnz))
     not_penalized_centers = laplacian.not_pen_centers
     not_penalized_x = numpy.asarray([center[0] for center in not_penalized_centers])
     not_penalized_y = numpy.asarray([center[1] for center in not_penalized_centers])

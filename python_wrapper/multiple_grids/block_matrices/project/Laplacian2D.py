@@ -556,6 +556,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
     # --------------------------------------------------------------------------
     # Initialize diagonal matrices of the block matrix.
     def init_mat(self,
+                 (e_d_nnz, e_o_nnz),
                  o_n_oct = 0):
         """Method which initialize the diagonal parts of the monolithic matrix 
            of the system.
@@ -585,7 +586,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         else:
             p_bound = self.apply_overlap(overlap)
 
-        (d_nnz, o_nnz) = self.create_masks(o_n_oct)
+        (d_nnz, o_nnz) = (e_d_nnz, e_o_nnz)
         n_oct = self._n_oct
         nfaces = glob.nfaces
         sizes = self.find_sizes()
