@@ -1192,6 +1192,21 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                     indices.append(m_index)
 
         return (centers, indices)
+
+    def evaluate_norms(self, 
+                       exact_solution,
+                       solution):
+        h = self._h
+        octant_area = (self._h * self._h)
+        numpy_difference = numpy.subtract(exact_solution,
+                                          solution)
+        norm_inf = numpy.linalg.norm(numpy_difference,
+                                           # Type of norm we want to evaluate.
+                                     numpy.inf)
+        norm_L2 = numpy.linalg.norm(numpy_difference,
+                                    2) * h
+        return (norm_inf, norm_L2)
+        
     
     @property
     def comm(self):

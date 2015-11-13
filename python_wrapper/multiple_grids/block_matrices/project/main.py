@@ -324,6 +324,9 @@ def compute(comm_dictionary     ,
     laplacian.set_b_c()
     laplacian.update_values(intercomm_dictionary)
     laplacian.solve()
+    (norm_inf, norm_L2) = laplacian.evaluate_norms(exact_solution.sol,
+                                                   laplacian.sol.getArray())
+    print("process " + str(comm_w.Get_rank()) + " " + str((norm_inf, norm_L2)))
     interpolate_sol = laplacian.interpolate_solution()
     
     # Creating a numpy array with two single numpy arrays. Note that you 
