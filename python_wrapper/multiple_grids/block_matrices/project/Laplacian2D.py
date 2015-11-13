@@ -211,7 +211,10 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                                             neighbour's center.
                                                            
            Returns:
-               the evaluated boundary condition or a list of them."""
+               boundary_values (int or list) : the evaluated boundary condition
+                                               or a list of them.
+               c_neighs (tuple or list of tuples) : the centers where evaluate
+                                                    the boundary conditions."""
 
         # Centers neighbours.
         c_neighs = self.neighbour_centers(centers,
@@ -316,7 +319,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                            b_faces[i]  , # Boundary face
                            h)            # Edge's length
                     # We store the centers of the cells on the boundary.
-                    self._edl.update({key : center})
+                    self._edl.update({key : b_centers[i]})
                     # The new corresponding value inside \"b_values\" would be
                     # \"0.0\", because the boundary value is given by the 
                     # coefficients of the bilinear operator in the \"extension\"
