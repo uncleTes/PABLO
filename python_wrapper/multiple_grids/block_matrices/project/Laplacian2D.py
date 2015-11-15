@@ -979,7 +979,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                         bil_coeffs = utilities.bil_interp((x_center, 
                                                            y_center),
                                                           neigh_centers)
-                        
+
                         self._mdl_f.update({(key[1], (x_center, y_center)) : 
                                             [neigh_centers, 
                                              neigh_indices, 
@@ -1038,16 +1038,12 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                             if (self._ngn[index] == -1):
                                 got_m_values = False
                                 for j, listed in enumerate(self._mdg_b):
-                                    #print("process " + str(self._rank_w) + " has listed = " + str(listed))
                                     if not not listed: 
                                         for k, dictionary in enumerate(listed):
                                             m_values = dictionary.get((index, 
                                                                        (neigh_centers[i][0],
                                                                         neigh_centers[i][1])))
-                                            #print("dictionary = " + str(dictionary))
-                                            #print("key =  " + str((index, neigh_centers[i])))
                                             if m_values is not None:
-                                                #print("m_values is " + str(m_values))
                                                 n_n_i.extend(m_values[1])
                                                 n_b_c.extend([(m_value * bil_coeffs[i]) for m_value in m_values[2]])
                                                 n_c.extend(m_values[0])
