@@ -331,8 +331,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         self._rhs.setValues(b_indices,
                             b_values ,
                             insert_mode)
-        self._rhs.assemblyBegin()
-        self._rhs.assemblyEnd()
+
+        self.assembly_petsc_struct("rhs")
         
         msg = "Set boundary conditions"
         extra_msg = "of grid \"" + str(self._proc_g) + "\""
@@ -682,14 +682,35 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # We have inserted argument \"assebly\" equal to 
         # \"PETSc.Mat.AssemblyType.FLUSH_ASSEMBLY\" because the final assembly
         # will be done after inserting the prolongation and restriction blocks.
-        self._b_mat.assemblyBegin(assembly = PETSc.Mat.AssemblyType.FLUSH_ASSEMBLY)
-        self._b_mat.assemblyEnd(assembly = PETSc.Mat.AssemblyType.FLUSH_ASSEMBLY)
+        self.assembly_petsc_struct("matrix",
+                                   PETSc.Mat.AssemblyType.FLUSH_ASSEMBLY)
         msg = "Initialized diagonal parts of the monolithic  matrix"
         extra_msg = "with sizes \"" + str(self._b_mat.getSizes()) + \
                     "\" and type \"" + str(self._b_mat.getType()) + "\""
         self.log_msg(msg   ,
                      "info",
                      extra_msg)
+    # --------------------------------------------------------------------------
+    
+    # --------------------------------------------------------------------------
+    def assembly_petsc_struct(self       ,
+                              struct_type,
+                              assembly_type = None):
+        if struct_type == "matrix":
+            self._b_mat.assemblyBegin(assembly = assembly_type)
+            self._b_mat.assemblyEnd(assembly = assembly_type)
+        elif struct_type == "rhs":
+            self._rhs.assemblyBegin()
+            self._rhs.assemblyEnd()
+        else:
+            msg = "\"MPI Abort\" called during initialization "
+            extra_msg = " PETSc struct " + str(struct_type) +\
+                        "not recognized."
+            self.log_msg(msg    , 
+                         "error",
+                         extra_msg)
+	    self._comm_w.Abort(1) 
+            
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
@@ -807,7 +828,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
     def init_sol(self):
         """Method which initializes the solution."""
 
-        self._sol = self.init_array("solution")
+        self._sol = self.init_array("solution",
+                                    True)
     # --------------------------------------------------------------------------
     
     # --------------------------------------------------------------------------
@@ -915,8 +937,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             self.update_bg_grids(o_ranges,
                                  ids_octree_contained)
 
-        self._b_mat.assemblyBegin()
-        self._b_mat.assemblyEnd()
+        self.assembly_petsc_struct("matrix",
+                                   PETSc.Mat.AssemblyType.FINAL_ASSEMBLY)
         
         self.logger.info("Updated block matrix for comm \"" +
                          str(comm_l.Get_name())             + 
