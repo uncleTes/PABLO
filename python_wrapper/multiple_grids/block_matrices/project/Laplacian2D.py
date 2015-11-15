@@ -1219,6 +1219,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         for i in range(0, n_rows):
             row_index = row_indices if is_background else row_indices[i]
+            co_indices = col_indices
+            co_values = col_values
             if not is_background:
                 row_index = self._ngn[row_index]
 
@@ -1229,14 +1231,14 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                         (-1 * bil_coeffs[i] * e_sols[i]),
                                         insert_mode)
                 
-                col_indices = [col_indices[j] for j in 
+                co_indices = [col_indices[j] for j in 
                                range(0, len(col_indices)) if j not in to_rhs]
-                col_values = [col_values[j] for j in 
+                co_values = [col_values[j] for j in 
                               range(0, len(col_values)) if j not in to_rhs]
                 
             self._b_mat.setValues(row_index  ,
-                                  col_indices,
-                                  col_values ,
+                                  co_indices,
+                                  co_values ,
                                   insert_mode)
 
     def evaluate_norms(self, 
