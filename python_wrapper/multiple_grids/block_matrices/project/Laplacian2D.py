@@ -734,43 +734,40 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         return sizes
     # --------------------------------------------------------------------------
 
+    # --------------------------------------------------------------------------
     def interpolate_solution(self):
+        grid = self._proc_g
+        octree = self._octree
+        o_ranges = self.get_ranges()
         n_oct = self._n_oct
         tot_oct = self._tot_oct
-        grid = self._proc_g
-        sizes = (n_oct, tot_oct)
-        octree = self._octree
-        t_array = PETSc.Vec().createMPI(size = sizes,
-                                        comm = self._comm_w)
-        t_array.setUp()
-
-        t_array.set(0)
-        o_ranges = self.get_ranges()
         # Upper bound octree's id contained.
         up_id_octree = o_ranges[0] + n_oct
         # Octree's ids contained.
         ids_octree_contained = range(o_ranges[0], 
                                      up_id_octree)
+        # Interpolated solution.
+        inter_sol = self.init_array("interpolated solution",
+                                    False)
 
         for i in xrange(0, tot_oct):
             if i in ids_octree_contained:
                 sol_index = self.mask_octant(i)
                 if (sol_index != -1):
                     sol_value = self._sol.getValue(sol_index)
-                    t_array.setValue(i, sol_value)
+                    inter_sol.setValue(i, sol_value)
 
-        t_array.assemblyBegin()
-        t_array.assemblyEnd()
+        inter_sol.assemblyBegin()
+        inter_sol.assemblyEnd()
     
-        return t_array
-
-
-        
+        return inter_sol
+    # --------------------------------------------------------------------------
    
     # --------------------------------------------------------------------------
-    def init_array(self       ,
+    def init_array(self             ,
                    # Array name.
-                   a_name = "",
+                   a_name = ""      ,
+                   petsc_size = True,
                    array = None):
 	"""Method which initializes an array or with zeros or with a 
 	   \"numpy.ndarray\" passed as parameter.
@@ -785,7 +782,12 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 	   Returns:
 		a PETSc array."""
 	
-        sizes = self.find_sizes()
+        if not petsc_size:
+            n_oct = self._n_oct
+            tot_oct = self._tot_oct
+            sizes = (n_oct, tot_oct)
+        else: 
+            sizes = self.find_sizes()
         # Temporary array.
         t_array = PETSc.Vec().createMPI(size = sizes,
                                         comm = self._comm_w)
@@ -821,6 +823,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 	"""Method which intializes the right hand side."""
 
         self._rhs = self.init_array("right hand side",
+                                    True             ,
                                     numpy_array)
     # --------------------------------------------------------------------------
     
