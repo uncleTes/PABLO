@@ -938,6 +938,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         self.assembly_petsc_struct("matrix",
                                    PETSc.Mat.AssemblyType.FINAL_ASSEMBLY)
+
+        self.assembly_petsc_struct("rhs")
         
         self.logger.info("Updated block matrix for comm \"" +
                          str(comm_l.Get_name())             + 
@@ -985,21 +987,15 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
                         bil_coeffs = [coeff * (1.0 / h2) for coeff in bil_coeffs]
 
+                        row_indices = [octant[0] for octant in stencil[1:]]
 
-                        insert_mode = PETSc.InsertMode.ADD_VALUES
-                        for i in range(1, len(stencil)):
-                            row_index = stencil[i][0]
-                            # Masked row index.
-                            m_row_index = self._ngn[row_index]
-                            self._b_mat.setValues(m_row_index  ,
-                                                  neigh_indices,
-                                                  bil_coeffs   ,
-                                                  insert_mode)
-
+                        self.apply_rest_prol_ops(row_indices  ,
+                                                 neigh_indices,
+                                                 bil_coeffs   ,
+                                                 neigh_centers)
         self._mdg_f = comm_l.gather(self._mdl_f, 
                                     root = 0)
     # --------------------------------------------------------------------------
-
     
     # --------------------------------------------------------------------------
     def update_bg_grids(self    ,
@@ -1076,13 +1072,10 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                             n_c.append(neigh_centers[i])
                             
                     n_b_c= [coeff * (1.0 / h2) for coeff in n_b_c]
-                    insert_mode = PETSc.InsertMode.ADD_VALUES
-                    row_index = key[1]
-                    #print("row index is " + str(row_index) + " and indices " + str(n_n_i)) 
-                    self._b_mat.setValues(row_index,
-                                          n_n_i    ,
-                                          n_b_c    ,
-                                          insert_mode)
+                    self.apply_rest_prol_ops(key[1],
+                                             n_n_i ,
+                                             n_b_c ,
+                                             n_c)
 
     def find_right_neighbours(self          , 
                               location      , 
@@ -1207,6 +1200,50 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                     indices.append("outside_bg")
 
         return (centers, indices)
+
+    # Apply restriction/prolungation operators.
+    def apply_rest_prol_ops(self         ,
+                            row_indices  ,
+                            col_indices  ,
+                            col_values   ,
+                            centers):
+        grid = self._proc_g
+        is_background = True
+        if grid:
+            is_background = False
+        insert_mode = PETSc.InsertMode.ADD_VALUES
+        n_rows = 1 if is_background else len(row_indices)
+        to_rhs = []
+        e_sols = []
+
+        for i, index in enumerate(col_indices):
+            if index == "outside_bg":
+                to_rhs.append(i)
+                e_sol = ExactSolution2D.ExactSolution2D.solution(centers[i][0],
+                                                                 centers[i][1])
+                e_sols.append(e_sol)
+
+        for i in range(0, n_rows):
+            row_index = row_indices if is_background else row_indices[i]
+            if not is_background:
+                row_index = self._ngn[row_index]
+
+            if not not to_rhs:
+                bil_coeffs = [col_values[j] for j in to_rhs]
+                for i in range(0, len(to_rhs)):
+                    self._rhs.setValues(row_index                       ,
+                                        (-1 * bil_coeffs[i] * e_sols[i]),
+                                        insert_mode)
+                
+                col_indices = [col_indices[j] for j in 
+                               range(0, len(col_indices)) if j not in to_rhs]
+                col_values = [col_values[j] for j in 
+                              range(0, len(col_values)) if j not in to_rhs]
+                
+            self._b_mat.setValues(row_index  ,
+                                  col_indices,
+                                  col_values ,
+                                  insert_mode)
 
     def evaluate_norms(self, 
                        exact_solution,
