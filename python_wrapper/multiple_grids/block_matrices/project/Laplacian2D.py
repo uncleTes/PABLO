@@ -841,7 +841,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         pc = ksp.getPC()
         # Setting tolerances.
-        tol = 1.e-50
+        tol = 1.e-13
         ksp.setTolerances(rtol = tol            , 
                           atol = tol            , 
                           divtol = PETSc.DEFAULT, # Let's PETSc use DEAFULT
@@ -1008,13 +1008,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         for index, dictionary in enumerate(self._edg):
             for key, item in dictionary.items():
                 (x_center, y_center) = item
-
 		h2 = key[3] * key[3]
-                #if into_background:
-                #    # The function \"get_point_owner_idx\" wants only one
-                #    # argument so we are passing it a tuple.
-                #    local_idx = octree.get_point_owner_idx((x_center,
-                #                                            y_center))
                 local_idx = octree.get_point_owner_idx((x_center,
                                                         y_center))
     
