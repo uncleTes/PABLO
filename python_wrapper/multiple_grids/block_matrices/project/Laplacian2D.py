@@ -123,7 +123,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # and inside the local one.
         self._rank_w = self._comm_w.Get_rank()
         self._rank = self._comm.Get_rank()
-        self._centers_not_penalized = []
 
         self.init_e_structures()
     # --------------------------------------------------------------------------
@@ -607,9 +606,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             else:
                 d_nnz_t.append(d_nnz[i])
         (d_nnz, o_nnz) = (d_nnz_t, o_nnz)
-        #print("process " + str(rank_w) + " has " + str((d_nnz, o_nnz)))
-        #print("process " + str(rank_w) + " has " + str((sizes)))
-        tot_oct = self._tot_oct
         self._b_mat = PETSc.Mat().createAIJ(size = (sizes, sizes),
                                             nnz = (d_nnz, o_nnz) ,
                                             comm = comm_w)
@@ -674,7 +670,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                             indices.append(m_index)
                             values.append(1.0 / h2)
 
-                #print(str(m_g_octant) + " " + str(indices) + " " + str(values)) 
                 self._b_mat.setValues(m_g_octant, # Row
                                       indices   , # Columns
                                       values)     # Values to be inserted
@@ -894,6 +889,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         self._mdl_b = {}
         self._mdg_f = {}
         self._mdg_b = []
+        self._centers_not_penalized = []
     # --------------------------------------------------------------------------
     
     # --------------------------------------------------------------------------
@@ -929,16 +925,16 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             self.update_fg_grids(o_ranges,
                                  ids_octree_contained)
 
-        #print("proc " + str(rank_w) + " has self._mdg_f = " +str(self._mdg_f))
         comm_w.Barrier()
 
         for key, intercomm in intercomm_dictionary.items():
             self._mdg_b.extend(intercomm.allgather(self._mdg_f))
-        #print("proc " + str(rank_w) + " has self._mdg_b = " +str(self._mdg_b))
 
         if is_background:
             self.update_bg_grids(o_ranges,
                                  ids_octree_contained)
+        
+        comm_w.Barrier()
 
         self.assembly_petsc_struct("matrix",
                                    PETSc.Mat.AssemblyType.FINAL_ASSEMBLY)
@@ -957,7 +953,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                         ids_octree_contained):
         octree = self._octree
         comm_l = self._comm
-        #print("process " + str(self._rank_w) + " has edg = " + str(self._edg))
         # \"self._edg\" will be a list of same structures of data,
         # after the \"allgather\" call; these structures are dictionaries.
         for index, dictionary in enumerate(self._edg):
@@ -988,7 +983,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                              neigh_indices, 
                                              bil_coeffs]})
 
-                        bil_coeffs = [coeff * (1/h2) for coeff in bil_coeffs]
+                        bil_coeffs = [coeff * (1.0 / h2) for coeff in bil_coeffs]
 
 
                         insert_mode = PETSc.InsertMode.ADD_VALUES
