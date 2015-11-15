@@ -1030,8 +1030,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                                           y_center),
                                                           center_cell_container)
                     neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
-                    # New neighbour indices, new bilinear coefficients.
-                    n_n_i, n_b_c = ([] for i in range(0, 2)) 
+                    # New neighbour indices, new bilinear coefficients, 
+                    # new centers.
+                    n_n_i, n_b_c, n_c = ([] for i in range(0, 3)) 
                     (neigh_centers, neigh_indices)  = self.find_right_neighbours(location   ,
                                                                                  local_idx  ,
                                                                                  o_ranges[0],
@@ -1042,31 +1043,37 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                     # Substituting bilinear coefficients for \"penalized\" 
                     # octants with the coefficients of the foreground grid
                     # owning the penalized one.
-                    #print("index " + str(key[1]) + " has neigh_centers " + str(neigh_centers) + " neigh_indices " + str(neigh_indices))
                     for i, index in enumerate(neigh_indices):
-                        if (self._ngn[index] == -1):
-                            got_m_values = False
-                            for j, listed in enumerate(self._mdg_b):
-                                #print("process " + str(self._rank_w) + " has listed = " + str(listed))
-                                if not not listed: 
-                                    for k, dictionary in enumerate(listed):
-                                        m_values = dictionary.get((index, 
-                                                                   (neigh_centers[i][0],
-                                                                    neigh_centers[i][1])))
-                                        #print("dictionary = " + str(dictionary))
-                                        #print("key =  " + str((index, neigh_centers[i])))
-                                        if m_values is not None:
-                                            #print("m_values is " + str(m_values))
-                                            n_n_i.extend(m_values[1])
-                                            n_b_c.extend([(m_value * bil_coeffs[i]) for m_value in m_values[2]])
-                                            got_m_values = True
-                                            break
-                                if got_m_values:
-                                    break
+                        if not isinstance(index, basestring):
+                            if (self._ngn[index] == -1):
+                                got_m_values = False
+                                for j, listed in enumerate(self._mdg_b):
+                                    #print("process " + str(self._rank_w) + " has listed = " + str(listed))
+                                    if not not listed: 
+                                        for k, dictionary in enumerate(listed):
+                                            m_values = dictionary.get((index, 
+                                                                       (neigh_centers[i][0],
+                                                                        neigh_centers[i][1])))
+                                            #print("dictionary = " + str(dictionary))
+                                            #print("key =  " + str((index, neigh_centers[i])))
+                                            if m_values is not None:
+                                                #print("m_values is " + str(m_values))
+                                                n_n_i.extend(m_values[1])
+                                                n_b_c.extend([(m_value * bil_coeffs[i]) for m_value in m_values[2]])
+                                                n_c.extend(m_values[0])
+                                                got_m_values = True
+                                                break
+                                    if got_m_values:
+                                        break
+                            else:
+                                masked_index = self._ngn[index]
+                                n_n_i.append(masked_index)
+                                n_b_c.append(bil_coeffs[i])
+                                n_c.append(neigh_centers[i])
                         else:
-                            masked_index = self._ngn[index]
-                            n_n_i.append(masked_index)
+                            n_n_i.append(index)
                             n_b_c.append(bil_coeffs[i])
+                            n_c.append(neigh_centers[i])
                             
                     n_b_c= [coeff * (1.0 / h2) for coeff in n_b_c]
                     insert_mode = PETSc.InsertMode.ADD_VALUES
@@ -1197,12 +1204,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                       border_center[1] + h)
 
                     centers.append(center)
-                    # Penso sia sbagliato onestamente.
-                    index = current_octant
-                    m_index = self.mask_octant(index)
-                    if is_background:
-                        m_index = index
-                    indices.append(m_index)
+                    indices.append("outside_bg")
 
         return (centers, indices)
 
