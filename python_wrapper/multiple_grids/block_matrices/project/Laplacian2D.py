@@ -318,15 +318,15 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                            b_indices[i], # Masked global index of the octant
                            b_faces[i]  , # Boundary face
                            h)            # Edge's length
-                    # We store the centers of the cells on the boundary.
-                    self._edl.update({key : b_centers[i]})
+                    # We store the center of the cell on the boundary.
+                    self._edl.update({key : center})
                     # The new corresponding value inside \"b_values\" would be
                     # \"0.0\", because the boundary value is given by the 
                     # coefficients of the bilinear operator in the \"extension\"
                     # matrix.
                     b_values[i] = 0.0
 	    
-        b_values[:] = [b_value * (-1/h2) for b_value in b_values]
+        b_values[:] = [b_value * (-1.0 / h2) for b_value in b_values]
         insert_mode = PETSc.InsertMode.ADD_VALUES
         self._rhs.setValues(b_indices,
                             b_values ,
@@ -1014,22 +1014,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         for index, dictionary in enumerate(self._edg):
             for key, item in dictionary.items():
                 (x_center, y_center) = item
-                if key[2] == 0:
-                    x_center = x_center - key[3]
-                if key[2] == 1:
-                    x_center = x_center + key[3]
-                if key[2] == 2:
-                    y_center = y_center - key[3]
-                if key[2] == 3:
-                    y_center = y_center + key[3]
-
-                into_background = utilities.check_oct_into_square((x_center, 
-                                                     	           y_center)  ,
-                                                    	           b_bound    ,
-                                                                   key[3]     ,
-                                                                   0.0        ,
-		    					           self.logger,
-		    					           log_file)
 
 		h2 = key[3] * key[3]
                 #if into_background:
@@ -1043,58 +1027,57 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 global_idx = local_idx + o_ranges[0]
 
                 if global_idx in ids_octree_contained:
-                    if into_background:
-                        center_cell_container = octree.get_center(local_idx)[:2]
-                        location = utilities.points_location((x_center,
-                                                              y_center),
-                                                              center_cell_container)
-                        neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
-                        # New neighbour indices, new bilinear coefficients.
-                        n_n_i, n_b_c = ([] for i in range(0, 2)) 
-                        (neigh_centers, neigh_indices)  = self.find_right_neighbours(location   ,
-                                                                                     local_idx  ,
-                                                                                     o_ranges[0],
-                                                                                     True)
-                        bil_coeffs = utilities.bil_interp((x_center, 
-                                                           y_center),
-                                                          neigh_centers)
-                        # Substituting bilinear coefficients for \"penalized\" 
-                        # octants with the coefficients of the foreground grid
-                        # owning the penalized one.
-                        #print("index " + str(key[1]) + " has neigh_centers " + str(neigh_centers) + " neigh_indices " + str(neigh_indices))
-                        for i, index in enumerate(neigh_indices):
-                            if (self._ngn[index] == -1):
-                                got_m_values = False
-                                for j, listed in enumerate(self._mdg_b):
-                                    #print("process " + str(self._rank_w) + " has listed = " + str(listed))
-                                    if not not listed: 
-                                        for k, dictionary in enumerate(listed):
-                                            m_values = dictionary.get((index, 
-                                                                       (neigh_centers[i][0],
-                                                                        neigh_centers[i][1])))
-                                            #print("dictionary = " + str(dictionary))
-                                            #print("key =  " + str((index, neigh_centers[i])))
-                                            if m_values is not None:
-                                                #print("m_values is " + str(m_values))
-                                                n_n_i.extend(m_values[1])
-                                                n_b_c.extend([(m_value * bil_coeffs[i]) for m_value in m_values[2]])
-                                                got_m_values = True
-                                                break
-                                    if got_m_values:
-                                        break
-                            else:
-                                masked_index = self._ngn[index]
-                                n_n_i.append(masked_index)
-                                n_b_c.append(bil_coeffs[i])
-                                
-                        n_b_c= [coeff * (1/h2) for coeff in n_b_c]
-                        insert_mode = PETSc.InsertMode.ADD_VALUES
-                        row_index = key[1]
-                        #print("row index is " + str(row_index) + " and indices " + str(n_n_i)) 
-                        self._b_mat.setValues(row_index,
-                                              n_n_i    ,
-                                              n_b_c    ,
-                                              insert_mode)
+                    center_cell_container = octree.get_center(local_idx)[:2]
+                    location = utilities.points_location((x_center,
+                                                          y_center),
+                                                          center_cell_container)
+                    neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
+                    # New neighbour indices, new bilinear coefficients.
+                    n_n_i, n_b_c = ([] for i in range(0, 2)) 
+                    (neigh_centers, neigh_indices)  = self.find_right_neighbours(location   ,
+                                                                                 local_idx  ,
+                                                                                 o_ranges[0],
+                                                                                 True)
+                    bil_coeffs = utilities.bil_interp((x_center, 
+                                                       y_center),
+                                                      neigh_centers)
+                    # Substituting bilinear coefficients for \"penalized\" 
+                    # octants with the coefficients of the foreground grid
+                    # owning the penalized one.
+                    #print("index " + str(key[1]) + " has neigh_centers " + str(neigh_centers) + " neigh_indices " + str(neigh_indices))
+                    for i, index in enumerate(neigh_indices):
+                        if (self._ngn[index] == -1):
+                            got_m_values = False
+                            for j, listed in enumerate(self._mdg_b):
+                                #print("process " + str(self._rank_w) + " has listed = " + str(listed))
+                                if not not listed: 
+                                    for k, dictionary in enumerate(listed):
+                                        m_values = dictionary.get((index, 
+                                                                   (neigh_centers[i][0],
+                                                                    neigh_centers[i][1])))
+                                        #print("dictionary = " + str(dictionary))
+                                        #print("key =  " + str((index, neigh_centers[i])))
+                                        if m_values is not None:
+                                            #print("m_values is " + str(m_values))
+                                            n_n_i.extend(m_values[1])
+                                            n_b_c.extend([(m_value * bil_coeffs[i]) for m_value in m_values[2]])
+                                            got_m_values = True
+                                            break
+                                if got_m_values:
+                                    break
+                        else:
+                            masked_index = self._ngn[index]
+                            n_n_i.append(masked_index)
+                            n_b_c.append(bil_coeffs[i])
+                            
+                    n_b_c= [coeff * (1.0 / h2) for coeff in n_b_c]
+                    insert_mode = PETSc.InsertMode.ADD_VALUES
+                    row_index = key[1]
+                    #print("row index is " + str(row_index) + " and indices " + str(n_n_i)) 
+                    self._b_mat.setValues(row_index,
+                                          n_n_i    ,
+                                          n_b_c    ,
+                                          insert_mode)
 
     def find_right_neighbours(self          , 
                               location      , 
