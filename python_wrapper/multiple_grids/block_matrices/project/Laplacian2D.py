@@ -414,17 +414,14 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         n_oct = self._n_oct
         octree = self._octree
         # Global number of octants for background grid.
-        N_oct_bg_g = self._oct_f_g[0]
         nfaces = glob.nfaces
         h = self._h
+        comm_l = self._comm
+        rank_l = comm_l.Get_rank()
         h2 = h * h
         is_background = False
         overlap = o_n_oct * h
         p_bound = []
-        rank_w = self._rank_w
-        rank_l = self._rank
-        comm_l = self._comm
-        comm_w = self._comm_w
         o_ranges = (n_oct * rank_l,
                     (n_oct * (rank_l + 1)) - 1)
         if not grid:
@@ -522,6 +519,18 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 d_nnz.append(d_count)
                 o_nnz.append(o_count)
                 self._centers_not_penalized.append(center)
+
+        self.spread_new_background_numeration(is_background)
+        return (d_nnz, o_nnz)
+    # --------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
+    def spread_new_background_numeration(self,
+                                         is_background):
+        n_oct = self._n_oct
+        comm_l = self._comm
+        comm_w = self._comm_w
+        rank_l = comm_l.Get_rank()
         tot_not_masked_oct = numpy.sum(self._nln != -1)
         tot_masked_oct = n_oct - tot_not_masked_oct
         # Elements not penalized for grid.
@@ -550,7 +559,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # communicator.
         comm_w.Bcast(self._ngn,
                      root = 0)
-        return (d_nnz, o_nnz)
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
@@ -572,6 +580,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         comm_w = self._comm_w
         rank_w = self._rank_w
         octree = self._octree
+        tot_oct = self._tot_oct
         is_background = True
         # Range deplacement.
         h = self._h
