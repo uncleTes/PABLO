@@ -1245,7 +1245,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         numpy_difference = numpy.subtract(exact_solution,
                                           solution)
         norm_inf = numpy.linalg.norm(numpy_difference,
-                                           # Type of norm we want to evaluate.
+                                     # Type of norm we want to evaluate.
                                      numpy.inf)
         norm_L2 = numpy.linalg.norm(numpy_difference,
                                     2) * h

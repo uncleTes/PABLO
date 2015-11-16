@@ -427,18 +427,8 @@ def main():
                            intercomm_dictionary,
                            centers)
 
-    #print(data_to_save)
-
-    #data_to_save = stub_compute(comm_dictionary     ,
-    #                            intercomm_dictionary,
-    #                       centers)
-
     n_octs = pablo.get_num_octants()
     n_nodes = pablo.get_num_nodes()
-
-    #if not proc_grid:
-    #    n_octs = n_octs
-    #    n_nodes = n_nodes
 
     vtk = my_class_vtk_02.Py_Class_VTK(data_to_save            , # Data
                                        pablo                   , # Octree
