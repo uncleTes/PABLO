@@ -389,25 +389,7 @@ def check_point_into_squares(point_to_check,
     # Can't eliminate rows 250 and 254 with the following one??
     # return square_check
 
-# http://en.wikipedia.org/wiki/Bilinear_interpolation
-#   Q12------------Q22
-#      |          |
-#      |          |
-#      |          |
-#      |          |
-#      |      x,y |
-#   Q11-----------Q21
-#   Q11 = point_values at x1 and y1
-#   Q12 = point_values at x1 and y2
-#   Q21 = point_values at x2 and y1
-#   Q22 = point_values at x2 and y2
-#   f(Q11) = value of the function in x1 and y1
-#   f(Q12) = value of the function in x1 and y2
-#   f(Q21) = value of the function in x2 and y1
-#   f(Q22) = value of the function in x2 and y2
-#   x,y = unknown_point ("unknown point" stand for a point for which it is 
-#         not known the value of the function f)
-def bil_interp(unknown_point	 , 
+def bil_coeffs(unknown_point	 , 
                points_coordinates):
     coeff_01 = ((points_coordinates[3][0] - unknown_point[0]) * 
                 (points_coordinates[3][1] - unknown_point[1]))
@@ -430,6 +412,52 @@ def bil_interp(unknown_point	 ,
 
     return coefficients
 
+# http://en.wikipedia.org/wiki/Bilinear_interpolation
+#   Q12------------Q22
+#      |          |
+#      |          |
+#      |          |
+#      |          |
+#      |      x,y |
+#   Q11-----------Q21
+#   Q11 = point_values at x1 and y1
+#   Q12 = point_values at x1 and y2
+#   Q21 = point_values at x2 and y1
+#   Q22 = point_values at x2 and y2
+#   f(Q11) = value of the function in x1 and y1
+#   f(Q12) = value of the function in x1 and y2
+#   f(Q21) = value of the function in x2 and y1
+#   f(Q22) = value of the function in x2 and y2
+#   x,y = unknown_point ("unknown point" stand for a point for which it is 
+#         not known the value of the function f)
+def bil_interp(unknown_point	 , 
+               points_coordinates,
+               f_values):
+    coeff_01 = ((points_coordinates[3][0] - unknown_point[0]) * 
+                (points_coordinates[3][1] - unknown_point[1]))
+
+    coeff_02 = ((unknown_point[0] - points_coordinates[0][0]) *
+                (points_coordinates[3][1] - unknown_point[1]))
+
+    coeff_03 = ((points_coordinates[3][0] - unknown_point[0]) *
+                (unknown_point[1] - points_coordinates[0][1]))
+
+    coeff_04 = ((unknown_point[0] - points_coordinates[0][0]) *
+                (unknown_point[1] - points_coordinates[0][1]))
+
+    multiplier = 1 / ((points_coordinates[3][0] - points_coordinates[0][0]) * 
+                      (points_coordinates[3][1] - points_coordinates[0][1]))
+
+    coefficients = [coeff_01, coeff_02, coeff_03, coeff_04]
+
+    coefficients = [coefficient * multiplier for coefficient in coefficients]
+    
+    value = 0
+
+    for i, coeff in enumerate(coefficients):
+        value += (coeff * point_f_values[i])
+
+    return value
 
 # ------------------------------------------------------------------------------
 

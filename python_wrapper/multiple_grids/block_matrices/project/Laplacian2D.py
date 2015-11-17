@@ -976,7 +976,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                          neigh_indices)  = self.find_right_neighbours(location ,
                                                                       local_idx,
                                                                       o_ranges[0])
-                        bil_coeffs = utilities.bil_interp((x_center, 
+                        bil_coeffs = utilities.bil_coeffs((x_center, 
                                                            y_center),
                                                           neigh_centers)
 
@@ -1027,7 +1027,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                                                                  local_idx  ,
                                                                                  o_ranges[0],
                                                                                  True)
-                    bil_coeffs = utilities.bil_interp((x_center, 
+                    bil_coeffs = utilities.bil_coeffs((x_center, 
                                                        y_center),
                                                       neigh_centers)
                     # Substituting bilinear coefficients for \"penalized\" 
