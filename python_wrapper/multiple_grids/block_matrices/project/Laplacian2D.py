@@ -521,6 +521,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 self._nln[octant] = new_oct_count
                 new_oct_count += 1
                 d_count += 1
+            # Not add to foreground count.
+            not_add_fg_count = False
             for face in xrange(0, nfaces):
                 # Check to know if a neighbour of an octant is penalized.
                 is_n_penalized = False
@@ -569,9 +571,17 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                     # the octants of the foreground grid. This is the worst
                     # scenario.
                     if not is_background:
-                        # TODO: replace with a better evaluation algorithm for non zero elements.
-                        o_count += 8
-                        d_count += 4
+                        if not not_add_fg_count:
+                            # Worst cases with two levels of difference.
+                            o_count += 12 # It could be 16 if the neighbours of
+                                          # the background grid would be covered
+                                          # by other foreground grids.
+                            d_count += 8
+                            # Add to the counters only for one face, because in
+                            # case of two faces on the boundary, elements
+                            # considered will be the same, They will change
+                            # coefficients' values, not coefficients' number.
+                            not_add_fg_count = True
             if not is_penalized:
                 d_nnz.append(d_count)
                 o_nnz.append(o_count)
@@ -663,19 +673,13 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         n_oct = self._n_oct
         nfaces = glob.nfaces
         sizes = self.find_sizes()
-        # TODO: replace with a better evaluation algorithm for non zero elements.
-        d_nnz_t = []
-        for i, value in enumerate(d_nnz):
-            if value > sizes[0]:
-                d_nnz_t.append(sizes[0])
-            else:
-                d_nnz_t.append(d_nnz[i])
-        (d_nnz, o_nnz) = (d_nnz_t, o_nnz)
         self._b_mat = PETSc.Mat().createAIJ(size = (sizes, sizes),
                                             nnz = (d_nnz, o_nnz) ,
                                             comm = comm_w)
-        # TODO: replace with a better evaluation algorithm for non zero elements.
-        self._b_mat.setOption(self._b_mat.Option.NEW_NONZERO_ALLOCATION_ERR, False)
+        # If an element is being allocated in a place not preallocate, then 
+        # the program will stop.
+        self._b_mat.setOption(self._b_mat.Option.NEW_NONZERO_ALLOCATION_ERR, 
+                              True)
         
         o_ranges = self.get_ranges()
         for octant in xrange(0, n_oct):
