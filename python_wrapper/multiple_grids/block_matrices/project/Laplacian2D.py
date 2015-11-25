@@ -266,9 +266,14 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         c_neighs = self.neighbour_centers(centers       ,
                                           edges_or_nodes,
                                           faces)
-
+        # \"c_neighs\" is only a tuple, not a list.
+        if not isinstance(c_neighs, list):
+            x_temp = c_neighs[0]
+            y_temp = c_neighs[1]
+            c_neighs = []
+            c_neighs.append((x_temp, y_temp))
         x_s = [c_neigh[0] for c_neigh in c_neighs] 
-        y_s = [c_neigh[1] for c_neigh in c_neighs] 
+        y_s = [c_neigh[1] for c_neigh in c_neighs]
 
         boundary_values = ExactSolution2D.ExactSolution2D.solution(x_s, 
                                                    		   y_s)
