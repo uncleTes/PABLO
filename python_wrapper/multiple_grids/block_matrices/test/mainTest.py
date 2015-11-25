@@ -27,20 +27,20 @@ class mainTest(unittest.TestCase):
            logger (utilities.Logger) : A logger."""
            
     def setUp(self):
-        self.comm_w = main.comm_w
         self.n_grids = main.n_grids
+        self.comm_w = main.comm_w
         self.rank_w = self.comm_w.Get_rank()
-        self.proc_grid = self.rank_w % self.n_grids 
         group_w = self.comm_w.Get_group()
         self.procs_w = self.comm_w.Get_size()
         procs_w_list = range(0, self.procs_w)
-        self.procs_l_lists = utilities.chunk_list(procs_w_list,
-                                                  self.n_grids)
+        self.procs_l_lists = utilities.chunk_list_ordered(procs_w_list,
+                                                          self.n_grids)
+        self.proc_grid =  utilities.get_proc_grid(self.procs_l_lists,
+                                                  self.comm_w.Get_rank())
         group_l = group_w.Incl(self.procs_l_lists[self.proc_grid])
         self.comm_l = self.comm_w.Create(group_l)
         comm_name = main.comm_names[self.proc_grid]
         self.comm_l.Set_name(comm_name)
-        # ---
         self.msg = "Started function for local comm \"" + \
                    str(self.comm_l.Get_name())          + \
                    "\" and world comm \""               + \
@@ -81,7 +81,7 @@ class mainTest(unittest.TestCase):
         comm_dict = main.set_comm_dict(self.n_grids  ,
                                        self.proc_grid,
                                        self.comm_l)
-        self.assertTrue(len(comm_dict) == 9)
+        self.assertTrue(len(comm_dict) == 11)
 
     def test_set_octree(self):
         """Method which tests that the length of the list containing the
