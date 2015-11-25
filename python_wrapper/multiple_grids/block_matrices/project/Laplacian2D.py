@@ -12,7 +12,6 @@ from petsc4py import PETSc
 from mpi4py import MPI
 import class_global
 import utilities
-import copy
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
@@ -482,8 +481,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         is_background = False
         overlap = o_n_oct * h
         p_bound = []
-        o_ranges = (n_oct * rank_l,
-                    (n_oct * (rank_l + 1)) - 1)
         if not grid:
             is_background = True
             p_bound = self.apply_overlap(overlap)
@@ -495,9 +492,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         for octant in xrange(0, n_oct):
             d_count, o_count = 0, 0
             neighs, ghosts = ([] for i in range(0, 2))
-            g_octant = o_ranges[0] + octant
-            py_oct = self._octree.get_octant(octant)
-            center  = self._octree.get_center(octant)[:2]
+            g_octant = octree.get_global_idx(octant)
+            py_oct = octree.get_octant(octant)
+            center  = octree.get_center(octant)[:2]
             # Check to know if an octant is penalized.
             is_penalized = False
             # Background grid.
@@ -535,7 +532,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                                               neighs, 
                                                               ghosts)
                     if not ghosts[0]:
-                        index = neighs[0] + o_ranges[0]
+                        index = octree.get_global_idx(neighs[0])
                         n_center = self._octree.get_center(neighs[0])[:2]
                     else:
                         index = self._octree.get_ghost_global_idx(neighs[0])
