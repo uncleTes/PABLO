@@ -296,9 +296,17 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             is_background = False
 
         if is_background:
-            rank_w = self._rank_w
-            new_ranges = (rank_w * n_oct,
-                          (rank_w + 1) * n_oct)
+            #rank_w = self._rank_w
+            #new_ranges = (rank_w * n_oct,
+            #              (rank_w + 1) * n_oct)
+            rank_l = self._rank
+            start = 0
+            end = self._s_counts[0] - 1
+            for i in xrange(0, rank_l):
+                start += self._s_counts[i]
+                end += self._s_counts[i + 1]
+            new_ranges = (start, end)
+            
         else:
             # Masked octants
             masked_octs = self._masked_oct_bg_g
@@ -602,9 +610,16 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         self._nln[self._nln >= 0] += oct_offset
         
         if is_background:
-            comm_l.Gather(self._nln, 
-                          self._ngn,
-                          root = 0)
+            self._s_counts = []
+            self._s_counts.extend(comm_l.allgather(self._nln.size))
+            displs = [0] * len(self._s_counts)
+            offset = 0
+            for i in range(1, len(self._s_counts)):
+                offset += self._s_counts[i-1]
+                displs[i] = offset
+            comm_l.Gatherv(self._nln                                       ,
+                           [self._ngn, self._s_counts, displs, MPI.INT64_T],
+                           root = 0)
         comm_w.Barrier()
         # Broadcasting the vector containing the new global numeration of the
         # background grid \"self._ngn\" to all processes of the world 
@@ -935,9 +950,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         self._emg = [] 
         
         self._nln = numpy.empty(n_oct,
-                                dtype = int)
+                                dtype = numpy.int64)
         self._ngn = numpy.empty(N_oct_bg_g,
-                                dtype = int)
+                                dtype = numpy.int64)
         self._mdl_f = {}
         self._mdl_b = {}
         self._mdg_f = {}
