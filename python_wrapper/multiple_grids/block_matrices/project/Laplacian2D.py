@@ -258,8 +258,13 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                c_neighs (tuple or list of tuples) : the centers where evaluate
                                                     the boundary conditions."""
 
+        edges_or_nodes = []
+        for i in xrange(0, len(centers)):
+            # Evaluating boundary conditions for edges.
+            edges_or_nodes.append(1)
         # Centers neighbours.
-        c_neighs = self.neighbour_centers(centers,
+        c_neighs = self.neighbour_centers(centers       ,
+                                          edges_or_nodes,
                                           faces)
 
         x_s = [c_neigh[0] for c_neigh in c_neighs] 
@@ -1198,36 +1203,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 # ...we need to evaluate boundary values.
                 else:
                     border_center = self._octree.get_center(current_octant)[:2]
-                    center = None
-                    h = self._h
-                    # We have edge neighbours on the boundaries.
-                    if edge_or_node[0] == 1:
-                        if edge_or_node[1] == 0:
-                            center = (border_center[0] - h, 
-                                      border_center[1])
-                        elif edge_or_node[1] == 1:
-                            center = (border_center[0] + h, 
-                                      border_center[1])
-                        elif edge_or_node[1] == 2:
-                            center = (border_center[0], 
-                                      border_center[1] - h)
-                        elif edge_or_node[1] == 3:
-                            center = (border_center[0], 
-                                      border_center[1] + h)
-                    # We have node neighbours on the boundaries.
-                    elif edge_or_node[0] == 2:
-                        if edge_or_node[1] == 0:
-                            center = (border_center[0] - h, 
-                                      border_center[1] - h)
-                        elif edge_or_node[1] == 1:
-                            center = (border_center[0] + h, 
-                                      border_center[1] - h)
-                        elif edge_or_node[1] == 2:
-                            center = (border_center[0] - h, 
-                                      border_center[1] + h)
-                        elif edge_or_node[1] == 3:
-                            center = (border_center[0] + h, 
-                                      border_center[1] + h)
+                    center = self.neighbour_centers(border_center  ,
+                                                    edge_or_node[0],
+                                                    edge_or_node[1])
 
                     centers.append(center)
                     indices.append("outside_bg")
