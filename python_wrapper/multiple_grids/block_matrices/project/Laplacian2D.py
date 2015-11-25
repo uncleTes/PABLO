@@ -129,41 +129,67 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
    
     # --------------------------------------------------------------------------
     # Returns the center of the face neighbour.
-    def neighbour_centers(self   ,
-                          centers,
-                          faces):
+    
+    def neighbour_centers(self          ,
+                          i_centers       ,
+                          i_edges_or_nodes,
+                          i_values):
         """Function which returns the centers of neighbours, depending on 
            for which face we are interested into.
            
            Arguments:
-               centers (tuple or list of tuple) : coordinates of the centers of 
-                                                  the current octree.
-               faces (int between 0 and 3 or list) : faces for which we are  
-                                                     interested into knowing
-                                                     the neighbour's center.
+               i_centers (tuple or list of tuple) : coordinates of the centers 
+                                                    of the current octree.
+               i_edges_or_nodes (int between 1 and 2 or list) : numbers
+                                                                indicating if 
+                                                                the neighbour 
+                                                                is from edge 
+                                                                or node.
+               i_values (int between 0 and 3 or list) : faces for which we are  
+                                                        interested into knowing
+                                                        the neighbour's center.
                                             
            Returns:
                a tuple or a list containing the centers evaluated."""
 
-        if ((len(faces) != 1) and
-            (len(faces) != len(centers))):
+        h = self._h
+        centers = i_centers
+        values = i_values
+        edges_or_nodes = i_edges_or_nodes        
+
+        try:
+            len(centers)
+            len(values)
+            len(edges_or_nodes)
+        # \"TypeError: object of type 'int' has no len()\", so are no lists but
+        # single elements.
+        except TypeError:
+            t_center, t_value, t_e_o_n = centers, values, edges_or_nodes
+            centers, values, edges_or_nodes = ([] for i in range(0, 3))
+            centers.append(t_center)
+            values.append(t_value)
+            edges_or_nodes.append(t_e_o_n)
+
+        if ((len(values) != 1) and
+            (len(values) != len(centers))):
             msg = "\"MPI Abort\" called " 
-            extra_msg = " Different length of \"faces\" and \"centers\"."
+            extra_msg = " Different length of \"edges\" (or \"nodes\") and " +\
+                        "\"centers\"."
             self.log_msg(msg    ,
                          "error",
                          extra_msg)
             self._comm_w.Abort(1)
 
-        h = self._h
 	# Evaluated centers.
         eval_centers = []
-        for i, face in enumerate(faces):
+        # Face or node.
+        for i, value in enumerate(values):
             (x_center, y_center) = centers[i]
-            if not isinstance(face, numbers.Integral):
-                face = int(math.ceil(face))
+            if not isinstance(value, numbers.Integral):
+                value = int(math.ceil(e_o_n))
             try:
                 # Python's comparison chaining idiom.
-                assert 0 <= face <= 3
+                assert 0 <= value <= 3
             except AssertionError:
                 msg = "\"MPI Abort\" called " 
                 extra_msg = " Faces numeration incorrect."
@@ -171,18 +197,35 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                              "error",
                              extra_msg)
                 self._comm_w.Abort(1)
+            # If no exception is raised, go far...
             else:
-                if ((face % 2) == 0):
-		    if (face == 0):
-                    	x_center = x_center - h
+                edge = False
+                node = False
+                if edges_or_nodes[i] == 1:
+                    edge = True
+                elif edges_or_nodes[i] == 2:
+                    node = True
+                if ((value % 2) == 0):
+		    if (value == 0):
+                    	x_center -= h
+                        if node:
+                            y_center -= h
 		    else:
-                    	y_center = y_center - h
+                        if edge:
+                    	    y_center -= h
+                        if node:
+                            x_center -= h
+                            y_center += h
                 else:
-		    if (face == 1):
-                    	x_center = x_center + h
+		    if (value == 1):
+                    	x_center += h
+                        if node:
+                            y_center -= h
 		    else:
-                    	y_center = y_center + h
-
+                    	y_center += h
+                        if node:
+                            x_center += h
+                            
                 eval_centers.append((x_center, y_center))
 
         if len(centers) == 1:
