@@ -65,7 +65,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         # http://stackoverflow.com/questions/19205916/how-to-call-base-classs-init-method-from-the-child-class
         super(Laplacian2D, self).__init__(kwargs)
-        # If some arguments are not presents, function "setdefault" will set 
+        # If some arguments are not presents, function \"setdefault\" will set 
         # them to the default value.
         # Penalization.
         self._pen = kwargs.setdefault("penalization", 
@@ -73,13 +73,13 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # Over-lapping.
         self._over_l = kwargs.setdefault("overlapping",
                                          False)
-        # [[x_anchor, x_anchor + edge, 
-        #   y_anchor, y_anchor + edge]...] = penalization boundaries (aka
+        # \"[[x_anchor, x_anchor + edge, 
+        #     y_anchor, y_anchor + edge]...]\" = penalization boundaries (aka
         # foreground boundaries).
         self._f_bound = kwargs.setdefault("foreground boundaries",
                                           None)
-        # [x_anchor, x_anchor + edge, 
-        #  y_anchor, y_anchor + edge] = background boundaries.
+        # \"[x_anchor, x_anchor + edge, 
+        #    y_anchor, y_anchor + edge]\" = background boundaries.
         self._b_bound = kwargs.setdefault("background boundaries",
                                           None)
         # Checking existence of penalization boundaries and background 
@@ -112,8 +112,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                          "error",
                          extra_msg)
 	    self._comm_w.Abort(1)
-
+        # Total number of octants presents in the problem.
         self._tot_oct = kwargs["total octants number"]
+        # Number of octants for each grid. It is a list.
         self._oct_f_g = kwargs["octants for grids"]
         # Length of the edge of an octree.
         self._h = self._edge / numpy.sqrt(self._N_oct)
@@ -121,40 +122,40 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # and inside the local one.
         self._rank_w = self._comm_w.Get_rank()
         self._rank = self._comm.Get_rank()
-
+        # Initializing exchanged structures.
         self.init_e_structures()
     # --------------------------------------------------------------------------
    
     # --------------------------------------------------------------------------
     # Returns the center of the face neighbour.
-    
-    def neighbour_centers(self          ,
-                          i_centers       ,
-                          i_edges_or_nodes,
-                          i_values):
+    def neighbour_centers(self           ,
+                          _centers       ,
+                          _edges_or_nodes,
+                          _values):
         """Function which returns the centers of neighbours, depending on 
            for which face we are interested into.
            
            Arguments:
-               i_centers (tuple or list of tuple) : coordinates of the centers 
-                                                    of the current octree.
-               i_edges_or_nodes (int between 1 and 2 or list) : numbers
-                                                                indicating if 
-                                                                the neighbour 
-                                                                is from edge 
-                                                                or node.
-               i_values (int between 0 and 3 or list) : faces for which we are  
-                                                        interested into knowing
-                                                        the neighbour's center.
+               _centers (tuple or list of tuple) : coordinates of the centers 
+                                                   of the current octree.
+               _edges_or_nodes (int between 1 and 2 or list) : numbers
+                                                               indicating if 
+                                                               the neighbour 
+                                                               is from edge 
+                                                               or node.
+               _values (int between 0 and 3 or list) : faces for which we are  
+                                                       interested into knowing
+                                                       the neighbour's center.
                                             
            Returns:
                a tuple or a list containing the centers evaluated."""
 
         h = self._h
-        centers = i_centers
-        values = i_values
-        edges_or_nodes = i_edges_or_nodes        
-
+        centers = _centers
+        values = _values
+        edges_or_nodes = _edges_or_nodes        
+        # Checking if passed argumetns are lists or not. If not, we have to do
+        # something.
         try:
             len(centers)
             len(values)
@@ -226,9 +227,14 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                             
                 eval_centers.append((x_center, y_center))
 
+        msg = "Evaluated centers of the neighbours"
         if len(centers) == 1:
+            msg = "Evaluated center of the neighbour"
             return eval_centers[0]
                 
+        self.log_msg(msg   ,
+                     "info")
+
         return eval_centers
     # --------------------------------------------------------------------------
 
@@ -257,6 +263,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                                     the boundary conditions."""
 
         edges_or_nodes = []
+        just_one_neighbour = False
         for i in xrange(0, len(centers)):
             # Evaluating boundary conditions for edges.
             edges_or_nodes.append(1)
@@ -266,20 +273,28 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                           faces)
         # \"c_neighs\" is only a tuple, not a list.
         if not isinstance(c_neighs, list):
-            x_temp = c_neighs[0]
-            y_temp = c_neighs[1]
+            just_one_neighbour = True
+            c_neigh = c_neighs
             c_neighs = []
-            c_neighs.append((x_temp, y_temp))
+            c_neighs.append(c_neigh)
         x_s = [c_neigh[0] for c_neigh in c_neighs] 
         y_s = [c_neigh[1] for c_neigh in c_neighs]
 
         boundary_values = ExactSolution2D.ExactSolution2D.solution(x_s, 
                                                    		   y_s)
 
+        msg = "Evaluated boundary conditions"
+        if just_one_neighbour: 
+            msg = "Evaluated boundary condition"
+        self.log_msg(msg   ,
+                     "info")
         return (boundary_values, c_neighs)
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
+    # Get octants's ranges for processes, considering also the ones masked by
+    # the foreground grids, whom PETSc does not count using 
+    # \"getOwnershipRange\".
     def get_ranges(self):
         """Method which evaluate ranges of the octree, for the current process.
                                                            
@@ -292,26 +307,41 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         is_background = True
         if grid:
             is_background = False
-
+        # If we are on the background grid, we need to re-evaluate the ranges
+        # of octants owned by each process, not simply adding the masked ones
+        # (as we will do for the poreground grids), to the values given by PETSc
+        # function \"getOwnershipRange\" on the matrix. The idea is to take as
+        # start of the range the sum of all the octants owned by the previous
+        # processes of the current process, while for the end of the 
+        # take the same range of processes plus the current one, obviously 
+        # subtracting the value \"1\", because the octants start from \"0\".
         if is_background:
-            #rank_w = self._rank_w
-            #new_ranges = (rank_w * n_oct,
-            #              (rank_w + 1) * n_oct)
+            # Local rank.
             rank_l = self._rank
-            start = 0
-            end = self._s_counts[0] - 1
+            # Range's start.
+            r_start = 0
+            # Range's end.
+            r_end = self._s_counts[0] - 1
+            # Octants for process.
+            octs_f_process = self._s_counts
             for i in xrange(0, rank_l):
-                start += self._s_counts[i]
-                end += self._s_counts[i + 1]
-            new_ranges = (start, end)
+                r_start += octs_f_process[i]
+                r_end += octs_f_process[i + 1]
+            new_ranges = (r_start, r_end)
             
         else:
             # Masked octants
             masked_octs = self._masked_oct_bg_g
             new_ranges = (o_ranges[0] + masked_octs, 
                           o_ranges[1] + masked_octs)
+
+        msg = "Evaluated octants' ranges"
+        extra_msg = "with ranges " + str(new_ranges) 
+        self.log_msg(msg   ,
+                     "info",
+                    extra_msg)
+
         return new_ranges
-        
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
@@ -355,7 +385,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             
         (b_values, c_neighs) = self.eval_b_c(b_centers,
                                              b_faces)
-
+        # Converting from numpy array to python list.
 	b_values = b_values.tolist()
 
         # Grids not of the background: equal to number >= 1.
@@ -400,6 +430,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
+    # Creates a layer around the foreground grids, reducing their area.
     def apply_overlap(self,
                       overlap):
         """Method which apply a layer onto the foreground grids to reduce the
@@ -425,11 +456,19 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 t_bound.append(point + overlap) if (index % 2) == 0 else \
                 t_bound.append(point - overlap)
             p_bound.append(t_bound)
+        
+        msg = "Applied overlap"
+        extra_msg = "with overlap " + str(overlap)
+        self.log_msg(msg   ,
+                     "info",
+                     extra_msg)
 
         return p_bound
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
+    # Apply mask to the octants, not bein considering the octants of the 
+    # background grid covered by the ones of the foreground meshes.
     def mask_octant(self, 
                     g_octant):
         """Method which evaluate the global index of the octant, considering
@@ -447,12 +486,18 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             m_g_octant = g_octant - self._masked_oct_bg_g
         else:
             m_g_octant = self._ngn[g_octant]
+        
         return m_g_octant
     # --------------------------------------------------------------------------
     
     # --------------------------------------------------------------------------
     def create_masks(self, 
                      o_n_oct = 0):
+    # Creates masking system for the octants of the background grid covered by 
+    # the foreground meshes, and also determines the number of non zero elements
+    # to allocate for each row in the system's matrix. Be aware of that, for the
+    # moment, this last count is exact for the background grid but for the 
+    # foreground ones it consider the worst case (for the two levels gap).
         """Method which creates the new octants' numerations and initialize non
            zero elements' number for row in the matrix of the system.
            
@@ -471,7 +516,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         grid = self._proc_g
         n_oct = self._n_oct
         octree = self._octree
-        # Global number of octants for background grid.
         nfaces = glob.nfaces
         h = self._h
         comm_l = self._comm
@@ -525,6 +569,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             for face in xrange(0, nfaces):
                 # Check to know if a neighbour of an octant is penalized.
                 is_n_penalized = False
+                # Not boundary face.
                 if not self._octree.get_bound(py_oct, 
                                               face):
                     (neighs, ghosts) = octree.find_neighbours(octant, 
@@ -587,10 +632,17 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 self._centers_not_penalized.append(center)
 
         self.spread_new_background_numeration(is_background)
+
+        msg = "Created mask"
+        self.log_msg(msg   ,
+                     "info")
+
         return (d_nnz, o_nnz)
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
+    # The new masked global numeration for the octants of the background grid 
+    # has to be spread to the other meshes.
     def spread_new_background_numeration(self,
                                          is_background):
         n_oct = self._n_oct
@@ -616,6 +668,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         self._nln[self._nln >= 0] += oct_offset
         
         if is_background:
+            # Send counts. How many element have to be sent by each process.
             self._s_counts = []
             self._s_counts.extend(comm_l.allgather(self._nln.size))
             displs = [0] * len(self._s_counts)
@@ -632,6 +685,10 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # communicator.
         comm_w.Bcast(self._ngn,
                      root = 0)
+
+        msg = "Spread new global background masked numeration"
+        self.log_msg(msg   ,
+                     "info")
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
@@ -747,6 +804,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # will be done after inserting the prolongation and restriction blocks.
         self.assembly_petsc_struct("matrix",
                                    PETSc.Mat.AssemblyType.FLUSH_ASSEMBLY)
+        
         msg = "Initialized diagonal parts of the monolithic  matrix"
         extra_msg = "with sizes \"" + str(self._b_mat.getSizes()) + \
                     "\" and type \"" + str(self._b_mat.getType()) + "\""
@@ -756,9 +814,21 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
     # --------------------------------------------------------------------------
     
     # --------------------------------------------------------------------------
+    # Assembly PETSc's structures, like \"self._b_mat\" or \"self._rhs\".
     def assembly_petsc_struct(self       ,
                               struct_type,
                               assembly_type = None):
+        """Function which inglobe \"assemblyBegin()\" and \"assemblyEnd()\" 
+           \"PETSc\" function to avoid problem of calling other functions
+           between them.
+        
+           Arguments:
+                struct_type (string) : what problem's structure we want to
+                                       assembly.
+                assembly_type (PETSc.Mat.AssemblyType) : type of assembly; it
+                                                         can be \"FINAL\" or
+                                                         \"FLUSH\"."""
+
         if struct_type == "matrix":
             self._b_mat.assemblyBegin(assembly = assembly_type)
             self._b_mat.assemblyEnd(assembly = assembly_type)
@@ -773,10 +843,16 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                          "error",
                          extra_msg)
 	    self._comm_w.Abort(1) 
-            
+        
+        msg = "Assembled PETSc structure " + str(struct_type)
+        extra_msg = "with assembly type " + str(assembly_type)
+        self.log_msg(msg   ,
+                     "info",
+                     extra_msg)
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
+    # Finds local and global sizes used to initialize \"PETSc \" structures.
     def find_sizes(self):
 	"""Method which find right sizes for \"PETSc\" structures.
  
@@ -794,11 +870,28 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             not_masked_l_oct_bg_g = numpy.size(self._nln[self._nln != -1])
         sizes = (n_oct if grid else not_masked_l_oct_bg_g, 
                  tot_oct)
+
+        msg = "Found sizes for PETSc structure"
+        extra_msg = "with sizes " + str(sizes)
+        self.log_msg(msg   ,
+                     "info",
+                     extra_msg)
+
         return sizes
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
+    # Interpolating the solution is necessary to be able to use the \"vtm\"
+    # typology of files. For the moment, the value interpolated is substituted
+    # by the fixed value \"0.0\".
     def interpolate_solution(self):
+        """Function which creates a \"new\" solution array, pushing in the
+           octants covered by foreground meshes the values interpolated from the
+           neighbours around them.
+
+           Returns:
+                inter_sol (PETSc.Vec) : the interpolated solution."""
+
         grid = self._proc_g
         octree = self._octree
         o_ranges = self.get_ranges()
@@ -822,11 +915,16 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         inter_sol.assemblyBegin()
         inter_sol.assemblyEnd()
+        
+        msg = "Interpolated solution"
+        self.log_msg(msg   ,
+                     "info")
     
         return inter_sol
     # --------------------------------------------------------------------------
    
     # --------------------------------------------------------------------------
+    # Initializes a \"PTESc\" array, being made of zeros or values passed by.
     def init_array(self             ,
                    # Array name.
                    a_name = ""      ,
@@ -837,7 +935,11 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
 	   Arguments:
 		a_name (string) : name of the array to initialize, being written
-				  into the log. Default value is \"\"
+				  into the log. Default value is \"\".
+                petsc_size (boolean): if \"True\", it impose the use of the 
+                                      sizes used by \"PETSc\". Otherwise, the
+                                      local and global numbers of octants from
+                                      the octree are used. 
 		array (numpy.ndarray) : possible array to use to initialize the
 					returned array. Default value is 
 					\"None\".
@@ -881,25 +983,41 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
     # --------------------------------------------------------------------------
     
     # --------------------------------------------------------------------------
+    # Initializes \"rhs\".
     def init_rhs(self, 
                  numpy_array):
-	"""Method which intializes the right hand side."""
+	"""Method which intializes the right hand side.
+            
+           Arguments:
+                numpy_array (numpy.array) : array to use to initialize with it
+                                            the \"rhs\"."""
 
         self._rhs = self.init_array("right hand side",
                                     True             ,
                                     numpy_array)
+        
+        msg = "Initialized \"rhs\""
+        self.log_msg(msg,
+                     "info")
     # --------------------------------------------------------------------------
     
     # --------------------------------------------------------------------------
+    # Initializes \"sol\".
     def init_sol(self):
         """Method which initializes the solution."""
 
         self._sol = self.init_array("solution",
                                     True)
+        
+        msg = "Initialized \"rhs\""
+        self.log_msg(msg,
+                     "info")
     # --------------------------------------------------------------------------
     
     # --------------------------------------------------------------------------
+    # Solving...
     def solve(self):
+        """Method which solves the system."""
         # Creating a "KSP" object.
         ksp = PETSc.KSP()
         pc = PETSc.PC()
@@ -957,12 +1075,25 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         self._mdl_b = {}
         self._mdg_f = {}
         self._mdg_b = []
+
         self._centers_not_penalized = []
+
+        msg = "Initialized exchanged structures"
+        self.log_msg(msg   ,
+                     "info")
     # --------------------------------------------------------------------------
     
     # --------------------------------------------------------------------------
+    # Creating the restriction and prolongation blocks inside the monolithic 
+    # matrix of the system.
     def update_values(self, 
                       intercomm_dictionary = {}):
+        """Method wich update the system matrix.
+
+           Arguments:
+                intercomm_dictionary (python dict) : contains the
+                                                     intercommunicators."""
+
         log_file = self.logger.handlers[0].baseFilename
         grid = self._proc_g
         n_oct = self._n_oct
@@ -1009,18 +1140,25 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         self.assembly_petsc_struct("rhs")
         
-        self.logger.info("Updated block matrix for comm \"" +
-                         str(comm_l.Get_name())             + 
-                         "\" and rank \""                   +
-                         str(rank_l)                        +
-                         "\" of grid \""                    +
-                         str(grid))
+        msg = "Updated monolithic matrix"
+        self.log_msg(msg   ,
+                     "info")
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
+    # Sub_method of \"update_values\".
     def update_fg_grids(self    ,
                         o_ranges,
                         ids_octree_contained):
+        """Method which update the non diagonal blocks relative to the 
+           foreground grids.
+
+           Arguments:
+                o_ranges (tuple) : the initial and final octants managed by the
+                                   current process.
+                ids_octree_contained (list) : list of the indices of the octants
+                                              contained in the current process."""
+
         octree = self._octree
         comm_l = self._comm
         # \"self._edg\" will be a list of same structures of data,
@@ -1063,12 +1201,26 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                                  neigh_centers)
         self._mdg_f = comm_l.gather(self._mdl_f, 
                                     root = 0)
+        
+        msg = "Updated prolongation blocks"
+        self.log_msg(msg   ,
+                     "info")
     # --------------------------------------------------------------------------
     
     # --------------------------------------------------------------------------
+    # Sub_method of \"update_values\".
     def update_bg_grids(self    ,
                         o_ranges,
                         ids_octree_contained):
+        """Method which update the non diagonal blocks relative to the 
+           backgrounds grids.
+
+           Arguments:
+                o_ranges (tuple) : the initial and final octants managed by the
+                                   current process.
+                ids_octree_contained (list) : list of the indices of the octants
+                                              contained in the current process."""
+
         log_file = self.logger.handlers[0].baseFilename
         octree = self._octree
         comm_l = self._comm
@@ -1135,11 +1287,39 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                              n_b_c ,
                                              n_c)
 
+        msg = "Updated restriction blocks"
+        self.log_msg(msg   ,
+                     "info")
+    # --------------------------------------------------------------------------
+
+    # --------------------------------------------------------------------------
+    # Returns the right neighbours for an octant, being them of edges or nodes.
     def find_right_neighbours(self          , 
                               location      , 
                               current_octant,
                               start_octant  ,
                               is_background = False):
+        """Method which compute the right 4 neighbours for the octant 
+           \"current_octant\", considering first the label \"location\" to
+           indicate in what directions go to choose the neighborhood.
+
+           Arguments:
+                location (string) : indicates what cardinal quadrant choice
+                                    (\"nordovest\", \"nordest\", \"sudovest\",
+                                     \"sudest\").
+                current_octant (int) : local index of the current octant.
+                start_octant (int) : global index of the first contained octant
+                                     in the process.
+                is_background (bool) : indicates if we are or not on the 
+                                       background grid. On this choice depends
+                                       how the indices of the neighbours will
+                                       be evaluatd.
+
+           Returns:
+                (centers, indices) (tuple of lists) : tuple containing the lists
+                                                      of centers and indices of
+                                                      the neighbours."""
+
         py_oct = self._octree.get_octant(current_octant)
         ordered_points = {}
         centers = []
@@ -1231,13 +1411,25 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                     indices.append("outside_bg")
 
         return (centers, indices)
+    # --------------------------------------------------------------------------
 
-    # Apply restriction/prolungation operators.
+    # --------------------------------------------------------------------------
+    # Apply restriction/prolongation operators.
     def apply_rest_prol_ops(self         ,
                             row_indices  ,
                             col_indices  ,
                             col_values   ,
                             centers):
+        """Method which applies the right coefficients at the right neighbours
+           in the prolongaion and restriction blocks.
+
+           Arguments: 
+                row_indices (list) : indices of the rows where to apply the
+                                     coefficients.
+                col_indices (list) : indices of the columns where to apply the
+                                     coefficients.
+                col_values (list) : elements to insert into \"col_indices\"."""
+
         grid = self._proc_g
         is_background = True
         if grid:
@@ -1245,9 +1437,12 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         insert_mode = PETSc.InsertMode.ADD_VALUES
         n_rows = 1 if is_background else len(row_indices)
         to_rhs = []
+        # Exact solutions.
         e_sols = []
 
         for i, index in enumerate(col_indices):
+            # If the neighbour is outside the background boundary, the exact
+            # solution is evaluated.
             if index == "outside_bg":
                 to_rhs.append(i)
                 e_sol = ExactSolution2D.ExactSolution2D.solution(centers[i][0],
@@ -1260,7 +1455,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             co_values = col_values
             if not is_background:
                 row_index = self._ngn[row_index]
-
+            # If \"not_rhs\" is not empty.
             if not not to_rhs:
                 bil_coeffs = [col_values[j] for j in to_rhs]
                 for i in range(0, len(to_rhs)):
@@ -1274,13 +1469,28 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                               range(0, len(col_values)) if j not in to_rhs]
                 
             self._b_mat.setValues(row_index  ,
-                                  co_indices,
-                                  co_values ,
+                                  co_indices ,
+                                  co_values  ,
                                   insert_mode)
+        
+        msg = "Applied prolongation and restriction operators."
+        self.log_msg(msg   ,
+                     "info")
+    # --------------------------------------------------------------------------
 
+    # --------------------------------------------------------------------------
     def evaluate_norms(self, 
                        exact_solution,
                        solution):
+        """Function which evals the infinite and L2 norms of the error.
+
+           Arguments:
+                exact_solution (numpy.array)
+                solution (numpy.array) : computed solution.
+
+           Returns:
+                (norm_inf, norm_L2) (tuple of int): evaluated norms."""
+
         h = self._h
         octant_area = (self._h * self._h)
         numpy_difference = numpy.subtract(exact_solution,
@@ -1290,7 +1500,15 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                      numpy.inf)
         norm_L2 = numpy.linalg.norm(numpy_difference,
                                     2) * h
+
+        msg = "Evaluated norms"
+        extra_msg = "with (norm_inf, norm_L2) = " + str((norm_inf, norm_L2))
+        self.log_msg(msg   ,
+                     "info",
+                     extra_msg)
+
         return (norm_inf, norm_L2)
+    # --------------------------------------------------------------------------
         
     
     @property
