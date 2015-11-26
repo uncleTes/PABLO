@@ -491,13 +491,13 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
     # --------------------------------------------------------------------------
     
     # --------------------------------------------------------------------------
-    def create_masks(self, 
-                     o_n_oct = 0):
     # Creates masking system for the octants of the background grid covered by 
     # the foreground meshes, and also determines the number of non zero elements
     # to allocate for each row in the system's matrix. Be aware of that, for the
     # moment, this last count is exact for the background grid but for the 
     # foreground ones it consider the worst case (for the two levels gap).
+    def create_mask(self, 
+                    o_n_oct = 0):
         """Method which creates the new octants' numerations and initialize non
            zero elements' number for row in the matrix of the system.
            

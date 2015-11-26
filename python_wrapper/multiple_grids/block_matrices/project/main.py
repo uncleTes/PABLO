@@ -308,7 +308,7 @@ def compute(comm_dictionary     ,
 
     laplacian = Laplacian2D.Laplacian2D(comm_dictionary)
     exact_solution = ExactSolution2D.ExactSolution2D(comm_dictionary)
-    (d_nnz, o_nnz) = laplacian.create_masks()
+    (d_nnz, o_nnz) = laplacian.create_mask()
     laplacian.init_sol()
     laplacian.init_mat((d_nnz, o_nnz))
     not_penalized_centers = laplacian.not_pen_centers
