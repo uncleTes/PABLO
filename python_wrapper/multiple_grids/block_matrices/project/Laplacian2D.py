@@ -1063,9 +1063,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 	# different levels.
 	# Exchanged data global.
         self._edg = []
-
-        self._eml = {}
-        self._emg = [] 
         
         self._nln = numpy.empty(n_oct,
                                 dtype = numpy.int64)
