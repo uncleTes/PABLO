@@ -1238,7 +1238,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                     (neigh_centers, neigh_indices)  = self.find_right_neighbours(location   ,
                                                                                  local_idx  ,
                                                                                  o_ranges[0],
-                                                                                 True)
+                                                                                 True       ,
+                                                                                 key[2])
                     bil_coeffs = utilities.bil_coeffs((x_center, 
                                                        y_center),
                                                       neigh_centers)
@@ -1263,11 +1264,12 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
     # --------------------------------------------------------------------------
     # Returns the right neighbours for an octant, being them of edges or nodes.
-    def find_right_neighbours(self          , 
-                              location      , 
-                              current_octant,
-                              start_octant  ,
-                              is_background = False):
+    def find_right_neighbours(self                 , 
+                              location             , 
+                              current_octant       ,
+                              start_octant         ,
+                              is_background = False,
+                              boundary_face = -1):
         """Method which compute the right 4 neighbours for the octant 
            \"current_octant\", considering first the label \"location\" to
            indicate in what directions go to choose the neighborhood.
@@ -1302,25 +1304,101 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         if location == "nordovest":
             # Adding 1) the number of node, 2) (codim, number of face/node).
-            ordered_points.update({0 : (1, 0)})
-            ordered_points.update({1 : None})
-            ordered_points.update({2 : (2, 2)})
-            ordered_points.update({3 : (1, 3)})
+            if is_background:
+                if boundary_face == 2:
+                    ordered_points.update({0 : (2, 0)})
+                    ordered_points.update({1 : (1, 2)})
+                    ordered_points.update({2 : (1, 0)})
+                    ordered_points.update({3 : None})
+                elif boundary_face == 1:
+                    ordered_points.update({0 : None})
+                    ordered_points.update({1 : (1, 1)})
+                    ordered_points.update({2 : (1, 3)})
+                    ordered_points.update({3 : (2, 3)})
+                # TODO: think about this, if it is the right thing to do for
+                # grids not exactly coincidents.
+                else:
+                    ordered_points.update({0 : (1, 0)})
+                    ordered_points.update({1 : None})
+                    ordered_points.update({2 : (2, 2)})
+                    ordered_points.update({3 : (1, 3)})
+            else:
+                ordered_points.update({0 : (1, 0)})
+                ordered_points.update({1 : None})
+                ordered_points.update({2 : (2, 2)})
+                ordered_points.update({3 : (1, 3)})
         elif location == "nordest":
-            ordered_points.update({0 : None})
-            ordered_points.update({1 : (1, 1)})
-            ordered_points.update({2 : (1, 3)})
-            ordered_points.update({3 : (2, 3)})
+            if is_background:
+                if boundary_face == 2:
+                    ordered_points.update({0 : (1, 2)})
+                    ordered_points.update({1 : (2, 1)})
+                    ordered_points.update({2 : None})
+                    ordered_points.update({3 : (1, 1)})
+                elif boundary_face == 0:
+                    ordered_points.update({0 : (1, 0)})
+                    ordered_points.update({1 : None})
+                    ordered_points.update({2 : (2, 2)})
+                    ordered_points.update({3 : (1, 3)})
+                # TODO: think about this, if it is the right thing to do for
+                # grids not exactly coincidents.
+                else:
+                    ordered_points.update({0 : None})
+                    ordered_points.update({1 : (1, 1)})
+                    ordered_points.update({2 : (1, 3)})
+                    ordered_points.update({3 : (2, 3)})
+            else:
+                ordered_points.update({0 : None})
+                ordered_points.update({1 : (1, 1)})
+                ordered_points.update({2 : (1, 3)})
+                ordered_points.update({3 : (2, 3)})
         elif location == "sudovest":
-            ordered_points.update({0 : (2, 0)})
-            ordered_points.update({1 : (1, 2)})
-            ordered_points.update({2 : (1, 0)})
-            ordered_points.update({3 : None})
+            if is_background:
+                if boundary_face == 1:
+                    ordered_points.update({0 : (1, 2)})
+                    ordered_points.update({1 : (2, 1)})
+                    ordered_points.update({2 : None})
+                    ordered_points.update({3 : (1, 1)})
+                elif boundary_face == 3:
+                    ordered_points.update({0 : (1, 0)})
+                    ordered_points.update({1 : None})
+                    ordered_points.update({2 : (2, 2)})
+                    ordered_points.update({3 : (1, 3)})
+                # TODO: think about this, if it is the right thing to do for
+                # grids not exactly coincidents.
+                else:
+                    ordered_points.update({0 : (2, 0)})
+                    ordered_points.update({1 : (1, 2)})
+                    ordered_points.update({2 : (1, 0)})
+                    ordered_points.update({3 : None})
+            else:
+                ordered_points.update({0 : (2, 0)})
+                ordered_points.update({1 : (1, 2)})
+                ordered_points.update({2 : (1, 0)})
+                ordered_points.update({3 : None})
         elif location == "sudest":
-            ordered_points.update({0 : (1, 2)})
-            ordered_points.update({1 : (2, 1)})
-            ordered_points.update({2 : None})
-            ordered_points.update({3 : (1, 1)})
+            if is_background:
+                if boundary_face == 0:
+                    ordered_points.update({0 : (2, 0)})
+                    ordered_points.update({1 : (1, 2)})
+                    ordered_points.update({2 : (1, 0)})
+                    ordered_points.update({3 : None})
+                elif boundary_face == 3:
+                    ordered_points.update({0 : None})
+                    ordered_points.update({1 : (1, 1)})
+                    ordered_points.update({2 : (1, 3)})
+                    ordered_points.update({3 : (2, 3)})
+                # TODO: think about this, if it is the right thing to do for
+                # grids not exactly coincidents.
+                else:
+                    ordered_points.update({0 : (1, 2)})
+                    ordered_points.update({1 : (2, 1)})
+                    ordered_points.update({2 : None})
+                    ordered_points.update({3 : (1, 1)})
+            else:
+                ordered_points.update({0 : (1, 2)})
+                ordered_points.update({1 : (2, 1)})
+                ordered_points.update({2 : None})
+                ordered_points.update({3 : (1, 1)})
         # Using \"sorted\" to be sure that values of the dict 
 	# \"ordered_points\" are ordered by keys.
         for q_point in sorted(ordered_points.keys()):
