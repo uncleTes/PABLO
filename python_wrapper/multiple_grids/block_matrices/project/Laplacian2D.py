@@ -567,8 +567,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 self._nln[octant] = new_oct_count
                 new_oct_count += 1
                 d_count += 1
-            # Not add to foreground count.
-            not_add_fg_count = False
+            # First boundary face for foreground grids.
+            f_b_face = False
             for face in xrange(0, nfaces):
                 # Check to know if a neighbour of an octant is penalized.
                 is_n_penalized = False
@@ -618,17 +618,11 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                     # the octants of the foreground grid. This is the worst
                     # scenario.
                     if not is_background:
-                        if not not_add_fg_count:
-                            # Worst cases with two levels of difference.
-                            o_count += 12 # It could be 16 if the neighbours of
-                                          # the background grid would be covered
-                                          # by other foreground grids.
-                            d_count += 8
-                            # Add to the counters only for one face, because in
-                            # case of two faces on the boundary, elements
-                            # considered will be the same, They will change
-                            # coefficients' values, not coefficients' number.
-                            not_add_fg_count = True
+                        if not f_b_face:
+                            o_count += 4
+                            f_b_face = True 
+                        else:
+                            o_count += 3
             if not is_penalized:
                 d_nnz.append(d_count)
                 o_nnz.append(o_count)
