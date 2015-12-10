@@ -1233,9 +1233,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                                           y_center),
                                                           center_cell_container)
                     neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
-                    # New neighbour indices, new bilinear coefficients, 
-                    # new centers.
-                    n_n_i, n_b_c, n_c = ([] for i in range(0, 3)) 
+                    # New neighbour indices.
+                    n_n_i = []
                     (neigh_centers, neigh_indices)  = self.find_right_neighbours(location   ,
                                                                                  local_idx  ,
                                                                                  o_ranges[0],
@@ -1243,42 +1242,19 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                     bil_coeffs = utilities.bil_coeffs((x_center, 
                                                        y_center),
                                                       neigh_centers)
-                    # Substituting bilinear coefficients for \"penalized\" 
-                    # octants with the coefficients of the foreground grid
-                    # owning the penalized one.
+
                     for i, index in enumerate(neigh_indices):
                         if not isinstance(index, basestring):
-                            if (self._ngn[index] == -1):
-                                got_m_values = False
-                                for j, listed in enumerate(self._mdg_b):
-                                    if not not listed: 
-                                        for k, dictionary in enumerate(listed):
-                                            m_values = dictionary.get((index, 
-                                                                       (neigh_centers[i][0],
-                                                                        neigh_centers[i][1])))
-                                            if m_values is not None:
-                                                n_n_i.extend(m_values[1])
-                                                n_b_c.extend([(m_value * bil_coeffs[i]) for m_value in m_values[2]])
-                                                n_c.extend(m_values[0])
-                                                got_m_values = True
-                                                break
-                                    if got_m_values:
-                                        break
-                            else:
-                                masked_index = self._ngn[index]
-                                n_n_i.append(masked_index)
-                                n_b_c.append(bil_coeffs[i])
-                                n_c.append(neigh_centers[i])
+                            masked_index = self._ngn[index]
+                            n_n_i.append(masked_index)
                         else:
                             n_n_i.append(index)
-                            n_b_c.append(bil_coeffs[i])
-                            n_c.append(neigh_centers[i])
                             
-                    n_b_c= [coeff * (1.0 / h2) for coeff in n_b_c]
-                    self.apply_rest_prol_ops(key[1],
-                                             n_n_i ,
-                                             n_b_c ,
-                                             n_c)
+                    bil_coeffs = [coeff * (1.0 / h2) for coeff in bil_coeffs]
+                    self.apply_rest_prol_ops(key[1]    ,
+                                             n_n_i     ,
+                                             bil_coeffs,
+                                             neigh_centers)
 
         msg = "Updated restriction blocks"
         self.log_msg(msg   ,
