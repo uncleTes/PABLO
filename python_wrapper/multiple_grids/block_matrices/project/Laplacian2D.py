@@ -1020,9 +1020,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         pc = PETSc.PC()
         ksp.create(self._comm_w)
         ksp.setOperators(self._b_mat,
-                         self._b_mat)
+                         None)
 
-        pc = ksp.getPC()
         # Setting tolerances.
         tol = 1.e-13
         ksp.setTolerances(rtol = tol            , 
@@ -1030,7 +1029,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                           divtol = PETSc.DEFAULT, # Let's PETSc use DEAFULT
                           max_it = PETSc.DEFAULT) # Let's PETSc use DEAFULT
         ksp.setFromOptions()
-        pc.setFromOptions()
         # Solve the system.
         ksp.solve(self._rhs, 
                   self._sol)
