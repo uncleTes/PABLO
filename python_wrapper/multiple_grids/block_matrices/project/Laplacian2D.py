@@ -84,9 +84,12 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                           None)
         # Checking existence of penalization boundaries and background 
         # boundaries. The construct \"if not\" is useful whether 
-        # \"self._f_bound\" or \"self._b_bound\" are None ore with len = 0.
-        if ((not self._f_bound) or 
-            (not self._b_bound)):
+        # \"self._f_bound\" or \"self._b_bound\" are None or with len = 0.
+        # TODO: sistema questo if, puoi anche far passare a tutte le griglie 
+        # i \"self._f_bound\".
+        if (not self._b_bound):
+        #if ((not self._f_bound) or 
+        #    (not self._b_bound)):
             msg = "\"MPI Abort\" called during initialization "
             extra_msg = " Penalization or bakground boundaries or both are " + \
                         "not initialized. Please check your \"config file\"."
