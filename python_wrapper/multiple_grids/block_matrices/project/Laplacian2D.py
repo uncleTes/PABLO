@@ -1023,7 +1023,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                          None)
 
         # Setting tolerances.
-        tol = 1.e-13
+        tol = 1.e-17
         ksp.setTolerances(rtol = tol            , 
                           atol = tol            , 
                           divtol = PETSc.DEFAULT, # Let's PETSc use DEAFULT
@@ -1034,6 +1034,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                   self._sol)
         # How many iterations are done.
         it_number = ksp.getIterationNumber()
+        print(ksp.getConvergedReason())
 
         msg = "Evaluated solution"
         extra_msg = "Using \"" + str(it_number) + "\" iterations."
