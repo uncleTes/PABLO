@@ -1502,7 +1502,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             co_values = col_values
             if not is_background:
                 row_index = self._ngn[row_index]
-            # If \"not_rhs\" is not empty.
+            # If \"to_rhs\" is not empty.
             if not not to_rhs:
                 bil_coeffs = [col_values[j] for j in to_rhs]
                 for i in range(0, len(to_rhs)):
@@ -1539,7 +1539,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 (norm_inf, norm_L2) (tuple of int): evaluated norms."""
 
         h = self._h
-        octant_area = (self._h * self._h)
+        octant_area = (h * h)
         numpy_difference = numpy.subtract(exact_solution,
                                           solution)
         norm_inf = numpy.linalg.norm(numpy_difference,
