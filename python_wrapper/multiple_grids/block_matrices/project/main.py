@@ -486,13 +486,11 @@ if __name__ == "__main__":
 
     t_start = time.time()
 
-    #import cProfile
+    import cProfile
     # Profile's stats will be written on the file \'filename\'.
     #cProfile.run('main()', sort='time', filename='cProfile_stats.txt')
     # Profile's stats will be printed on the screen at the end of the program.
-    #cProfile.run('main()', sort='time')
-    # No profile's stats.
-    main()
+    cProfile.run('main()', sort='time')
 
     comm_w.Barrier()
 
