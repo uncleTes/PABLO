@@ -1023,7 +1023,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                          None)
 
         # Setting tolerances.
-        tol = 1.e-17
+        tol = 1.e-13
         ksp.setTolerances(rtol = tol            , 
                           atol = tol            , 
                           divtol = PETSc.DEFAULT, # Let's PETSc use DEAFULT
