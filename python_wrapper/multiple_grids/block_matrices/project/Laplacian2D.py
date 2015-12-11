@@ -676,7 +676,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             comm_l.Gatherv(self._nln                                       ,
                            [self._ngn, self._s_counts, displs, MPI.INT64_T],
                            root = 0)
-        comm_w.Barrier()
+        #comm_w.Barrier()
         # Broadcasting the vector containing the new global numeration of the
         # background grid \"self._ngn\" to all processes of the world 
         # communicator.
@@ -1116,7 +1116,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             self.update_fg_grids(o_ranges,
                                  ids_octree_contained)
 
-        comm_w.Barrier()
+        #comm_w.Barrier()
 
         for key, intercomm in intercomm_dictionary.items():
             self._mdg_b.extend(intercomm.allgather(self._mdg_f))
@@ -1125,7 +1125,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             self.update_bg_grids(o_ranges,
                                  ids_octree_contained)
         
-        comm_w.Barrier()
+        #comm_w.Barrier()
 
         self.assembly_petsc_struct("matrix",
                                    PETSc.Mat.AssemblyType.FINAL_ASSEMBLY)
