@@ -903,12 +903,11 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         inter_sol = self.init_array("interpolated solution",
                                     False)
 
-        for i in xrange(0, tot_oct):
-            if i in ids_octree_contained:
-                sol_index = self.mask_octant(i)
-                if (sol_index != -1):
-                    sol_value = self._sol.getValue(sol_index)
-                    inter_sol.setValue(i, sol_value)
+        for i in ids_octree_contained:
+            sol_index = self.mask_octant(i)
+            if (sol_index != -1):
+                sol_value = self._sol.getValue(sol_index)
+                inter_sol.setValue(i, sol_value)
 
         inter_sol.assemblyBegin()
         inter_sol.assemblyEnd()
