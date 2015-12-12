@@ -680,7 +680,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # Broadcasting the vector containing the new global numeration of the
         # background grid \"self._ngn\" to all processes of the world 
         # communicator.
-        comm_w.Bcast(self._ngn,
+        N_oct_bg_g = self._oct_f_g[0]
+        comm_w.Bcast([self._ngn, N_oct_bg_g, MPI.INT64_T],
                      root = 0)
 
         msg = "Spread new global background masked numeration"
