@@ -1453,10 +1453,10 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
     # --------------------------------------------------------------------------
     # Apply restriction/prolongation operators.
-    def apply_rest_prol_ops(self         ,
-                            row_indices  ,
-                            col_indices  ,
-                            col_values   ,
+    def apply_rest_prol_ops(self       ,
+                            row_indices,
+                            col_indices,
+                            col_values ,
                             centers):
         """Method which applies the right coefficients at the right neighbours
            in the prolongaion and restriction blocks.
@@ -1517,7 +1517,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
-    def evaluate_norms(self, 
+    def evaluate_norms(self          , 
                        exact_solution,
                        solution):
         """Function which evals the infinite and L2 norms of the error.
