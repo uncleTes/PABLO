@@ -666,11 +666,17 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         
         if is_background:
             # Send counts. How many element have to be sent by each process.
-            self._s_counts = []
-            self._s_counts.extend(comm_l.allgather(self._nln.size))
-            displs = [0] * len(self._s_counts)
+            #self._s_counts = []
+            self._s_counts = numpy.empty(comm_l.size,
+                                         dtype = numpy.int64)
+            one_el = numpy.empty(1, 
+                                 dtype = numpy.int64)
+            one_el[0] = self._nln.size
+            comm_l.Allgather(one_el, 
+                             [self._s_counts, 1, MPI.INT64_T])
+            displs = [0] * self._s_counts.size
             offset = 0
-            for i in range(1, len(self._s_counts)):
+            for i in range(1, self._s_counts.size):
                 offset += self._s_counts[i-1]
                 displs[i] = offset
             comm_l.Gatherv(self._nln                                       ,
