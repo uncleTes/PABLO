@@ -1064,11 +1064,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                 dtype = numpy.int64)
         self._ngn = numpy.empty(N_oct_bg_g,
                                 dtype = numpy.int64)
-        self._mdl_f = {}
-        self._mdl_b = {}
-        self._mdg_f = {}
-        self._mdg_b = []
-
         self._centers_not_penalized = []
 
         msg = "Initialized exchanged structures"
@@ -1118,9 +1113,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                  ids_octree_contained)
 
         #comm_w.Barrier()
-
-        for key, intercomm in intercomm_dictionary.items():
-            self._mdg_b.extend(intercomm.allgather(self._mdg_f))
 
         if is_background:
             self.update_bg_grids(o_ranges,
@@ -1179,11 +1171,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                                            y_center),
                                                           neigh_centers)
 
-                        self._mdl_f.update({(key[1], (x_center, y_center)) : 
-                                            [neigh_centers, 
-                                             neigh_indices, 
-                                             bil_coeffs]})
-
                         bil_coeffs = [coeff * (1.0 / h2) for coeff in bil_coeffs]
 
                         row_indices = [octant[0] for octant in stencil[1:]]
@@ -1192,8 +1179,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                                  neigh_indices,
                                                  bil_coeffs   ,
                                                  neigh_centers)
-        self._mdg_f = comm_l.gather(self._mdl_f, 
-                                    root = 0)
         
         msg = "Updated prolongation blocks"
         self.log_msg(msg   ,
