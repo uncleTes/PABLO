@@ -491,6 +491,7 @@ if __name__ == "__main__":
     #cProfile.run('main()', sort='time', filename='cProfile_stats.txt')
     # Profile's stats will be printed on the screen at the end of the program.
     cProfile.run('main()', sort='cumulative')
+    #main()
 
     comm_w.Barrier()
 
