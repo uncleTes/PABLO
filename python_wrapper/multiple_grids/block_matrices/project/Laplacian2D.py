@@ -1061,6 +1061,10 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 	"""Method which initializes structures used to exchange data between
 	   different grids."""
 
+        grid = self._proc_g
+        is_background = True
+        if grid:
+            is_background = False
         n_oct = self._n_oct
         N_oct_bg_g = self._oct_f_g[0]
         # The \"self._edl\" will contains local data to be exchanged between
@@ -1071,12 +1075,44 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 	# different levels.
 	# Exchanged data global.
         self._edg = []
-        
+        # New local numeration. 
         self._nln = numpy.empty(n_oct,
                                 dtype = numpy.int64)
+        # New global numeration.
         self._ngn = numpy.empty(N_oct_bg_g,
                                 dtype = numpy.int64)
         self._centers_not_penalized = []
+
+        self._numpy_edl = None
+        self._numpy_edg = None
+        if not is_background:
+            self._d_type_s = numpy.dtype('(1, 4)f8, (1,2)f8')
+            blocks_length_s = [4, 2]
+            blocks_displacement_s = [0, 32]
+            mpi_datatypes = [MPI.DOUBLE,
+                             MPI.DOUBLE]
+            self._d_type_r = numpy.dtype('(1, 3)f8, (1, 9)f8')
+            blocks_length_r = [3, 9]
+            blocks_displacement_r = [0, 24]
+        else:
+            self._d_type_s = numpy.dtype('(1, 3)f8, (1, 9)f8')
+            blocks_length_s = [3, 9]
+            blocks_displacement_s = [0, 24]
+            mpi_datatypes = [MPI.DOUBLE,
+                             MPI.DOUBLE]
+            self._d_type_r = numpy.dtype('(1, 4)f8, (1,2)f8')
+            blocks_length_r = [4, 2]
+            blocks_displacement_r = [0, 32]
+        # MPI data type to send.
+        self._mpi_d_t_s = MPI.Datatype.Create_struct(blocks_length_s      ,
+                                                     blocks_displacement_s,
+                                                     # Do not forget 
+                                                     #\".Commit()\".
+                                                     mpi_datatypes).Commit()
+        # MPI data type to receive.
+        self._mpi_d_t_r = MPI.Datatype.Create_struct(blocks_length_r      ,
+                                                     blocks_displacement_r,
+                                                     mpi_datatypes).Commit()
 
         msg = "Initialized exchanged structures"
         self.log_msg(msg   ,
@@ -1111,34 +1147,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         ids_octree_contained = range(o_ranges[0], 
                                      up_id_octree)
         
-        if not is_background:
-            d_type_s = numpy.dtype('(1, 4)f8, (1,2)f8')
-            blocks_length_s = [4, 2]
-            blocks_displacement_s = [0, 32]
-            mpi_datatypes = [MPI.DOUBLE,
-                             MPI.DOUBLE]
-            d_type_r = numpy.dtype('(1, 3)f8, (1, 9)f8')
-            blocks_length_r = [3, 9]
-            blocks_displacement_r = [0, 24]
-        else:
-            d_type_s = numpy.dtype('(1, 3)f8, (1, 9)f8')
-            blocks_length_s = [3, 9]
-            blocks_displacement_s = [0, 24]
-            mpi_datatypes = [MPI.DOUBLE,
-                             MPI.DOUBLE]
-            d_type_r = numpy.dtype('(1, 4)f8, (1,2)f8')
-            blocks_length_r = [4, 2]
-            blocks_displacement_r = [0, 32]
-        # MPI data type.
-        mpi_d_t_s = MPI.Datatype.Create_struct(blocks_length_s      ,
-                                               blocks_displacement_s,
-                                               mpi_datatypes).Commit() # Do not
-                                                                       # forget.
-        mpi_d_t_r = MPI.Datatype.Create_struct(blocks_length_r      ,
-                                               blocks_displacement_r,
-                                               mpi_datatypes).Commit() # Do not
-                                                                       # forget.
-        self._numpy_edl = numpy.array(self._edl.items(), dtype = d_type_s)
+        self._numpy_edl = numpy.array(self._edl.items(), 
+                                      dtype = self._d_type_s)
         # Calling \"allgather\" to obtain data from the corresponding grid,
         # onto the intercommunicators created, not the intracommunicators.
         # http://www.mcs.anl.gov/research/projects/mpi/mpi-standard/mpi-report-1.1/node114.htm#Node117
@@ -1149,16 +1159,16 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             # of the corresponding intercommunicator.
             self._edg.extend(intercomm.allgather(len(self._edl)))
 
-        print(self._edg)
         t_length = 0
         for index, size_edl in enumerate(self._edg):
             t_length += size_edl
 
-        self._numpy_edg = numpy.zeros(t_length, dtype = d_type_r)
+        self._numpy_edg = numpy.zeros(t_length, 
+                                      dtype = self._d_type_r)
 
         for key, intercomm in intercomm_dictionary.items():
-            intercomm.Allgatherv([self._numpy_edl, mpi_d_t_s],
-                                 [self._numpy_edg, self._edg, mpi_d_t_r])
+            intercomm.Allgatherv([self._numpy_edl, self._mpi_d_t_s],
+                                 [self._numpy_edg, self._edg, self._mpi_d_t_r])
 
         if not is_background:
             self.update_fg_grids(o_ranges,
