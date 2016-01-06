@@ -688,7 +688,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             comm_l.Gatherv(self._nln                                       ,
                            [self._ngn, self._s_counts, displs, MPI.INT64_T],
                            root = 0)
-        #comm_w.Barrier()
         # Broadcasting the vector containing the new global numeration of the
         # background grid \"self._ngn\" to all processes of the world 
         # communicator.
@@ -1086,7 +1085,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         self._numpy_edl = None
         self._numpy_edg = None
         if not is_background:
-            self._d_type_s = numpy.dtype('(1, 4)f8, (1,2)f8')
+            self._d_type_s = numpy.dtype('(1, 4)f8, (1, 2)f8')
             blocks_length_s = [4, 2]
             blocks_displacement_s = [0, 32]
             mpi_datatypes = [MPI.DOUBLE,
@@ -1173,15 +1172,10 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         if not is_background:
             self.update_fg_grids(o_ranges,
                                  ids_octree_contained)
-
-        #comm_w.Barrier()
-
-        if is_background:
+        else:
             self.update_bg_grids(o_ranges,
                                  ids_octree_contained)
         
-        #comm_w.Barrier()
-
         self.assembly_petsc_struct("matrix",
                                    PETSc.Mat.AssemblyType.FINAL_ASSEMBLY)
 
@@ -1259,10 +1253,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 ids_octree_contained (list) : list of the indices of the octants
                                               contained in the current process."""
 
-        log_file = self.logger.handlers[0].baseFilename
         octree = self._octree
         comm_l = self._comm
-        b_bound = self._b_bound
         for index, value in numpy.ndenumerate(self._numpy_edg):
             key = value[0][0]
             center = value[1][0]
@@ -1281,11 +1273,12 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
                 # New neighbour indices.
                 n_n_i = []
-                (neigh_centers, neigh_indices)  = self.find_right_neighbours(location   ,
-                                                                             local_idx  ,
-                                                                             o_ranges[0],
-                                                                             True       ,
-                                                                             int(key[2]))
+                (neigh_centers, 
+                 neigh_indices)  = self.find_right_neighbours(location   ,
+                                                              local_idx  ,
+                                                              o_ranges[0],
+                                                              True       ,
+                                                              int(key[2]))
                 bil_coeffs = utilities.bil_coeffs((x_center, 
                                                    y_center),
                                                   neigh_centers)
@@ -1567,7 +1560,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                   co_indices ,
                                   co_values  ,
                                   insert_mode)
-        
+
         msg = "Applied prolongation and restriction operators."
         self.log_msg(msg   ,
                      "info")
