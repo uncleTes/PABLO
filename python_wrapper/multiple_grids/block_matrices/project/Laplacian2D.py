@@ -630,6 +630,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 o_nnz.append(o_count)
                 self._centers_not_penalized.append(center)
             else:
+                # TODO: Why 9? Should not be 12 or 16?
                 if len(stencil) < 9:
                     while len(stencil) is not 9:
                         stencil.extend((-1, -1, -1))
