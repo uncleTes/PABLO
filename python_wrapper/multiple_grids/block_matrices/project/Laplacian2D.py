@@ -12,6 +12,7 @@ from petsc4py import PETSc
 from mpi4py import MPI
 import class_global
 import utilities
+import time
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
@@ -1203,6 +1204,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         octree = self._octree
         comm_l = self._comm
+        time_rest_prol = 0
+        start = time.time()
+        print("fg has numpy edg elements equal to " + str(self._numpy_edg.size))
         for index, value in numpy.ndenumerate(self._numpy_edg):
             key = value[0][0]
             stencil = value[1][0]
@@ -1230,11 +1234,16 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
                     row_indices = [int(octant) for octant in stencil[3::3]]
 
+                    l_start = time.time()
                     self.apply_rest_prol_ops(row_indices  ,
                                              neigh_indices,
                                              bil_coeffs   ,
                                              neigh_centers)
-        
+                    l_end = time.time()
+                    time_rest_prol += (l_end - l_start)
+        end = time.time()
+        print("fg prolungation restriction " + str(time_rest_prol))
+        print("fg update " + str(end - start))
         msg = "Updated prolongation blocks"
         self.log_msg(msg   ,
                      "info")
@@ -1256,6 +1265,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         octree = self._octree
         comm_l = self._comm
+        time_rest_prol = 0
+        start = time.time()
+        print("fg has numpy edg elements equal to " + str(self._numpy_edg.size))
         for index, value in numpy.ndenumerate(self._numpy_edg):
             key = value[0][0]
             center = value[1][0]
@@ -1292,10 +1304,16 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                         n_n_i.append(index)
                             
                 bil_coeffs = [coeff * (1.0 / h2) for coeff in bil_coeffs]
+                l_start = time.time()
                 self.apply_rest_prol_ops(int(key[1]),
                                          n_n_i      ,
                                          bil_coeffs ,
                                          neigh_centers)
+                l_end = time.time()
+                time_rest_prol += (l_end - l_start)
+        end = time.time()
+        print("bg prolungation restriction " + str(time_rest_prol))
+        print("bg update " + str(end - start))
 
         msg = "Updated restriction blocks"
         self.log_msg(msg   ,
