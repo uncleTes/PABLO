@@ -270,7 +270,7 @@ def set_octree(comm_l,
 
     for iteration in xrange(1, refinement_levels):
         pablo.adapt_global_refine()
-
+    
     pablo.load_balance()
     pablo.update_connectivity()
     pablo.update_ghosts_connectivity()
@@ -490,6 +490,7 @@ if __name__ == "__main__":
     # Profile's stats will be written on the file \'filename\'.
     #cProfile.run('main()', sort='time', filename='cProfile_stats.txt')
     # Profile's stats will be printed on the screen at the end of the program.
+    # http://stackoverflow.com/questions/3898266/what-is-this-cprofile-result-telling-me-i-need-to-fix
     cProfile.run('main()', sort='cumulative')
     #main()
 
