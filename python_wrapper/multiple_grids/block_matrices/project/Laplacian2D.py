@@ -1206,44 +1206,62 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         comm_l = self._comm
         time_rest_prol = 0
         start = time.time()
-        print("fg has numpy edg elements equal to " + str(self._numpy_edg.size))
-        for index, value in numpy.ndenumerate(self._numpy_edg):
-            key = value[0][0]
-            stencil = value[1][0]
-            if int(key[0]) == 0:
-                (x_center, y_center) = (stencil[1], stencil[2])
-                local_idx = octree.get_point_owner_idx((x_center,
-                                                        y_center))
-                h2 = key[2] * key[2]
-                global_idx = local_idx + o_ranges[0]
-                if global_idx in ids_octree_contained:
-                    center_cell_container = octree.get_center(local_idx)[:2]
-                    location = utilities.points_location((x_center,
-                                                          y_center),
-                                                         center_cell_container)
-                    neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
-                    (neigh_centers, 
-                     neigh_indices)  = self.find_right_neighbours(location ,
-                                                                  local_idx,
-                                                                  o_ranges[0])
-                    bil_coeffs = utilities.bil_coeffs((x_center, 
-                                                       y_center),
-                                                      neigh_centers)
 
-                    bil_coeffs = [coeff * (1.0 / h2) for coeff in bil_coeffs]
+        list_edg = list(self._numpy_edg)
+        # Length list edg.
+        l_l_edg = len(list_edg)
+        keys = numpy.array([list_edg[i][0] for i in 
+                            range(0, l_l_edg)]).reshape(l_l_edg, 3)
+        h2s = keys[:, 2] * keys[:, 2]
+        stencils = numpy.array([list_edg[i][1] for i in 
+                                # TODO: 12 or 16 instead of 9 for grid not
+                                # perfectly superposed??
+                                range(0, l_l_edg)]).reshape(l_l_edg, 9)
+        centers = [(stencils[i][1], stencils[i][2]) for i in range(0, l_l_edg)
+                   if int(keys[i][0]) == 0]
+        # Vectorized functions are just syntactic sugar:
+        # http://stackoverflow.com/questions/7701429/efficient-evaluation-of-a-function-at-every-cell-of-a-numpy-array
+        # http://stackoverflow.com/questions/8079061/function-application-over-numpys-matrix-row-column
+        # http://stackoverflow.com/questions/6824122/mapping-a-numpy-array-in-place
+        # http://stackoverflow.com/questions/9792925/how-to-speed-up-enumerate-for-numpy-array-how-to-enumerate-over-numpy-array-ef
+        local_idxs = numpy.array([octree.get_point_owner_idx(center) for 
+                                  center in centers])
+        global_idxs = local_idxs + o_ranges[0]
+        # \"numpy.where\" returns indices of the elements which satisfy the
+        # conditions.
+        idxs = numpy.where(numpy.logical_and((global_idxs >= 
+                                              ids_octree_contained[0]),
+                                             (global_idxs <= 
+                                              ids_octree_contained[-1])))
+        # \"idxs[0]\" because is a numpy array, so to select the array we have
+        # to use the index notation.
+        for idx in idxs[0]:
+            center_cell_container = octree.get_center(local_idxs[idx])[:2]
+            location = utilities.points_location(centers[idx],
+                                                 center_cell_container)
+            neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
+            (neigh_centers, 
+             neigh_indices)  = self.find_right_neighbours(location       ,
+                                                          local_idxs[idx],
+                                                          o_ranges[0])
+            bil_coeffs = utilities.bil_coeffs(centers[idx],
+                                              neigh_centers)
 
-                    row_indices = [int(octant) for octant in stencil[3::3]]
+            bil_coeffs = [coeff * (1.0 / h2s[idx]) for coeff in bil_coeffs]
 
-                    l_start = time.time()
-                    self.apply_rest_prol_ops(row_indices  ,
-                                             neigh_indices,
-                                             bil_coeffs   ,
-                                             neigh_centers)
-                    l_end = time.time()
-                    time_rest_prol += (l_end - l_start)
+            row_indices = [int(octant) for octant in stencils[idx][3::3]]
+
+            l_start = time.time()
+            self.apply_rest_prol_ops(row_indices  ,
+                                     neigh_indices,
+                                     bil_coeffs   ,
+                                     neigh_centers)
+            l_end = time.time()
+            time_rest_prol += (l_end - l_start)
         end = time.time()
         print("fg prolungation restriction " + str(time_rest_prol))
         print("fg update " + str(end - start))
+
         msg = "Updated prolongation blocks"
         self.log_msg(msg   ,
                      "info")
@@ -1267,50 +1285,53 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         comm_l = self._comm
         time_rest_prol = 0
         start = time.time()
-        print("fg has numpy edg elements equal to " + str(self._numpy_edg.size))
-        for index, value in numpy.ndenumerate(self._numpy_edg):
-            key = value[0][0]
-            center = value[1][0]
-            (x_center, y_center) = center
-	    h2 = key[3] * key[3]
-            local_idx = octree.get_point_owner_idx((x_center,
-                                                    y_center))
-    
-            global_idx = local_idx + o_ranges[0]
+        #print("bg has numpy edg elements equal to " + str(self._numpy_edg.size))
+        
+        list_edg = list(self._numpy_edg)
+        # Length list edg.
+        l_l_edg = len(list_edg)
+        keys = numpy.array([list_edg[i][0] for i in 
+                            range(0, l_l_edg)]).reshape(l_l_edg, 4)
+        h2s = keys[:, 3] * keys[:, 3]
+        centers = numpy.array([list_edg[i][1] for i in 
+                               range(0, l_l_edg)]).reshape(l_l_edg, 2)
+        local_idxs = numpy.array([octree.get_point_owner_idx(center) for 
+                                  center in centers])
+        global_idxs = local_idxs + o_ranges[0]
+        idxs = numpy.where(numpy.logical_and((global_idxs >= 
+                                              ids_octree_contained[0]),
+                                             (global_idxs <= 
+                                              ids_octree_contained[-1])))
 
-            if global_idx in ids_octree_contained:
-                center_cell_container = octree.get_center(local_idx)[:2]
-                location = utilities.points_location((x_center,
-                                                      y_center),
-                                                     center_cell_container)
-                neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
-                # New neighbour indices.
-                n_n_i = []
-                (neigh_centers, 
-                 neigh_indices)  = self.find_right_neighbours(location   ,
-                                                              local_idx  ,
-                                                              o_ranges[0],
-                                                              True       ,
-                                                              int(key[2]))
-                bil_coeffs = utilities.bil_coeffs((x_center, 
-                                                   y_center),
-                                                  neigh_centers)
-
-                for i, index in enumerate(neigh_indices):
-                    if not isinstance(index, basestring):
-                        masked_index = self._ngn[index]
-                        n_n_i.append(masked_index)
-                    else:
-                        n_n_i.append(index)
-                            
-                bil_coeffs = [coeff * (1.0 / h2) for coeff in bil_coeffs]
-                l_start = time.time()
-                self.apply_rest_prol_ops(int(key[1]),
-                                         n_n_i      ,
-                                         bil_coeffs ,
-                                         neigh_centers)
-                l_end = time.time()
-                time_rest_prol += (l_end - l_start)
+        for idx in idxs[0]:
+            center_cell_container = octree.get_center(local_idxs[idx])[:2]
+            location = utilities.points_location(centers[idx],
+                                                 center_cell_container)
+            neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
+            # New neighbour indices.
+            n_n_i = []
+            (neigh_centers, 
+             neigh_indices)  = self.find_right_neighbours(location       ,
+                                                          local_idxs[idx],
+                                                          o_ranges[0]    ,
+                                                          True           ,
+                                                          int(keys[idx][2]))
+            bil_coeffs = utilities.bil_coeffs(centers[idx],
+                                              neigh_centers)
+            for i, index in enumerate(neigh_indices):
+                if not isinstance(index, basestring):
+                    masked_index = self._ngn[index]
+                    n_n_i.append(masked_index)
+                else:
+                    n_n_i.append(index)
+            bil_coeffs = [coeff * (1.0 / h2s[idx]) for coeff in bil_coeffs]
+            l_start = time.time()
+            self.apply_rest_prol_ops(int(keys[idx][1]),
+                                     n_n_i      ,
+                                     bil_coeffs ,
+                                     neigh_centers)
+            l_end = time.time()
+            time_rest_prol += (l_end - l_start)
         end = time.time()
         print("bg prolungation restriction " + str(time_rest_prol))
         print("bg update " + str(end - start))
