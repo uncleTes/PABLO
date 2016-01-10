@@ -536,12 +536,19 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # diagonal part of the coefficients matrix, for row. 
         d_nnz, o_nnz = ([] for i in range(0, 2))
         new_oct_count = 0
-        for octant in xrange(0, n_oct):
+
+        # \"range\" gives us a list.
+        octants = range(0, n_oct)
+        g_octants = [octree.get_global_idx(octant) for octant in octants]
+        py_octs = [octree.get_octant(octant) for octant in octants]
+        centers = [octree.get_center(octant)[:2] for octant in octants]         
+
+        for octant in octants:
             d_count, o_count = 0, 0
             neighs, ghosts = ([] for i in range(0, 2))
-            g_octant = octree.get_global_idx(octant)
-            py_oct = octree.get_octant(octant)
-            center  = octree.get_center(octant)[:2]
+            g_octant = g_octants[octant]
+            py_oct = py_octs[octant]
+            center  = centers[octant]
             # Check to know if an octant is penalized.
             is_penalized = False
             # Background grid.
@@ -561,9 +568,11 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 # to store info of the stencil it belongs to to push on the
                 # relative rows of the matrix, the right indices of the octants
                 # of the foreground grid owning the penalized one.
-                stencil = []
-                stencil.append(g_octant)
-                stencil.extend(center)
+                # TODO: 12 or 16 instead of 9 for grid not perfectly 
+                # superposed?
+                stencil = [-1] * 9
+                stencil[0] = g_octant
+                stencil[1], stencil[2] = center
                 self._edl.update({key : stencil})
             else:
                 self._nln[octant] = new_oct_count
@@ -571,6 +580,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 d_count += 1
             # First boundary face for foreground grids.
             f_b_face = False
+            # \"stencil\"'s index.
+            s_i = 3
             for face in xrange(0, nfaces):
                 # Check to know if a neighbour of an octant is penalized.
                 is_n_penalized = False
@@ -613,13 +624,15 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                 d_count += 1
                     else:
                         if not is_n_penalized:
-                            self._edl.get(key).append(index)
-                            self._edl.get(key).extend(n_center)
+                            stencil = self._edl.get(key)
+                            stencil[s_i] = index
+                            stencil[s_i + 1], stencil[s_i + 2] = n_center
+                            self._edl[key] = stencil
+                            s_i += 3
                 else:
                     # Adding elements for the octants of the background to use
                     # to interpolate stencil values for boundary conditions of 
-                    # the octants of the foreground grid. This is the worst
-                    # scenario.
+                    # the octants of the foreground grid. 
                     if not is_background:
                         if not f_b_face:
                             o_count += 4
@@ -630,12 +643,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 d_nnz.append(d_count)
                 o_nnz.append(o_count)
                 self._centers_not_penalized.append(center)
-            else:
-                # TODO: Why 9? Should not be 12 or 16 for grids not perfectly
-                # superposed?
-                if len(stencil) < 9:
-                    while len(stencil) is not 9:
-                        stencil.extend((-1, -1, -1))
 
         self.spread_new_background_numeration(is_background)
 
