@@ -1158,6 +1158,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         
         self._numpy_edl = numpy.array(self._edl.items(), 
                                       dtype = self._d_type_s)
+        # How many intercomm dictionaries.
+        h_m_i_d = 0
         # Calling \"allgather\" to obtain data from the corresponding grid,
         # onto the intercommunicators created, not the intracommunicators.
         # http://www.mcs.anl.gov/research/projects/mpi/mpi-standard/mpi-report-1.1/node114.htm#Node117
@@ -1167,6 +1169,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             # Extending a list with the lists obtained by the other processes
             # of the corresponding intercommunicator.
             self._edg.extend(intercomm.allgather(len(self._edl)))
+            h_m_i_d += 1
 
         t_length = 0
         for index, size_edl in enumerate(self._edg):
@@ -1175,9 +1178,26 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         self._numpy_edg = numpy.zeros(t_length, 
                                       dtype = self._d_type_r)
 
+        displs = [0] * len(self._edg)
+        offset = 0
+        for i in range(1, len(self._edg)):
+            offset += self._edg[i-1]
+            displs[i] = offset
+
+        # \"self._numpy_edg\" position.
+        n_edg_p = 0
         for key, intercomm in intercomm_dictionary.items():
+            i = n_edg_p
+            # Data owned.
+            d_o = len(self._edg) / h_m_i_d
+            j = i + d_o
+
             intercomm.Allgatherv([self._numpy_edl, self._mpi_d_t_s],
-                                 [self._numpy_edg, self._edg, self._mpi_d_t_r])
+                                 [self._numpy_edg , 
+                                  self._edg[i : j],
+                                  displs[i : j]   , 
+                                  self._mpi_d_t_r])
+            n_edg_p += d_o
 
         if not is_background:
             self.update_fg_grids(o_ranges,
@@ -1292,7 +1312,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         comm_l = self._comm
         time_rest_prol = 0
         start = time.time()
-        #print("bg has numpy edg elements equal to " + str(self._numpy_edg.size))
         
         list_edg = list(self._numpy_edg)
         # Length list edg.
