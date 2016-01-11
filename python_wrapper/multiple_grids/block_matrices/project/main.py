@@ -167,10 +167,13 @@ def create_intercomms(n_grids      ,
                                        intercommunicators created.
            intercomm_dict (dict) : dictionary filled with the intercommunicators
                                    created."""
-
-    n_intercomms = n_grids - 1
-    grids_to_connect = range(0, n_grids)
-    grids_to_connect.remove(proc_grid)
+    if not proc_grid:
+        n_intercomms = n_grids - 1
+        grids_to_connect = range(0, n_grids)
+        grids_to_connect.remove(proc_grid)
+    else:
+        n_intercomms = 1
+        grids_to_connect = [0]
 
     for grid in grids_to_connect:
         # Remote grid.
