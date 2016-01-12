@@ -74,6 +74,8 @@ try:
     b_pen = config.getfloat("PROBLEM", "BackgroundPenalization")
     f_pen = config.getfloat("PROBLEM", "ForegroundPenalization")
     overlapping = config.getboolean("PROBLEM", "Overlapping")
+    # Particles interaction.
+    p_inter = config.getboolean("PROBLEM", "ParticlesInteraction")
 except (ConfigParser.NoOptionError , 
         ConfigParser.NoSectionError,
         ParsingFileException       ,
@@ -140,6 +142,7 @@ def set_comm_dict(n_grids  ,
                             foreground_boundaries})
     comm_dictionary.update({"process grid" : proc_grid})
     comm_dictionary.update({"overlapping" : overlapping})
+    comm_dictionary.update({"particles interaction" : p_inter})
     comm_dictionary.update({"log file" : log_file})
 
     return comm_dictionary
@@ -172,8 +175,14 @@ def create_intercomms(n_grids      ,
         grids_to_connect = range(0, n_grids)
         grids_to_connect.remove(proc_grid)
     else:
-        n_intercomms = 1
-        grids_to_connect = [0]
+        if not p_inter:
+            n_intercomms = 1
+            grids_to_connect = [0]
+        else:
+            n_intercomms = n_grids - 1
+            grids_to_connect = range(0, n_grids)
+            grids_to_connect.remove(proc_grid)
+            
 
     for grid in grids_to_connect:
         # Remote grid.

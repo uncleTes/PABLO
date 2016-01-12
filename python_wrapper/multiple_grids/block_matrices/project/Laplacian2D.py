@@ -74,6 +74,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # Over-lapping.
         self._over_l = kwargs.setdefault("overlapping",
                                          False)
+        # Particles interaction.
+        self._p_inter = kwargs.setdefault("particles interaction",
+                                          False)
         # \"[[x_anchor, x_anchor + edge, 
         #     y_anchor, y_anchor + edge]...]\" = penalization boundaries (aka
         # foreground boundaries).
@@ -411,7 +414,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                            b_faces[i]  , # Boundary face
                            h)            # Edge's length
                     # We store the center of the cell on the boundary.
-                    self._edl.update({key : center})
+                    self._edl.update({key : (center + ((-1,) * 7) if \
+                                             self._p_inter else center)})
                     # The new corresponding value inside \"b_values\" would be
                     # \"0.0\", because the boundary value is given by the 
                     # coefficients of the bilinear operator in the \"extension\"
@@ -564,6 +568,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 key = (grid    ,
                        g_octant,
                        h)
+                if self._p_inter:
+                    key = key + (-1,)
                 # If the octant is covered by the foreground grids, we need
                 # to store info of the stencil it belongs to to push on the
                 # relative rows of the matrix, the right indices of the octants
@@ -1098,22 +1104,26 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # between grids of different levels.
         self._n_edg = None
         if not is_background:
-            self._d_type_s = numpy.dtype('(1, 4)f8, (1, 2)f8')
-            blocks_length_s = [4, 2]
+            self._d_type_s = numpy.dtype('(1, 4)f8, (1, 9)f8') if self._p_inter\
+                             else numpy.dtype('(1, 4)f8, (1, 2)f8')
+            blocks_length_s = [4, 9] if self._p_inter else [4, 2]
             blocks_displacement_s = [0, 32]
             mpi_datatypes = [MPI.DOUBLE,
                              MPI.DOUBLE]
-            self._d_type_r = numpy.dtype('(1, 3)f8, (1, 9)f8')
-            blocks_length_r = [3, 9]
-            blocks_displacement_r = [0, 24]
+            self._d_type_r = numpy.dtype('(1, 4)f8, (1, 9)f8') if self._p_inter\
+                             else numpy.dtype('(1, 3)f8, (1, 9)f8')
+            blocks_length_r = [4, 9] if self._p_inter else [3, 9]
+            blocks_displacement_r = [0, 32] if self._p_inter else [0, 24]
         else:
-            self._d_type_s = numpy.dtype('(1, 3)f8, (1, 9)f8')
-            blocks_length_s = [3, 9]
-            blocks_displacement_s = [0, 24]
+            self._d_type_s = numpy.dtype('(1, 4)f8, (1, 9)f8') if self._p_inter\
+                             else numpy.dtype('(1, 3)f8, (1, 9)f8')
+            blocks_length_s = [4, 9] if self._p_inter else [3, 9]
+            blocks_displacement_s = [0, 32] if self._p_inter else [0, 24]
             mpi_datatypes = [MPI.DOUBLE,
                              MPI.DOUBLE]
-            self._d_type_r = numpy.dtype('(1, 4)f8, (1,2)f8')
-            blocks_length_r = [4, 2]
+            self._d_type_r = numpy.dtype('(1, 4)f8, (1, 9)f8') if self._p_inter\
+                             else numpy.dtype('(1, 4)f8, (1,2)f8')
+            blocks_length_r = [4, 9] if self._p_inter else [4, 2]
             blocks_displacement_r = [0, 32]
         # MPI data type to send.
         self._mpi_d_t_s = MPI.Datatype.Create_struct(blocks_length_s      ,
@@ -1160,7 +1170,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                      up_id_octree)
         
         self._n_edl = numpy.array(self._edl.items(), 
-                                      dtype = self._d_type_s)
+                                  dtype = self._d_type_s)
         # How many intercomm dictionaries.
         h_m_i_d = 0
         # Calling \"allgather\" to obtain data from the corresponding grid,
@@ -1179,7 +1189,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             t_length += size_edl
 
         self._n_edg = numpy.zeros(t_length, 
-                                      dtype = self._d_type_r)
+                                  dtype = self._d_type_r)
 
         displs = [0] * len(self._edg_c)
         offset = 0
@@ -1241,14 +1251,22 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         list_edg = list(self._n_edg)
         # Length list edg.
         l_l_edg = len(list_edg)
+        # Length key.
+        l_k = list_edg[0][0].size
+        # Length stencil.
+        l_s = list_edg[0][1].size
         keys = numpy.array([list_edg[i][0] for i in 
-                            range(0, l_l_edg)]).reshape(l_l_edg, 3)
+                            range(0, l_l_edg)]).reshape(l_l_edg, l_k)
         h2s = keys[:, 2] * keys[:, 2]
         stencils = numpy.array([list_edg[i][1] for i in 
                                 # TODO: 12 or 16 instead of 9 for grid not
                                 # perfectly superposed??
-                                range(0, l_l_edg)]).reshape(l_l_edg, 9)
-        centers = [(stencils[i][1], stencils[i][2]) for i in range(0, l_l_edg)]
+                                range(0, l_l_edg)]).reshape(l_l_edg, l_s)
+        if self._p_inter:
+            centers = [(stencils[i][1], stencils[i][2]) for i in range(0, l_l_edg)
+                       if int(keys[i][0]) == 0]
+        else:
+            centers = [(stencils[i][1], stencils[i][2]) for i in range(0, l_l_edg)]
         # Vectorized functions are just syntactic sugar:
         # http://stackoverflow.com/questions/7701429/efficient-evaluation-of-a-function-at-every-cell-of-a-numpy-array
         # http://stackoverflow.com/questions/8079061/function-application-over-numpys-matrix-row-column
@@ -1319,11 +1337,15 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         list_edg = list(self._n_edg)
         # Length list edg.
         l_l_edg = len(list_edg)
+        # Length key.
+        l_k = list_edg[0][0].size
+        # Length stencil.
+        l_s = list_edg[0][1].size
         keys = numpy.array([list_edg[i][0] for i in 
-                            range(0, l_l_edg)]).reshape(l_l_edg, 4)
+                            range(0, l_l_edg)]).reshape(l_l_edg, l_k)
         h2s = keys[:, 3] * keys[:, 3]
         centers = numpy.array([list_edg[i][1] for i in 
-                               range(0, l_l_edg)]).reshape(l_l_edg, 2)
+                               range(0, l_l_edg)]).reshape(l_l_edg, l_s)
         local_idxs = numpy.array([octree.get_point_owner_idx(center) for 
                                   center in centers])
         global_idxs = local_idxs + o_ranges[0]
