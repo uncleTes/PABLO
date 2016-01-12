@@ -1092,7 +1092,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                 dtype = numpy.int64)
         self._centers_not_penalized = []
 
-        self._numpy_edl = None
+        # Numpy edl.
+        self._n_edl = None
         # Numpy edg. The \"self._n_edg\" will contains the excahnged data 
         # between grids of different levels.
         self._n_edg = None
@@ -1158,7 +1159,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         ids_octree_contained = range(o_ranges[0],
                                      up_id_octree)
         
-        self._numpy_edl = numpy.array(self._edl.items(), 
+        self._n_edl = numpy.array(self._edl.items(), 
                                       dtype = self._d_type_s)
         # How many intercomm dictionaries.
         h_m_i_d = 0
@@ -1194,10 +1195,10 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             d_o = len(self._edg_c) / h_m_i_d
             j = i + d_o
 
-            intercomm.Allgatherv([self._numpy_edl, self._mpi_d_t_s],
-                                  displs[i : j]   , 
+            intercomm.Allgatherv([self._n_edl, self._mpi_d_t_s],
                                  [self._n_edg       , 
                                   self._edg_c[i : j],
+                                  displs[i : j]     , 
                                   self._mpi_d_t_r])
             n_edg_p += d_o
 
