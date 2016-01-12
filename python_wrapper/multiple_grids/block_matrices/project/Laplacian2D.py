@@ -1093,7 +1093,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         self._centers_not_penalized = []
 
         self._numpy_edl = None
-        self._numpy_edg = None
+        # Numpy edg. The \"self._n_edg\" will contains the excahnged data 
+        # between grids of different levels.
+        self._n_edg = None
         if not is_background:
             self._d_type_s = numpy.dtype('(1, 4)f8, (1, 2)f8')
             blocks_length_s = [4, 2]
@@ -1175,7 +1177,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         for index, size_edl in enumerate(self._edg_c):
             t_length += size_edl
 
-        self._numpy_edg = numpy.zeros(t_length, 
+        self._n_edg = numpy.zeros(t_length, 
                                       dtype = self._d_type_r)
 
         displs = [0] * len(self._edg_c)
@@ -1184,7 +1186,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             offset += self._edg_c[i-1]
             displs[i] = offset
 
-        # \"self._numpy_edg\" position.
+        # \"self._n_edg\" position.
         n_edg_p = 0
         for key, intercomm in intercomm_dictionary.items():
             i = n_edg_p
@@ -1193,8 +1195,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             j = i + d_o
 
             intercomm.Allgatherv([self._numpy_edl, self._mpi_d_t_s],
-                                 [self._numpy_edg , 
                                   displs[i : j]   , 
+                                 [self._n_edg       , 
                                   self._edg_c[i : j],
                                   self._mpi_d_t_r])
             n_edg_p += d_o
@@ -1235,7 +1237,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         time_rest_prol = 0
         start = time.time()
 
-        list_edg = list(self._numpy_edg)
+        list_edg = list(self._n_edg)
         # Length list edg.
         l_l_edg = len(list_edg)
         keys = numpy.array([list_edg[i][0] for i in 
@@ -1313,7 +1315,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         time_rest_prol = 0
         start = time.time()
         
-        list_edg = list(self._numpy_edg)
+        list_edg = list(self._n_edg)
         # Length list edg.
         l_l_edg = len(list_edg)
         keys = numpy.array([list_edg[i][0] for i in 
