@@ -1080,10 +1080,10 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 	# grids of different levels.
 	# Exchanged data local.
         self._edl = {} 
-        # The \"self._edg\" will contains the excahnged data between grids of
-	# different levels.
-	# Exchanged data global.
-        self._edg = []
+        # The \"self._edg_c\" will contains the count of data between
+        # grids of different levels.
+	# Exchanged data global count.
+        self._edg_c = []
         # New local numeration. 
         self._nln = numpy.empty(n_oct,
                                 dtype = numpy.int64)
@@ -1168,20 +1168,20 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         for key, intercomm in intercomm_dictionary.items():
             # Extending a list with the lists obtained by the other processes
             # of the corresponding intercommunicator.
-            self._edg.extend(intercomm.allgather(len(self._edl)))
+            self._edg_c.extend(intercomm.allgather(len(self._edl)))
             h_m_i_d += 1
 
         t_length = 0
-        for index, size_edl in enumerate(self._edg):
+        for index, size_edl in enumerate(self._edg_c):
             t_length += size_edl
 
         self._numpy_edg = numpy.zeros(t_length, 
                                       dtype = self._d_type_r)
 
-        displs = [0] * len(self._edg)
+        displs = [0] * len(self._edg_c)
         offset = 0
-        for i in range(1, len(self._edg)):
-            offset += self._edg[i-1]
+        for i in range(1, len(self._edg_c)):
+            offset += self._edg_c[i-1]
             displs[i] = offset
 
         # \"self._numpy_edg\" position.
@@ -1189,13 +1189,13 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         for key, intercomm in intercomm_dictionary.items():
             i = n_edg_p
             # Data owned.
-            d_o = len(self._edg) / h_m_i_d
+            d_o = len(self._edg_c) / h_m_i_d
             j = i + d_o
 
             intercomm.Allgatherv([self._numpy_edl, self._mpi_d_t_s],
                                  [self._numpy_edg , 
-                                  self._edg[i : j],
                                   displs[i : j]   , 
+                                  self._edg_c[i : j],
                                   self._mpi_d_t_r])
             n_edg_p += d_o
 
