@@ -1171,8 +1171,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         
         self._n_edl = numpy.array(self._edl.items(), 
                                   dtype = self._d_type_s)
-        # How many intercomm dictionaries.
-        h_m_i_d = 0
         # Calling \"allgather\" to obtain data from the corresponding grid,
         # onto the intercommunicators created, not the intracommunicators.
         # http://www.mcs.anl.gov/research/projects/mpi/mpi-standard/mpi-report-1.1/node114.htm#Node117
@@ -1182,7 +1180,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             # Extending a list with the lists obtained by the other processes
             # of the corresponding intercommunicator.
             self._edg_c.extend(intercomm.allgather(len(self._edl)))
-            h_m_i_d += 1
 
         t_length = 0
         for index, size_edl in enumerate(self._edg_c):
@@ -1200,17 +1197,16 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # \"self._n_edg\" position.
         n_edg_p = 0
         for key, intercomm in intercomm_dictionary.items():
+            # Remote group size.
+            r_g_s = intercomm.Get_remote_size()
             i = n_edg_p
-            # Data owned.
-            d_o = len(self._edg_c) / h_m_i_d
-            j = i + d_o
-
+            j = i + r_g_s 
             intercomm.Allgatherv([self._n_edl, self._mpi_d_t_s],
                                  [self._n_edg       , 
                                   self._edg_c[i : j],
                                   displs[i : j]     , 
                                   self._mpi_d_t_r])
-            n_edg_p += d_o
+            n_edg_p += r_g_s
 
         if not is_background:
             self.update_fg_grids(o_ranges,
