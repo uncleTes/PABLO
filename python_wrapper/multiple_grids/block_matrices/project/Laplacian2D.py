@@ -1378,8 +1378,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
             bil_coeffs = [coeff * (1.0 / h2s[idx]) for coeff in bil_coeffs]
             l_start = time.time()
             self.apply_rest_prol_ops(int(keys[idx][1]),
-                                     n_n_i      ,
-                                     bil_coeffs ,
+                                     n_n_i            ,
+                                     bil_coeffs       ,
                                      neigh_centers)
             l_end = time.time()
             time_rest_prol += (l_end - l_start)
