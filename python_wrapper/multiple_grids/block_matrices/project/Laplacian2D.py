@@ -12,6 +12,7 @@ from petsc4py import PETSc
 from mpi4py import MPI
 import class_global
 import utilities
+import time
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
@@ -73,6 +74,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # Over-lapping.
         self._over_l = kwargs.setdefault("overlapping",
                                          False)
+        # Particles interaction.
+        self._p_inter = kwargs.setdefault("particles interaction",
+                                          False)
         # \"[[x_anchor, x_anchor + edge, 
         #     y_anchor, y_anchor + edge]...]\" = penalization boundaries (aka
         # foreground boundaries).
@@ -410,7 +414,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                            b_faces[i]  , # Boundary face
                            h)            # Edge's length
                     # We store the center of the cell on the boundary.
-                    self._edl.update({key : center})
+                    self._edl.update({key : (center + ((-1,) * 7) if \
+                                             self._p_inter else center)})
                     # The new corresponding value inside \"b_values\" would be
                     # \"0.0\", because the boundary value is given by the 
                     # coefficients of the bilinear operator in the \"extension\"
@@ -535,12 +540,19 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # diagonal part of the coefficients matrix, for row. 
         d_nnz, o_nnz = ([] for i in range(0, 2))
         new_oct_count = 0
-        for octant in xrange(0, n_oct):
+
+        # \"range\" gives us a list.
+        octants = range(0, n_oct)
+        g_octants = [octree.get_global_idx(octant) for octant in octants]
+        py_octs = [octree.get_octant(octant) for octant in octants]
+        centers = [octree.get_center(octant)[:2] for octant in octants]         
+
+        for octant in octants:
             d_count, o_count = 0, 0
             neighs, ghosts = ([] for i in range(0, 2))
-            g_octant = octree.get_global_idx(octant)
-            py_oct = octree.get_octant(octant)
-            center  = octree.get_center(octant)[:2]
+            g_octant = g_octants[octant]
+            py_oct = py_octs[octant]
+            center  = centers[octant]
             # Check to know if an octant is penalized.
             is_penalized = False
             # Background grid.
@@ -556,12 +568,17 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 key = (grid    ,
                        g_octant,
                        h)
+                if self._p_inter:
+                    key = key + (-1,)
                 # If the octant is covered by the foreground grids, we need
                 # to store info of the stencil it belongs to to push on the
                 # relative rows of the matrix, the right indices of the octants
                 # of the foreground grid owning the penalized one.
-                stencil = []
-                stencil.append((g_octant, center))
+                # TODO: 12 or 16 instead of 9 for grid not perfectly 
+                # superposed?
+                stencil = [-1] * 9
+                stencil[0] = g_octant
+                stencil[1], stencil[2] = center
                 self._edl.update({key : stencil})
             else:
                 self._nln[octant] = new_oct_count
@@ -569,6 +586,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 d_count += 1
             # First boundary face for foreground grids.
             f_b_face = False
+            # \"stencil\"'s index.
+            s_i = 3
             for face in xrange(0, nfaces):
                 # Check to know if a neighbour of an octant is penalized.
                 is_n_penalized = False
@@ -611,12 +630,15 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                 d_count += 1
                     else:
                         if not is_n_penalized:
-                            self._edl.get(key).append((index, n_center))
+                            stencil = self._edl.get(key)
+                            stencil[s_i] = index
+                            stencil[s_i + 1], stencil[s_i + 2] = n_center
+                            self._edl[key] = stencil
+                            s_i += 3
                 else:
                     # Adding elements for the octants of the background to use
                     # to interpolate stencil values for boundary conditions of 
-                    # the octants of the foreground grid. This is the worst
-                    # scenario.
+                    # the octants of the foreground grid. 
                     if not is_background:
                         if not f_b_face:
                             o_count += 4
@@ -666,21 +688,27 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         
         if is_background:
             # Send counts. How many element have to be sent by each process.
-            self._s_counts = []
-            self._s_counts.extend(comm_l.allgather(self._nln.size))
-            displs = [0] * len(self._s_counts)
+            #self._s_counts = []
+            self._s_counts = numpy.empty(comm_l.size,
+                                         dtype = numpy.int64)
+            one_el = numpy.empty(1, 
+                                 dtype = numpy.int64)
+            one_el[0] = self._nln.size
+            comm_l.Allgather(one_el, 
+                             [self._s_counts, 1, MPI.INT64_T])
+            displs = [0] * self._s_counts.size
             offset = 0
-            for i in range(1, len(self._s_counts)):
+            for i in range(1, self._s_counts.size):
                 offset += self._s_counts[i-1]
                 displs[i] = offset
             comm_l.Gatherv(self._nln                                       ,
                            [self._ngn, self._s_counts, displs, MPI.INT64_T],
                            root = 0)
-        comm_w.Barrier()
         # Broadcasting the vector containing the new global numeration of the
         # background grid \"self._ngn\" to all processes of the world 
         # communicator.
-        comm_w.Bcast(self._ngn,
+        N_oct_bg_g = self._oct_f_g[0]
+        comm_w.Bcast([self._ngn, N_oct_bg_g, MPI.INT64_T],
                      root = 0)
 
         msg = "Spread new global background masked numeration"
@@ -903,12 +931,11 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         inter_sol = self.init_array("interpolated solution",
                                     False)
 
-        for i in xrange(0, tot_oct):
-            if i in ids_octree_contained:
-                sol_index = self.mask_octant(i)
-                if (sol_index != -1):
-                    sol_value = self._sol.getValue(sol_index)
-                    inter_sol.setValue(i, sol_value)
+        for i in ids_octree_contained:
+            sol_index = self.mask_octant(i)
+            if (sol_index != -1):
+                sol_value = self._sol.getValue(sol_index)
+                inter_sol.setValue(i, sol_value)
 
         inter_sol.assemblyBegin()
         inter_sol.assemblyEnd()
@@ -1049,27 +1076,65 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 	"""Method which initializes structures used to exchange data between
 	   different grids."""
 
+        grid = self._proc_g
+        is_background = True
+        if grid:
+            is_background = False
         n_oct = self._n_oct
         N_oct_bg_g = self._oct_f_g[0]
         # The \"self._edl\" will contains local data to be exchanged between
 	# grids of different levels.
 	# Exchanged data local.
         self._edl = {} 
-        # The \"self._edg\" will contains the excahnged data between grids of
-	# different levels.
-	# Exchanged data global.
-        self._edg = []
-        
+        # The \"self._edg_c\" will contains the count of data between
+        # grids of different levels.
+	# Exchanged data global count.
+        self._edg_c = []
+        # New local numeration. 
         self._nln = numpy.empty(n_oct,
                                 dtype = numpy.int64)
+        # New global numeration.
         self._ngn = numpy.empty(N_oct_bg_g,
                                 dtype = numpy.int64)
-        self._mdl_f = {}
-        self._mdl_b = {}
-        self._mdg_f = {}
-        self._mdg_b = []
-
         self._centers_not_penalized = []
+
+        # Numpy edl.
+        self._n_edl = None
+        # Numpy edg. The \"self._n_edg\" will contains the excahnged data 
+        # between grids of different levels.
+        self._n_edg = None
+        if not is_background:
+            self._d_type_s = numpy.dtype('(1, 4)f8, (1, 9)f8') if self._p_inter\
+                             else numpy.dtype('(1, 4)f8, (1, 2)f8')
+            blocks_length_s = [4, 9] if self._p_inter else [4, 2]
+            blocks_displacement_s = [0, 32]
+            mpi_datatypes = [MPI.DOUBLE,
+                             MPI.DOUBLE]
+            self._d_type_r = numpy.dtype('(1, 4)f8, (1, 9)f8') if self._p_inter\
+                             else numpy.dtype('(1, 3)f8, (1, 9)f8')
+            blocks_length_r = [4, 9] if self._p_inter else [3, 9]
+            blocks_displacement_r = [0, 32] if self._p_inter else [0, 24]
+        else:
+            self._d_type_s = numpy.dtype('(1, 4)f8, (1, 9)f8') if self._p_inter\
+                             else numpy.dtype('(1, 3)f8, (1, 9)f8')
+            blocks_length_s = [4, 9] if self._p_inter else [3, 9]
+            blocks_displacement_s = [0, 32] if self._p_inter else [0, 24]
+            mpi_datatypes = [MPI.DOUBLE,
+                             MPI.DOUBLE]
+            self._d_type_r = numpy.dtype('(1, 4)f8, (1, 9)f8') if self._p_inter\
+                             else numpy.dtype('(1, 4)f8, (1,2)f8')
+            blocks_length_r = [4, 9] if self._p_inter else [4, 2]
+            blocks_displacement_r = [0, 32]
+        # MPI data type to send.
+        self._mpi_d_t_s = MPI.Datatype.Create_struct(blocks_length_s      ,
+                                                     blocks_displacement_s,
+                                                     # Do not forget 
+                                                     #\".Commit()\".
+                                                     mpi_datatypes).Commit()
+        # MPI data type to receive.
+        self._mpi_d_t_r = MPI.Datatype.Create_struct(blocks_length_r      ,
+                                                     blocks_displacement_r,
+                                                     mpi_datatypes).Commit()
 
         msg = "Initialized exchanged structures"
         self.log_msg(msg   ,
@@ -1101,8 +1166,13 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # Upper bound octree's id contained.
         up_id_octree = o_ranges[0] + n_oct
         # Octree's ids contained.
-        ids_octree_contained = range(o_ranges[0], 
+        ids_octree_contained = range(o_ranges[0],
                                      up_id_octree)
+        
+        self._n_edl = numpy.array(self._edl.items(), 
+                                  dtype = self._d_type_s)
+        # How many intercomm dictionaries.
+        h_m_i_d = 0
         # Calling \"allgather\" to obtain data from the corresponding grid,
         # onto the intercommunicators created, not the intracommunicators.
         # http://www.mcs.anl.gov/research/projects/mpi/mpi-standard/mpi-report-1.1/node114.htm#Node117
@@ -1111,23 +1181,44 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         for key, intercomm in intercomm_dictionary.items():
             # Extending a list with the lists obtained by the other processes
             # of the corresponding intercommunicator.
-            self._edg.extend(intercomm.allgather(self._edl))
+            self._edg_c.extend(intercomm.allgather(len(self._edl)))
+            h_m_i_d += 1
+
+        t_length = 0
+        for index, size_edl in enumerate(self._edg_c):
+            t_length += size_edl
+
+        self._n_edg = numpy.zeros(t_length, 
+                                  dtype = self._d_type_r)
+
+        displs = [0] * len(self._edg_c)
+        offset = 0
+        for i in range(1, len(self._edg_c)):
+            offset += self._edg_c[i-1]
+            displs[i] = offset
+
+        # \"self._n_edg\" position.
+        n_edg_p = 0
+        for key, intercomm in intercomm_dictionary.items():
+            i = n_edg_p
+            # Data owned.
+            d_o = len(self._edg_c) / h_m_i_d
+            j = i + d_o
+
+            intercomm.Allgatherv([self._n_edl, self._mpi_d_t_s],
+                                 [self._n_edg       , 
+                                  self._edg_c[i : j],
+                                  displs[i : j]     , 
+                                  self._mpi_d_t_r])
+            n_edg_p += d_o
 
         if not is_background:
             self.update_fg_grids(o_ranges,
                                  ids_octree_contained)
-
-        comm_w.Barrier()
-
-        for key, intercomm in intercomm_dictionary.items():
-            self._mdg_b.extend(intercomm.allgather(self._mdg_f))
-
-        if is_background:
+        else:
             self.update_bg_grids(o_ranges,
                                  ids_octree_contained)
         
-        comm_w.Barrier()
-
         self.assembly_petsc_struct("matrix",
                                    PETSc.Mat.AssemblyType.FINAL_ASSEMBLY)
 
@@ -1154,47 +1245,71 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
         octree = self._octree
         comm_l = self._comm
-        # \"self._edg\" will be a list of same structures of data,
-        # after the \"allgather\" call; these structures are dictionaries.
-        for index, dictionary in enumerate(self._edg):
-            for key, stencil in dictionary.items():
-                if key[0] == 0:
-                    (x_center, y_center) = stencil[0][1]
-                    local_idx = octree.get_point_owner_idx((x_center,
-                                                            y_center))
-                    h2 = key[2] * key[2]
-                    global_idx = local_idx + o_ranges[0]
+        time_rest_prol = 0
+        start = time.time()
 
-                    if global_idx in ids_octree_contained:
-                        center_cell_container = octree.get_center(local_idx)[:2]
-                        location = utilities.points_location((x_center,
-                                                              y_center),
-                                                             center_cell_container)
-                        neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
-                        (neigh_centers, 
-                         neigh_indices)  = self.find_right_neighbours(location ,
-                                                                      local_idx,
-                                                                      o_ranges[0])
-                        bil_coeffs = utilities.bil_coeffs((x_center, 
-                                                           y_center),
-                                                          neigh_centers)
+        list_edg = list(self._n_edg)
+        # Length list edg.
+        l_l_edg = len(list_edg)
+        # Length key.
+        l_k = list_edg[0][0].size
+        # Length stencil.
+        l_s = list_edg[0][1].size
+        keys = numpy.array([list_edg[i][0] for i in 
+                            range(0, l_l_edg)]).reshape(l_l_edg, l_k)
+        h2s = keys[:, 2] * keys[:, 2]
+        stencils = numpy.array([list_edg[i][1] for i in 
+                                # TODO: 12 or 16 instead of 9 for grid not
+                                # perfectly superposed??
+                                range(0, l_l_edg)]).reshape(l_l_edg, l_s)
+        if self._p_inter:
+            centers = [(stencils[i][1], stencils[i][2]) for i in range(0, l_l_edg)
+                       if int(keys[i][0]) == 0]
+        else:
+            centers = [(stencils[i][1], stencils[i][2]) for i in range(0, l_l_edg)]
+        # Vectorized functions are just syntactic sugar:
+        # http://stackoverflow.com/questions/7701429/efficient-evaluation-of-a-function-at-every-cell-of-a-numpy-array
+        # http://stackoverflow.com/questions/8079061/function-application-over-numpys-matrix-row-column
+        # http://stackoverflow.com/questions/6824122/mapping-a-numpy-array-in-place
+        # http://stackoverflow.com/questions/9792925/how-to-speed-up-enumerate-for-numpy-array-how-to-enumerate-over-numpy-array-ef
+        local_idxs = numpy.array([octree.get_point_owner_idx(center) for 
+                                  center in centers])
+        global_idxs = local_idxs + o_ranges[0]
+        # \"numpy.where\" returns indices of the elements which satisfy the
+        # conditions.
+        idxs = numpy.where(numpy.logical_and((global_idxs >= 
+                                              ids_octree_contained[0]),
+                                             (global_idxs <= 
+                                              ids_octree_contained[-1])))
+        # \"idxs[0]\" because is a numpy array, so to select the array we have
+        # to use the index notation.
+        for idx in idxs[0]:
+            center_cell_container = octree.get_center(local_idxs[idx])[:2]
+            location = utilities.points_location(centers[idx],
+                                                 center_cell_container)
+            neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
+            (neigh_centers, 
+             neigh_indices)  = self.find_right_neighbours(location       ,
+                                                          local_idxs[idx],
+                                                          o_ranges[0])
+            bil_coeffs = utilities.bil_coeffs(centers[idx],
+                                              neigh_centers)
 
-                        self._mdl_f.update({(key[1], (x_center, y_center)) : 
-                                            [neigh_centers, 
-                                             neigh_indices, 
-                                             bil_coeffs]})
+            bil_coeffs = [coeff * (1.0 / h2s[idx]) for coeff in bil_coeffs]
 
-                        bil_coeffs = [coeff * (1.0 / h2) for coeff in bil_coeffs]
+            row_indices = [int(octant) for octant in stencils[idx][3::3]]
 
-                        row_indices = [octant[0] for octant in stencil[1:]]
+            l_start = time.time()
+            self.apply_rest_prol_ops(row_indices  ,
+                                     neigh_indices,
+                                     bil_coeffs   ,
+                                     neigh_centers)
+            l_end = time.time()
+            time_rest_prol += (l_end - l_start)
+        end = time.time()
+        print("fg prolungation restriction " + str(time_rest_prol))
+        print("fg update " + str(end - start))
 
-                        self.apply_rest_prol_ops(row_indices  ,
-                                                 neigh_indices,
-                                                 bil_coeffs   ,
-                                                 neigh_centers)
-        self._mdg_f = comm_l.gather(self._mdl_f, 
-                                    root = 0)
-        
         msg = "Updated prolongation blocks"
         self.log_msg(msg   ,
                      "info")
@@ -1214,48 +1329,63 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 ids_octree_contained (list) : list of the indices of the octants
                                               contained in the current process."""
 
-        log_file = self.logger.handlers[0].baseFilename
         octree = self._octree
         comm_l = self._comm
-        b_bound = self._b_bound
-        for index, dictionary in enumerate(self._edg):
-            for key, item in dictionary.items():
-                (x_center, y_center) = item
-		h2 = key[3] * key[3]
-                local_idx = octree.get_point_owner_idx((x_center,
-                                                        y_center))
-    
-                global_idx = local_idx + o_ranges[0]
+        time_rest_prol = 0
+        start = time.time()
+        
+        list_edg = list(self._n_edg)
+        # Length list edg.
+        l_l_edg = len(list_edg)
+        # Length key.
+        l_k = list_edg[0][0].size
+        # Length stencil.
+        l_s = list_edg[0][1].size
+        keys = numpy.array([list_edg[i][0] for i in 
+                            range(0, l_l_edg)]).reshape(l_l_edg, l_k)
+        h2s = keys[:, 3] * keys[:, 3]
+        centers = numpy.array([list_edg[i][1] for i in 
+                               range(0, l_l_edg)]).reshape(l_l_edg, l_s)
+        local_idxs = numpy.array([octree.get_point_owner_idx(center) for 
+                                  center in centers])
+        global_idxs = local_idxs + o_ranges[0]
+        idxs = numpy.where(numpy.logical_and((global_idxs >= 
+                                              ids_octree_contained[0]),
+                                             (global_idxs <= 
+                                              ids_octree_contained[-1])))
 
-                if global_idx in ids_octree_contained:
-                    center_cell_container = octree.get_center(local_idx)[:2]
-                    location = utilities.points_location((x_center,
-                                                          y_center),
-                                                          center_cell_container)
-                    neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
-                    # New neighbour indices.
-                    n_n_i = []
-                    (neigh_centers, neigh_indices)  = self.find_right_neighbours(location   ,
-                                                                                 local_idx  ,
-                                                                                 o_ranges[0],
-                                                                                 True       ,
-                                                                                 key[2])
-                    bil_coeffs = utilities.bil_coeffs((x_center, 
-                                                       y_center),
-                                                      neigh_centers)
-
-                    for i, index in enumerate(neigh_indices):
-                        if not isinstance(index, basestring):
-                            masked_index = self._ngn[index]
-                            n_n_i.append(masked_index)
-                        else:
-                            n_n_i.append(index)
-                            
-                    bil_coeffs = [coeff * (1.0 / h2) for coeff in bil_coeffs]
-                    self.apply_rest_prol_ops(key[1]    ,
-                                             n_n_i     ,
-                                             bil_coeffs,
-                                             neigh_centers)
+        for idx in idxs[0]:
+            center_cell_container = octree.get_center(local_idxs[idx])[:2]
+            location = utilities.points_location(centers[idx],
+                                                 center_cell_container)
+            neigh_centers, neigh_indices = ([] for i in range(0, 2)) 
+            # New neighbour indices.
+            n_n_i = []
+            (neigh_centers, 
+             neigh_indices)  = self.find_right_neighbours(location       ,
+                                                          local_idxs[idx],
+                                                          o_ranges[0]    ,
+                                                          True           ,
+                                                          int(keys[idx][2]))
+            bil_coeffs = utilities.bil_coeffs(centers[idx],
+                                              neigh_centers)
+            for i, index in enumerate(neigh_indices):
+                if not isinstance(index, basestring):
+                    masked_index = self._ngn[index]
+                    n_n_i.append(masked_index)
+                else:
+                    n_n_i.append(index)
+            bil_coeffs = [coeff * (1.0 / h2s[idx]) for coeff in bil_coeffs]
+            l_start = time.time()
+            self.apply_rest_prol_ops(int(keys[idx][1]),
+                                     n_n_i            ,
+                                     bil_coeffs       ,
+                                     neigh_centers)
+            l_end = time.time()
+            time_rest_prol += (l_end - l_start)
+        end = time.time()
+        print("bg prolungation restriction " + str(time_rest_prol))
+        print("bg update " + str(end - start))
 
         msg = "Updated restriction blocks"
         self.log_msg(msg   ,
@@ -1462,10 +1592,10 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
 
     # --------------------------------------------------------------------------
     # Apply restriction/prolongation operators.
-    def apply_rest_prol_ops(self         ,
-                            row_indices  ,
-                            col_indices  ,
-                            col_values   ,
+    def apply_rest_prol_ops(self       ,
+                            row_indices,
+                            col_indices,
+                            col_values ,
                             centers):
         """Method which applies the right coefficients at the right neighbours
            in the prolongaion and restriction blocks.
@@ -1481,8 +1611,10 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         is_background = True
         if grid:
             is_background = False
+            numpy_row_indices = numpy.array(row_indices)
+            numpy_row_indices = numpy_row_indices[numpy_row_indices >= 0]
         insert_mode = PETSc.InsertMode.ADD_VALUES
-        n_rows = 1 if is_background else len(row_indices)
+        n_rows = 1 if is_background else numpy_row_indices.size
         to_rhs = []
         # Exact solutions.
         e_sols = []
@@ -1497,7 +1629,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                 e_sols.append(e_sol)
 
         for i in range(0, n_rows):
-            row_index = row_indices if is_background else row_indices[i]
+            row_index = row_indices if is_background else numpy_row_indices[i]
             co_indices = col_indices
             co_values = col_values
             if not is_background:
@@ -1519,14 +1651,14 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                                   co_indices ,
                                   co_values  ,
                                   insert_mode)
-        
+
         msg = "Applied prolongation and restriction operators."
         self.log_msg(msg   ,
                      "info")
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
-    def evaluate_norms(self, 
+    def evaluate_norms(self          , 
                        exact_solution,
                        solution):
         """Function which evals the infinite and L2 norms of the error.

@@ -74,6 +74,8 @@ try:
     b_pen = config.getfloat("PROBLEM", "BackgroundPenalization")
     f_pen = config.getfloat("PROBLEM", "ForegroundPenalization")
     overlapping = config.getboolean("PROBLEM", "Overlapping")
+    # Particles interaction.
+    p_inter = config.getboolean("PROBLEM", "ParticlesInteraction")
 except (ConfigParser.NoOptionError , 
         ConfigParser.NoSectionError,
         ParsingFileException       ,
@@ -140,6 +142,7 @@ def set_comm_dict(n_grids  ,
                             foreground_boundaries})
     comm_dictionary.update({"process grid" : proc_grid})
     comm_dictionary.update({"overlapping" : overlapping})
+    comm_dictionary.update({"particles interaction" : p_inter})
     comm_dictionary.update({"log file" : log_file})
 
     return comm_dictionary
@@ -167,10 +170,19 @@ def create_intercomms(n_grids      ,
                                        intercommunicators created.
            intercomm_dict (dict) : dictionary filled with the intercommunicators
                                    created."""
-
-    n_intercomms = n_grids - 1
-    grids_to_connect = range(0, n_grids)
-    grids_to_connect.remove(proc_grid)
+    if not proc_grid:
+        n_intercomms = n_grids - 1
+        grids_to_connect = range(0, n_grids)
+        grids_to_connect.remove(proc_grid)
+    else:
+        if not p_inter:
+            n_intercomms = 1
+            grids_to_connect = [0]
+        else:
+            n_intercomms = n_grids - 1
+            grids_to_connect = range(0, n_grids)
+            grids_to_connect.remove(proc_grid)
+            
 
     for grid in grids_to_connect:
         # Remote grid.
@@ -270,7 +282,7 @@ def set_octree(comm_l,
 
     for iteration in xrange(1, refinement_levels):
         pablo.adapt_global_refine()
-
+    
     pablo.load_balance()
     pablo.update_connectivity()
     pablo.update_ghosts_connectivity()
@@ -486,13 +498,13 @@ if __name__ == "__main__":
 
     t_start = time.time()
 
-    #import cProfile
+    import cProfile
     # Profile's stats will be written on the file \'filename\'.
     #cProfile.run('main()', sort='time', filename='cProfile_stats.txt')
     # Profile's stats will be printed on the screen at the end of the program.
-    #cProfile.run('main()', sort='time')
-    # No profile's stats.
-    main()
+    # http://stackoverflow.com/questions/3898266/what-is-this-cprofile-result-telling-me-i-need-to-fix
+    cProfile.run('main()', sort='cumulative')
+    #main()
 
     comm_w.Barrier()
 
