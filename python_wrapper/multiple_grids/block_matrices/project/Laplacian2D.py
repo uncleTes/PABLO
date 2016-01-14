@@ -1177,6 +1177,12 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
                              dtype = numpy.int64)
         one_el[0] = len(self._edl)
         displ = 0
+
+        if (not self._p_inter) and (grid):
+            r_g_s = intercomm_dictionary.values()[0].Get_remote_size()
+            self._edg_c = numpy.resize(self._edg_c,
+                                       r_g_s)
+
         for key, intercomm in intercomm_dictionary.items():
             req = intercomm.Iallgather(one_el,
                                        [self._edg_c, 1, displ, MPI.INT64_T])
