@@ -1173,11 +1173,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         self._n_edl = numpy.array(self._edl.items(), 
                                   dtype = self._d_type_s)
         mpi_requests = []
-        # Calling \"allgather\" to obtain data from the corresponding grid,
-        # onto the intercommunicators created, not the intracommunicators.
-        # http://www.mcs.anl.gov/research/projects/mpi/mpi-standard/mpi-report-1.1/node114.htm#Node117
-        # http://mpitutorial.com/tutorials/mpi-broadcast-and-collective-communication/
-        # http://www.linux-mag.com/id/1412/
         self._edg_c = numpy.resize(self._edg_c, 
                                    len(intercomm_dictionary))
         one_el = numpy.empty(1, 
