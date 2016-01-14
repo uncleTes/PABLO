@@ -1089,7 +1089,7 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # The \"self._edg_c\" will contains the count of data between
         # grids of different levels.
 	# Exchanged data global count, for the moment initialize with size one.
-        self._edg_c = numpy.empty(1,
+        self._edg_c = numpy.empty(self._comm_w.Get_size() - self._comm.Get_size(),
                                   dtype = numpy.int64)
         # New local numeration. 
         self._nln = numpy.empty(n_oct,
@@ -1173,8 +1173,6 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         self._n_edl = numpy.array(self._edl.items(), 
                                   dtype = self._d_type_s)
         mpi_requests = []
-        self._edg_c = numpy.resize(self._edg_c, 
-                                   len(intercomm_dictionary))
         one_el = numpy.empty(1, 
                              dtype = numpy.int64)
         one_el[0] = len(self._edl)
