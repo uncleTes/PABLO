@@ -5,7 +5,7 @@ from libcpp cimport bool
 from libc.stdint cimport uint8_t, uint32_t, uint64_t, int8_t, uintptr_t
 import class_octant
 cimport mpi4py.MPI as MPI
-from mpi4py.mpi_c cimport *
+from mpi4py.libmpi cimport *
 
 cdef extern from *:
 	ctypedef void* D2 "2"
