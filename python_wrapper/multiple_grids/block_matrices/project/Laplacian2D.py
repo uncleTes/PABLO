@@ -1088,8 +1088,9 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         self._edl = {} 
         # The \"self._edg_c\" will contains the count of data between
         # grids of different levels.
-	# Exchanged data global count.
-        self._edg_c = []
+	# Exchanged data global count, for the moment initialize with size one.
+        self._edg_c = numpy.empty(1,
+                                  dtype = numpy.int64)
         # New local numeration. 
         self._nln = numpy.empty(n_oct,
                                 dtype = numpy.int64)
@@ -1176,6 +1177,8 @@ class Laplacian2D(BaseClass2D.BaseClass2D):
         # http://www.mcs.anl.gov/research/projects/mpi/mpi-standard/mpi-report-1.1/node114.htm#Node117
         # http://mpitutorial.com/tutorials/mpi-broadcast-and-collective-communication/
         # http://www.linux-mag.com/id/1412/
+        self._edg_c = numpy.resize(self._edg_c, 
+                                   len(intercomm_dictionary))
         for key, intercomm in intercomm_dictionary.items():
             # Extending a list with the lists obtained by the other processes
             # of the corresponding intercommunicator.
