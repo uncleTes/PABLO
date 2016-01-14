@@ -310,7 +310,7 @@ def compute(comm_dictionary     ,
            comm_dictionary (dict) : dictionary containing useful data for each
                                     intra-communicator and grid.
            intercomm_dictionary (dict) : dictionary containing the 
-                                         intracommunicators created.
+                                         intercommunicators created.
            centers (list[lists]) : list containing lists of the centers of the
                                    quadtree contained in the current process.
 
